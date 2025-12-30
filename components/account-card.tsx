@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { deleteCategory } from '@/lib/actions/categories';
-import type { Category } from '@/lib/schema';
-import { CategoryForm } from '@/components/category-form';
+import { deleteAccount } from '@/lib/actions/accounts';
+import type { Account } from '@/lib/schema';
+import { AccountForm } from '@/components/account-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -23,35 +23,60 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CategoryIcon } from '@/components/icon-picker';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreVerticalIcon } from '@hugeicons/core-free-icons';
+import {
+  MoreVerticalIcon,
+  CreditCardIcon,
+  BankIcon,
+  PiggyBankIcon,
+  Money01Icon
+} from '@hugeicons/core-free-icons';
 
-type CategoryCardProps = {
-  category: Category;
+type AccountCardProps = {
+  account: Account;
 };
 
-export function CategoryCard({ category }: CategoryCardProps) {
+// Map account types to icons and colors
+const accountTypeConfig = {
+  credit_card: {
+    icon: CreditCardIcon,
+    color: '#EF4444',
+    label: 'Credit Card'
+  },
+  checking: {
+    icon: BankIcon,
+    color: '#3B82F6',
+    label: 'Checking'
+  },
+  savings: {
+    icon: PiggyBankIcon,
+    color: '#22C55E',
+    label: 'Savings'
+  },
+  cash: {
+    icon: Money01Icon,
+    color: '#F59E0B',
+    label: 'Cash'
+  },
+};
+
+export function AccountCard({ account }: AccountCardProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const config = accountTypeConfig[account.type];
 
   async function handleDelete() {
     setIsDeleting(true);
     setDeleteError(null);
 
     try {
-      const result = await deleteCategory(category.id);
-
-      if (!result.success) {
-        setDeleteError(result.error);
-        return;
-      }
-
+      await deleteAccount(account.id);
       setDeleteOpen(false);
     } catch (err) {
-      console.error('[CategoryCard] Delete failed:', err);
+      console.error('[AccountCard] Delete failed:', err);
       setDeleteError('An unexpected error occurred. Please try again.');
     } finally {
       setIsDeleting(false);
@@ -61,17 +86,18 @@ export function CategoryCard({ category }: CategoryCardProps) {
   return (
     <Card className="py-0">
       <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
-        {/* Category icon */}
+        {/* Account type icon */}
         <div
           className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
-          style={{ backgroundColor: category.color }}
+          style={{ backgroundColor: config.color }}
         >
-          <CategoryIcon icon={category.icon} />
+          <HugeiconsIcon icon={config.icon} strokeWidth={2} size={20} />
         </div>
 
-        {/* Category name */}
+        {/* Account name + type */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate">{category.name}</h3>
+          <h3 className="font-medium text-sm truncate">{account.name}</h3>
+          <p className="text-xs text-gray-500">{config.label}</p>
         </div>
 
         {/* Actions dropdown */}
@@ -85,29 +111,26 @@ export function CategoryCard({ category }: CategoryCardProps) {
             <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  Edit Category
+                  Edit Account
                 </DropdownMenuItem>
               </AlertDialogTrigger>
               <AlertDialogContent closeOnBackdropClick>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Edit Category</AlertDialogTitle>
+                  <AlertDialogTitle>Edit Account</AlertDialogTitle>
                 </AlertDialogHeader>
-                <CategoryForm
-                  category={category}
-                  onSuccess={() => setEditOpen(false)}
-                />
+                <AccountForm account={account} />
               </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  Delete Category
+                  Delete Account
                 </DropdownMenuItem>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete category?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete account?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone.
                   </AlertDialogDescription>

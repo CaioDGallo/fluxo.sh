@@ -1,14 +1,10 @@
-import { getAccounts, deleteAccount } from '@/lib/actions/accounts';
+import { getAccounts } from '@/lib/actions/accounts';
 import { AccountForm } from '@/components/account-form';
+import { AccountCard } from '@/components/account-card';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -17,15 +13,21 @@ import {
 export default async function AccountsPage() {
   const accounts = await getAccounts();
 
+  // Group accounts by type
+  const creditCardAccounts = accounts.filter(acc => acc.type === 'credit_card');
+  const checkingAccounts = accounts.filter(acc => acc.type === 'checking');
+  const savingsAccounts = accounts.filter(acc => acc.type === 'savings');
+  const cashAccounts = accounts.filter(acc => acc.type === 'cash');
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Accounts</h1>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button>Add Account</Button>
+            <Button variant="hollow">Add Account</Button>
           </AlertDialogTrigger>
-          <AlertDialogContent>
+          <AlertDialogContent closeOnBackdropClick>
             <AlertDialogHeader>
               <AlertDialogTitle>Add Account</AlertDialogTitle>
             </AlertDialogHeader>
@@ -34,50 +36,59 @@ export default async function AccountsPage() {
         </AlertDialog>
       </div>
 
-      <div className="space-y-3">
-        {accounts.map((account) => (
-          <Card key={account.id} className="flex items-center justify-between p-4">
-            <div>
-              <h3 className="font-medium">{account.name}</h3>
-              <p className="text-sm text-neutral-500 capitalize">
-                {account.type.replace('_', ' ')}
-              </p>
+      <div className="space-y-8">
+        {/* Credit Card Accounts */}
+        {creditCardAccounts.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">Credit Cards</h2>
+            <div className="space-y-3">
+              {creditCardAccounts.map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
             </div>
-            <div className="flex gap-2">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm">Edit</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Edit Account</AlertDialogTitle>
-                  </AlertDialogHeader>
-                  <AccountForm account={account} />
-                </AlertDialogContent>
-              </AlertDialog>
+          </div>
+        )}
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">Delete</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete account?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <form action={deleteAccount.bind(null, account.id)}>
-                      <AlertDialogAction type="submit">Delete</AlertDialogAction>
-                    </form>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+        {/* Checking Accounts */}
+        {checkingAccounts.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">Checking Accounts</h2>
+            <div className="space-y-3">
+              {checkingAccounts.map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
             </div>
-          </Card>
-        ))}
+          </div>
+        )}
+
+        {/* Savings Accounts */}
+        {savingsAccounts.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">Savings Accounts</h2>
+            <div className="space-y-3">
+              {savingsAccounts.map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cash Accounts */}
+        {cashAccounts.length > 0 && (
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">Cash</h2>
+            <div className="space-y-3">
+              {cashAccounts.map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {accounts.length === 0 && (
+          <p className="text-sm text-gray-500">No accounts yet. Add your first account above.</p>
+        )}
       </div>
     </div>
   );

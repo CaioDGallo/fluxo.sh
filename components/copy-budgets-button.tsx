@@ -56,7 +56,7 @@ export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <Button onClick={handleCopy} disabled={isLoading} variant="outline">
+      <Button onClick={handleCopy} disabled={isLoading} variant="hollow">
         {isLoading ? 'Copying...' : 'Copy from previous month'}
       </Button>
       {message && <span className="text-sm text-neutral-600">{message}</span>}

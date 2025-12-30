@@ -1,11 +1,16 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-import { ExpenseForm } from '@/components/expense-form';
-import { IncomeForm } from '@/components/income-form';
+import { useState } from 'react';
+import { TransactionForm } from '@/components/transaction-form';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Add01Icon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Remove02Icon, ArrowUp01Icon } from '@hugeicons/core-free-icons';
 import type { Account, Category } from '@/lib/schema';
 
 type FABProps = {
@@ -15,26 +20,49 @@ type FABProps = {
 };
 
 export function FAB({ accounts, expenseCategories, incomeCategories }: FABProps) {
-  const pathname = usePathname();
-  const isIncomePage = pathname === '/income';
-
-  const FormComponent = isIncomePage ? IncomeForm : ExpenseForm;
-  const categories = isIncomePage ? incomeCategories : expenseCategories;
-  const label = isIncomePage ? 'Add income' : 'Add expense';
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [incomeOpen, setIncomeOpen] = useState(false);
 
   return (
-    <FormComponent
-      accounts={accounts}
-      categories={categories}
-      trigger={
-        <Button
-          size="lg"
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 shadow-lg"
-          aria-label={label}
-        >
-          <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-6" />
-        </Button>
-      }
-    />
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="lg"
+            variant="popout"
+            className="fixed bottom-6 right-6 z-50 h-14 w-14 cursor-pointer hover:bg-gray-400"
+            aria-label="Add transaction"
+          >
+            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-6" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" sideOffset={8}>
+          <DropdownMenuItem onSelect={() => setExpenseOpen(true)}>
+            <HugeiconsIcon icon={Remove02Icon} strokeWidth={2} />
+            Add Expense
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setIncomeOpen(true)}>
+            <HugeiconsIcon icon={ArrowUp01Icon} strokeWidth={2} />
+            Add Income
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <TransactionForm
+        mode="expense"
+        accounts={accounts}
+        categories={expenseCategories}
+        open={expenseOpen}
+        onOpenChange={setExpenseOpen}
+      />
+
+      <TransactionForm
+        mode="income"
+        accounts={accounts}
+        categories={incomeCategories}
+        open={incomeOpen}
+        onOpenChange={setIncomeOpen}
+      />
+    </>
   );
 }

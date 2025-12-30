@@ -75,7 +75,7 @@ export default async function IncomePage({ searchParams }: PageProps) {
                   year: 'numeric',
                 })}
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {groupedByDate[date].map((inc) => (
                   <IncomeCard key={inc.id} income={inc} />
                 ))}

@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreVerticalIcon } from '@hugeicons/core-free-icons';
+import { MoreVerticalIcon, Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 
 type ExpenseCardProps = {
   entry: {
@@ -59,93 +59,100 @@ export function ExpenseCard({ entry }: ExpenseCardProps) {
   };
 
   return (
-    <Card className="relative">
-      <CardContent className="flex items-center justify-between gap-4 p-4">
-        <div className="flex items-center gap-4">
-          {/* Category icon */}
-          <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-full text-white"
-            style={{ backgroundColor: entry.categoryColor }}
-          >
-            <CategoryIcon icon={entry.categoryIcon} />
-          </div>
-
-          {/* Details */}
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium">{entry.description}</h3>
-              {entry.totalInstallments > 1 && (
-                <Badge variant="secondary">
-                  {entry.installmentNumber}/{entry.totalInstallments}
-                </Badge>
-              )}
-            </div>
-            <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-              <span>{entry.categoryName}</span>
-              <span>•</span>
-              <span>{entry.accountName}</span>
-            </div>
-          </div>
+    <Card className="py-0">
+      <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+        {/* Category icon */}
+        <div
+          className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
+          style={{ backgroundColor: entry.categoryColor }}
+        >
+          <CategoryIcon icon={entry.categoryIcon} />
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className="text-lg font-semibold">{formatCurrency(entry.amount)}</div>
-            <div className="text-sm text-gray-500">
-              {new Date(entry.dueDate).toLocaleDateString('pt-BR')}
-            </div>
-            <div className="mt-1">
-              <Badge
-                variant={isPaid ? 'default' : 'outline'}
-                className={isPaid ? 'bg-green-100 text-green-800' : ''}
-              >
-                {isPaid ? 'Paid' : 'Pending'}
+        {/* Description + installment badge + mobile date */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-sm truncate">{entry.description}</h3>
+            {entry.totalInstallments > 1 && (
+              <Badge variant="secondary" className="shrink-0">
+                {entry.installmentNumber}/{entry.totalInstallments}
               </Badge>
-            </div>
+            )}
           </div>
-
-          {/* Actions dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {isPaid ? (
-                <DropdownMenuItem onClick={handleMarkPending}>
-                  Mark as Pending
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={handleMarkPaid}>
-                  Mark as Paid
-                </DropdownMenuItem>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    Delete Transaction
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will delete all {entry.totalInstallments} installment
-                      {entry.totalInstallments > 1 ? 's' : ''} for &quot;{entry.description}&quot;.
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Mobile only: short date */}
+          <div className="text-xs text-gray-500 md:hidden">
+            {new Date(entry.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+          </div>
         </div>
+
+        {/* Desktop only: Category + Account */}
+        <div className="hidden md:block text-sm text-gray-500 shrink-0">
+          {entry.categoryName} • {entry.accountName}
+        </div>
+
+        {/* Desktop only: Full date */}
+        <div className="hidden md:block text-sm text-gray-500 shrink-0">
+          {new Date(entry.dueDate).toLocaleDateString('pt-BR')}
+        </div>
+
+        {/* Amount */}
+        <div className="text-sm font-semibold shrink-0">
+          {formatCurrency(entry.amount)}
+        </div>
+
+        {/* Status: icon always, text on desktop */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <HugeiconsIcon
+            icon={isPaid ? Tick02Icon : Clock01Icon}
+            className={isPaid ? 'text-green-600' : 'text-gray-400'}
+            size={18}
+            strokeWidth={2}
+          />
+          <span className={`hidden md:inline text-sm ${isPaid ? 'text-green-600' : 'text-gray-500'}`}>
+            {isPaid ? 'Paid' : 'Pending'}
+          </span>
+        </div>
+
+        {/* Actions dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8">
+              <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {isPaid ? (
+              <DropdownMenuItem onClick={handleMarkPending}>
+                Mark as Pending
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={handleMarkPaid}>
+                Mark as Paid
+              </DropdownMenuItem>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  Delete Transaction
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will delete all {entry.totalInstallments} installment
+                    {entry.totalInstallments > 1 ? 's' : ''} for &quot;{entry.description}&quot;.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardContent>
     </Card>
   );

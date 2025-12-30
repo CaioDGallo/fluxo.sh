@@ -19,7 +19,7 @@ export default async function BudgetsPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
         <h1 className="text-2xl font-bold">Budgets</h1>
         <MonthPicker currentMonth={yearMonth} />
       </div>

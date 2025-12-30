@@ -56,7 +56,7 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
           accounts={accounts}
           categories={categories}
           trigger={
-            <Button variant="outline" size="sm">
+            <Button variant="hollow" size="sm">
               <HugeiconsIcon icon={Upload02Icon} className="mr-2 size-4" />
               Import
             </Button>

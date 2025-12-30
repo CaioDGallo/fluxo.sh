@@ -56,13 +56,13 @@ export function IncomeFilters({
       {/* Month picker */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button onClick={() => navigateMonth(-1)} variant="outline" size="icon">
+          <Button onClick={() => navigateMonth(-1)} variant="hollow" size="icon">
             <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
           </Button>
           <span className="min-w-48 text-center text-lg font-medium capitalize">
             {monthName}
           </span>
-          <Button onClick={() => navigateMonth(1)} variant="outline" size="icon">
+          <Button onClick={() => navigateMonth(1)} variant="hollow" size="icon">
             <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
           </Button>
         </div>

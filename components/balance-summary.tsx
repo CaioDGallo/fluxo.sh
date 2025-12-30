@@ -33,9 +33,8 @@ export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryP
         <div className="border-t pt-4">
           <div className="text-xs text-gray-500">Net Balance</div>
           <div
-            className={`text-2xl font-semibold ${
-              isPositive ? 'text-green-600' : 'text-red-600'
-            }`}
+            className={`text-2xl font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'
+              }`}
           >
             {isPositive ? '+' : ''}{formatCurrency(netBalance)}
           </div>
@@ -43,9 +42,8 @@ export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryP
 
         <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className={`h-full transition-all ${
-              isPositive ? 'bg-green-500' : 'bg-red-500'
-            }`}
+            className={`h-full transition-all ${isPositive ? 'bg-green-600' : 'bg-red-600'
+              }`}
             style={{
               width: income > 0 ? `${Math.min((expenses / income) * 100, 100)}%` : '0%'
             }}

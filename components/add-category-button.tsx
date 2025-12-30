@@ -17,9 +17,9 @@ export function AddCategoryButton() {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button>Add Category</Button>
+        <Button variant={'hollow'}>Add Category</Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent closeOnBackdropClick>
         <AlertDialogHeader>
           <AlertDialogTitle>Add Category</AlertDialogTitle>
         </AlertDialogHeader>

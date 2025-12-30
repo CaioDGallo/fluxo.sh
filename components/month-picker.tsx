@@ -29,7 +29,7 @@ export function MonthPicker({ currentMonth }: MonthPickerProps) {
     <div className="flex items-center gap-3">
       <Button
         onClick={() => navigate(-1)}
-        variant="outline"
+        variant="hollow"
         size="icon"
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
@@ -37,7 +37,7 @@ export function MonthPicker({ currentMonth }: MonthPickerProps) {
       <span className="min-w-48 text-center text-lg font-medium capitalize">{monthName}</span>
       <Button
         onClick={() => navigate(1)}
-        variant="outline"
+        variant="hollow"
         size="icon"
       >
         <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />

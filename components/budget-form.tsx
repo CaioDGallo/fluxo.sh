@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { upsertBudget, upsertMonthlyBudget } from '@/lib/actions/budgets';
 import { displayToCents, centsToDisplay } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { CategoryIcon } from '@/components/icon-picker';
 
 type BudgetRow = {
@@ -168,36 +168,40 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
 
       {/* Category Budgets */}
       {budgets.map((budget) => (
-        <Card
-          key={budget.categoryId}
-          className="flex items-center justify-between p-4"
-        >
-          <div className="flex items-center gap-3">
+        <Card key={budget.categoryId} className="py-0">
+          <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+            {/* Category icon */}
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+              className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
               style={{ backgroundColor: budget.categoryColor }}
             >
               <CategoryIcon icon={budget.categoryIcon} />
             </div>
-            <span className="font-medium">{budget.categoryName}</span>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-500">R$</span>
-              <Input
-                type="number"
-                step="0.01"
-                value={values[budget.categoryId] || ''}
-                onChange={(e) => handleChange(budget.categoryId, e.target.value)}
-                onBlur={(e) => handleBlur(budget.categoryId, e.target.value)}
-                placeholder="0.00"
-                className="w-32 text-right"
-              />
+
+            {/* Category name */}
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-sm truncate block">{budget.categoryName}</span>
             </div>
-            {errors[budget.categoryId] && (
-              <span className="text-xs text-red-600">{errors[budget.categoryId]}</span>
-            )}
-          </div>
+
+            {/* Budget input */}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-neutral-500">R$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={values[budget.categoryId] || ''}
+                  onChange={(e) => handleChange(budget.categoryId, e.target.value)}
+                  onBlur={(e) => handleBlur(budget.categoryId, e.target.value)}
+                  placeholder="0.00"
+                  className="w-32 text-right"
+                />
+              </div>
+              {errors[budget.categoryId] && (
+                <span className="text-xs text-red-600">{errors[budget.categoryId]}</span>
+              )}
+            </div>
+          </CardContent>
         </Card>
       ))}
     </div>

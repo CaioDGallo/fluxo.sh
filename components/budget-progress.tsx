@@ -22,24 +22,24 @@ export function BudgetProgress({
   const isWarning = percentage >= 80 && percentage <= 100;
 
   const barColor = isOverBudget
-    ? 'bg-red-500'
+    ? 'bg-red-600'
     : isWarning
-    ? 'bg-yellow-500'
-    : 'bg-green-500';
+      ? 'bg-yellow-600'
+      : 'bg-green-600';
 
   const textColor = isOverBudget
     ? 'text-red-700'
     : isWarning
-    ? 'text-yellow-700'
-    : 'text-green-700';
+      ? 'text-yellow-700'
+      : 'text-green-700';
 
   return (
     <Card data-slot="budget-progress">
-      <CardContent className="flex flex-col gap-3 p-4">
+      <CardContent className="flex flex-col gap-2 md:gap-3 p-3 md:p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="flex size-12 shrink-0 items-center justify-center rounded-full text-white"
+              className="flex size-10 md:size-12 shrink-0 items-center justify-center rounded-full text-white"
               style={{ backgroundColor: categoryColor }}
             >
               <CategoryIcon icon={categoryIcon} />

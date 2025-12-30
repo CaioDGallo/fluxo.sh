@@ -1,13 +1,16 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { categories, transactions, type NewCategory } from '@/lib/schema';
+import { categories, transactions, income, type NewCategory } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 type ActionResult = { success: true } | { success: false; error: string };
 
-export async function getCategories() {
+export async function getCategories(type?: 'expense' | 'income') {
+  if (type) {
+    return await db.select().from(categories).where(eq(categories.type, type)).orderBy(categories.name);
+  }
   return await db.select().from(categories).orderBy(categories.name);
 }
 
@@ -44,6 +47,17 @@ export async function deleteCategory(id: number): Promise<ActionResult> {
 
     if (usedByTransactions.length > 0) {
       return { success: false, error: 'Cannot delete category with existing transactions' };
+    }
+
+    // Check if category is used by any income
+    const usedByIncome = await db
+      .select({ id: income.id })
+      .from(income)
+      .where(eq(income.categoryId, id))
+      .limit(1);
+
+    if (usedByIncome.length > 0) {
+      return { success: false, error: 'Cannot delete category with existing income entries' };
     }
 
     await db.delete(categories).where(eq(categories.id, id));

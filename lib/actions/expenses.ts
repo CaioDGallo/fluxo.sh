@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { transactions, entries, accounts, categories, type NewTransaction, type NewEntry } from '@/lib/schema';
-import { eq, and, gte, lte, isNull, isNotNull, desc, sql } from 'drizzle-orm';
+import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
+import { eq, and, isNull, isNotNull, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 type CreateExpenseData = {
@@ -157,7 +157,7 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
       id: entries.id,
       amount: entries.amount,
       dueDate: entries.dueDate,
-      paidAt: entries.paidAt,
+      paidAt: sql<string | null>`${entries.paidAt}::text`,
       installmentNumber: entries.installmentNumber,
       transactionId: transactions.id,
       description: transactions.description,
@@ -182,7 +182,7 @@ export async function getExpenses(filters: ExpenseFilters = {}) {
 export async function markEntryPaid(entryId: number) {
   await db
     .update(entries)
-    .set({ paidAt: new Date().toISOString() })
+    .set({ paidAt: new Date() })
     .where(eq(entries.id, entryId));
 
   revalidatePath('/expenses');

@@ -3,6 +3,10 @@ import { getAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
 import { ExpenseCard } from '@/components/expense-card';
 import { ExpenseFilters } from '@/components/expense-filters';
+import { ImportModal } from '@/components/import-expenses/import-modal';
+import { Button } from '@/components/ui/button';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Upload02Icon } from '@hugeicons/core-free-icons';
 import { getCurrentYearMonth } from '@/lib/utils';
 
 type PageProps = {
@@ -46,8 +50,18 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Expenses</h1>
+        <ImportModal
+          accounts={accounts}
+          categories={categories}
+          trigger={
+            <Button variant="outline" size="sm">
+              <HugeiconsIcon icon={Upload02Icon} className="mr-2 size-4" />
+              Import
+            </Button>
+          }
+        />
       </div>
 
       <ExpenseFilters

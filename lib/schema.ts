@@ -3,6 +3,9 @@ import { date, integer, pgEnum, pgTable, serial, text, timestamp, unique } from 
 // Enum for account types
 export const accountTypeEnum = pgEnum('account_type', ['credit_card', 'checking', 'savings', 'cash']);
 
+// Enum for category types
+export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
+
 // Accounts table
 export const accounts = pgTable('accounts', {
   id: serial('id').primaryKey(),
@@ -18,6 +21,7 @@ export const categories = pgTable('categories', {
   name: text('name').notNull(),
   color: text('color').notNull().default('#6b7280'),
   icon: text('icon'),
+  type: categoryTypeEnum('type').notNull().default('expense'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -37,6 +41,14 @@ export const budgets = pgTable(
     uniqueCategoryMonth: unique().on(table.categoryId, table.yearMonth),
   })
 );
+
+// Monthly Budgets table (total budget per month)
+export const monthlyBudgets = pgTable('monthly_budgets', {
+  id: serial('id').primaryKey(),
+  yearMonth: text('year_month').notNull().unique(),
+  amount: integer('amount').notNull(), // cents
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 // Transactions table (parent for installments)
 export const transactions = pgTable('transactions', {
@@ -66,6 +78,22 @@ export const entries = pgTable('entries', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Income table
+export const income = pgTable('income', {
+  id: serial('id').primaryKey(),
+  description: text('description').notNull(),
+  amount: integer('amount').notNull(), // cents
+  categoryId: integer('category_id')
+    .notNull()
+    .references(() => categories.id, { onDelete: 'restrict' }),
+  accountId: integer('account_id')
+    .notNull()
+    .references(() => accounts.id),
+  receivedDate: date('received_date').notNull(),
+  receivedAt: timestamp('received_at'), // null = pending, timestamp = received
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Type exports for TypeScript
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
@@ -76,11 +104,17 @@ export type NewCategory = typeof categories.$inferInsert;
 export type Budget = typeof budgets.$inferSelect;
 export type NewBudget = typeof budgets.$inferInsert;
 
+export type MonthlyBudget = typeof monthlyBudgets.$inferSelect;
+export type NewMonthlyBudget = typeof monthlyBudgets.$inferInsert;
+
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
 
 export type Entry = typeof entries.$inferSelect;
 export type NewEntry = typeof entries.$inferInsert;
+
+export type Income = typeof income.$inferSelect;
+export type NewIncome = typeof income.$inferInsert;
 
 // Relations
 import { relations } from 'drizzle-orm';
@@ -106,8 +140,21 @@ export const entriesRelations = relations(entries, ({ one }) => ({
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   transactions: many(transactions),
+  income: many(income),
 }));
 
 export const accountsRelations = relations(accounts, ({ many }) => ({
   entries: many(entries),
+  income: many(income),
+}));
+
+export const incomeRelations = relations(income, ({ one }) => ({
+  category: one(categories, {
+    fields: [income.categoryId],
+    references: [categories.id],
+  }),
+  account: one(accounts, {
+    fields: [income.accountId],
+    references: [accounts.id],
+  }),
 }));

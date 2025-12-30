@@ -2,6 +2,7 @@ import { getDashboardData } from '@/lib/actions/dashboard';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { MonthPicker } from '@/components/month-picker';
 import { SummaryCard } from '@/components/summary-card';
+import { BalanceSummary } from '@/components/balance-summary';
 import { BudgetProgress } from '@/components/budget-progress';
 import { RecentExpenses } from '@/components/recent-expenses';
 import Link from 'next/link';
@@ -41,6 +42,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left column - Summary */}
           <div className="space-y-6">
+            <BalanceSummary
+              income={data.totalIncome}
+              expenses={data.totalSpent}
+              netBalance={data.netBalance}
+            />
             <SummaryCard spent={data.totalSpent} budget={data.totalBudget} />
             <RecentExpenses expenses={data.recentExpenses} />
           </div>

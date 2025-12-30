@@ -38,6 +38,7 @@ const navItems = [
   { title: 'Dashboard', href: '/dashboard', icon: Home01Icon },
   { title: 'Budgets', href: '/budgets', icon: Invoice03Icon },
   { title: 'Expenses', href: '/expenses', icon: Wallet01Icon },
+  { title: 'Income', href: '/income', icon: Wallet01Icon },
 ];
 
 const settingsItems = [

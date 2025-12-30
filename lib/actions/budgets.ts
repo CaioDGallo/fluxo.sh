@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { budgets, categories, entries, transactions } from '@/lib/schema';
+import { budgets, categories, entries, transactions, monthlyBudgets } from '@/lib/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -67,6 +67,57 @@ export async function upsertBudget(
   } catch (error) {
     console.error('Failed to upsert budget:', error);
     throw new Error('Failed to save budget. Please try again.');
+  }
+}
+
+export async function getMonthlyBudget(yearMonth: string): Promise<number | null> {
+  if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
+    throw new Error('Invalid year-month format (expected YYYY-MM)');
+  }
+
+  try {
+    const result = await db
+      .select({ amount: monthlyBudgets.amount })
+      .from(monthlyBudgets)
+      .where(eq(monthlyBudgets.yearMonth, yearMonth))
+      .limit(1);
+
+    return result.length > 0 ? result[0].amount : null;
+  } catch (error) {
+    console.error('Failed to get monthly budget:', error);
+    throw new Error('Failed to load monthly budget. Please try again.');
+  }
+}
+
+export async function upsertMonthlyBudget(yearMonth: string, amount: number) {
+  if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
+    throw new Error('Invalid year-month format (expected YYYY-MM)');
+  }
+  if (!Number.isInteger(amount) || amount < 0) {
+    throw new Error('Monthly budget must be a non-negative integer (cents)');
+  }
+
+  try {
+    const existing = await db
+      .select()
+      .from(monthlyBudgets)
+      .where(eq(monthlyBudgets.yearMonth, yearMonth))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(monthlyBudgets)
+        .set({ amount })
+        .where(eq(monthlyBudgets.id, existing[0].id));
+    } else {
+      await db.insert(monthlyBudgets).values({ yearMonth, amount });
+    }
+
+    revalidatePath('/settings/budgets');
+    revalidatePath('/budgets');
+  } catch (error) {
+    console.error('Failed to upsert monthly budget:', error);
+    throw new Error('Failed to save monthly budget. Please try again.');
   }
 }
 
@@ -160,6 +211,7 @@ export type CopyBudgetsResult = {
   copied: number;
   skipped: number;
   total: number;
+  monthlyBudgetCopied: boolean;
 };
 
 export async function copyBudgetsFromMonth(
@@ -177,7 +229,7 @@ export async function copyBudgetsFromMonth(
       .where(eq(budgets.yearMonth, sourceMonth));
 
     if (sourceBudgets.length === 0) {
-      return { copied: 0, skipped: 0, total: 0 };
+      return { copied: 0, skipped: 0, total: 0, monthlyBudgetCopied: false };
     }
 
     // 2. Get existing budgets for target month (to skip)
@@ -204,7 +256,17 @@ export async function copyBudgetsFromMonth(
       );
     }
 
-    // 5. Revalidate both budgets pages
+    // 5. Copy monthly budget if exists and target doesn't have one
+    let monthlyBudgetCopied = false;
+    const sourceMonthlyBudget = await getMonthlyBudget(sourceMonth);
+    const targetMonthlyBudget = await getMonthlyBudget(targetMonth);
+
+    if (sourceMonthlyBudget !== null && targetMonthlyBudget === null) {
+      await upsertMonthlyBudget(targetMonth, sourceMonthlyBudget);
+      monthlyBudgetCopied = true;
+    }
+
+    // 6. Revalidate both budgets pages
     revalidatePath('/budgets');
     revalidatePath('/settings/budgets');
 
@@ -212,6 +274,7 @@ export async function copyBudgetsFromMonth(
       copied: budgetsToCopy.length,
       skipped: existingCategoryIds.size,
       total: sourceBudgets.length,
+      monthlyBudgetCopied,
     };
   } catch (error) {
     console.error('Failed to copy budgets:', error);

@@ -27,7 +27,6 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group';
 import { CategoryIcon } from '@/components/icon-picker';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { cn } from '@/lib/utils';
 
 type ExpenseFormProps = {
@@ -161,7 +160,7 @@ export function ExpenseForm({ accounts, categories, transaction, trigger, onSucc
                       style={{ backgroundColor: category.color }}
                     >
                       <div className="text-white">
-                        <CategoryIcon icon={category.icon as any} />
+                        <CategoryIcon icon={category.icon} />
                       </div>
                     </div>
                     <span className="text-xs font-medium text-center line-clamp-1">

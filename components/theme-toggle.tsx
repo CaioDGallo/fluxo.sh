@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Sun03Icon, SunCloudLittleRain01Icon } from '@hugeicons/core-free-icons';
@@ -8,19 +8,18 @@ import { Sun03Icon, SunCloudLittleRain01Icon } from '@hugeicons/core-free-icons'
 type Theme = 'light' | 'dark' | 'system';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system');
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system';
+    return (localStorage.getItem('theme') as Theme | null) || 'system';
+  });
+  const mounted = useRef(false);
 
   useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem('theme') as Theme | null;
-    if (stored) {
-      setTheme(stored);
-    }
+    mounted.current = true;
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted.current) return;
 
     const root = document.documentElement;
     const applyTheme = () => {

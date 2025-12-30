@@ -1,4 +1,4 @@
-import { getBudgetsForMonth } from '@/lib/actions/budgets';
+import { getBudgetsForMonth, getMonthlyBudget } from '@/lib/actions/budgets';
 import { BudgetForm } from '@/components/budget-form';
 import { MonthPicker } from '@/components/month-picker';
 import { getCurrentYearMonth } from '@/lib/utils';
@@ -10,7 +10,11 @@ type PageProps = {
 export default async function BudgetsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const yearMonth = params.month || getCurrentYearMonth();
-  const budgets = await getBudgetsForMonth(yearMonth);
+
+  const [budgets, monthlyBudget] = await Promise.all([
+    getBudgetsForMonth(yearMonth),
+    getMonthlyBudget(yearMonth),
+  ]);
 
   return (
     <div>
@@ -19,7 +23,7 @@ export default async function BudgetsPage({ searchParams }: PageProps) {
         <MonthPicker currentMonth={yearMonth} />
       </div>
 
-      <BudgetForm yearMonth={yearMonth} budgets={budgets} />
+      <BudgetForm yearMonth={yearMonth} budgets={budgets} monthlyBudget={monthlyBudget} />
     </div>
   );
 }

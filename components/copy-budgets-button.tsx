@@ -22,13 +22,29 @@ export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
       const result = await copyBudgetsFromMonth(previousMonth, currentMonth);
 
       if (result.total === 0) {
-        setMessage('No budgets to copy from previous month');
+        setMessage(
+          result.monthlyBudgetCopied
+            ? 'Copied monthly budget (no category budgets to copy)'
+            : 'No budgets to copy from previous month'
+        );
       } else if (result.copied === 0) {
-        setMessage(`All ${result.total} budgets already exist`);
+        setMessage(
+          result.monthlyBudgetCopied
+            ? `Copied monthly budget (all ${result.total} category budgets already exist)`
+            : `All ${result.total} budgets already exist`
+        );
       } else if (result.skipped === 0) {
-        setMessage(`Copied ${result.copied} budgets`);
+        setMessage(
+          result.monthlyBudgetCopied
+            ? `Copied ${result.copied} budgets + monthly budget`
+            : `Copied ${result.copied} budgets`
+        );
       } else {
-        setMessage(`Copied ${result.copied} budgets (${result.skipped} already existed)`);
+        setMessage(
+          result.monthlyBudgetCopied
+            ? `Copied ${result.copied} budgets + monthly budget (${result.skipped} already existed)`
+            : `Copied ${result.copied} budgets (${result.skipped} already existed)`
+        );
       }
     } catch (error) {
       setMessage('Failed to copy budgets. Please try again.');

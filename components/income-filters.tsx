@@ -14,17 +14,17 @@ import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { addMonths } from '@/lib/utils';
 import type { Account, Category } from '@/lib/schema';
 
-type ExpenseFiltersProps = {
+type IncomeFiltersProps = {
   accounts: Account[];
   categories: Category[];
   currentMonth: string;
 };
 
-export function ExpenseFilters({
+export function IncomeFilters({
   accounts,
   categories,
   currentMonth,
-}: ExpenseFiltersProps) {
+}: IncomeFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -32,7 +32,7 @@ export function ExpenseFilters({
     const newMonth = addMonths(currentMonth, direction);
     const params = new URLSearchParams(searchParams);
     params.set('month', newMonth);
-    router.push(`/expenses?${params.toString()}`);
+    router.push(`/income?${params.toString()}`);
   }
 
   function updateFilter(key: string, value: string) {
@@ -42,7 +42,7 @@ export function ExpenseFilters({
     } else {
       params.delete(key);
     }
-    router.push(`/expenses?${params.toString()}`);
+    router.push(`/income?${params.toString()}`);
   }
 
   const [year, month] = currentMonth.split('-');
@@ -114,7 +114,7 @@ export function ExpenseFilters({
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="received">Received</SelectItem>
           </SelectContent>
         </Select>
       </div>

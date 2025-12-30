@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { db } from '../lib/db';
-import { accounts, categories, budgets, transactions, entries } from '../lib/schema';
+import { accounts, categories, budgets, transactions, entries, income } from '../lib/schema';
 import { getCurrentYearMonth, addMonths } from '../lib/utils';
 
 // Production safety check
@@ -33,13 +33,19 @@ const accountsData = [
 ];
 
 const categoriesData = [
-  { name: 'Alimentação', color: '#ef4444', icon: 'Restaurant01Icon' },
-  { name: 'Transporte', color: '#3b82f6', icon: 'Car01Icon' },
-  { name: 'Entretenimento', color: '#a855f7', icon: 'GameController01Icon' },
-  { name: 'Compras', color: '#f97316', icon: 'ShoppingBag01Icon' },
-  { name: 'Saúde', color: '#22c55e', icon: 'HealthIcon' },
-  { name: 'Contas', color: '#64748b', icon: 'Wallet01Icon' },
-  { name: 'Educação', color: '#0ea5e9', icon: 'Book01Icon' },
+  // Expense categories
+  { name: 'Alimentação', color: '#ef4444', icon: 'Restaurant01Icon', type: 'expense' as const },
+  { name: 'Transporte', color: '#3b82f6', icon: 'Car01Icon', type: 'expense' as const },
+  { name: 'Entretenimento', color: '#a855f7', icon: 'GameController01Icon', type: 'expense' as const },
+  { name: 'Compras', color: '#f97316', icon: 'ShoppingBag01Icon', type: 'expense' as const },
+  { name: 'Saúde', color: '#22c55e', icon: 'HealthIcon', type: 'expense' as const },
+  { name: 'Contas', color: '#64748b', icon: 'Wallet01Icon', type: 'expense' as const },
+  { name: 'Educação', color: '#0ea5e9', icon: 'Book01Icon', type: 'expense' as const },
+  // Income categories
+  { name: 'Salário', color: '#22c55e', icon: 'MoneyBag01Icon', type: 'income' as const },
+  { name: 'Freelance', color: '#3b82f6', icon: 'BriefcaseIcon', type: 'income' as const },
+  { name: 'Investimentos', color: '#a855f7', icon: 'ChartLineData01Icon', type: 'income' as const },
+  { name: 'Outros', color: '#64748b', icon: 'CoinsIcon', type: 'income' as const },
 ];
 
 function createBudgets(categoryIds: Record<string, number>) {
@@ -178,6 +184,78 @@ const transactionsData: TransactionSeed[] = [
   },
 ];
 
+type IncomeSeed = {
+  description: string;
+  amount: number;
+  categoryName: string;
+  accountName: string;
+  monthOffset: number;
+  day: number;
+  received: boolean;
+};
+
+const incomeData: IncomeSeed[] = [
+  // CURRENT MONTH
+  {
+    description: 'Salário mensal',
+    amount: 500000, // R$ 5,000
+    categoryName: 'Salário',
+    accountName: 'Itaú Corrente',
+    monthOffset: 0,
+    day: 5,
+    received: true,
+  },
+  {
+    description: 'Projeto freelance - Site empresa',
+    amount: 150000, // R$ 1,500
+    categoryName: 'Freelance',
+    accountName: 'Nubank Rendimento',
+    monthOffset: 0,
+    day: 12,
+    received: false,
+  },
+  {
+    description: 'Dividendos ações',
+    amount: 8500, // R$ 85
+    categoryName: 'Investimentos',
+    accountName: 'Nubank Rendimento',
+    monthOffset: 0,
+    day: 20,
+    received: true,
+  },
+
+  // PREVIOUS MONTH
+  {
+    description: 'Salário mensal',
+    amount: 500000,
+    categoryName: 'Salário',
+    accountName: 'Itaú Corrente',
+    monthOffset: -1,
+    day: 5,
+    received: true,
+  },
+  {
+    description: 'Projeto freelance - Logo',
+    amount: 80000, // R$ 800
+    categoryName: 'Freelance',
+    accountName: 'Nubank Rendimento',
+    monthOffset: -1,
+    day: 15,
+    received: true,
+  },
+
+  // TWO MONTHS AGO
+  {
+    description: 'Salário mensal',
+    amount: 500000,
+    categoryName: 'Salário',
+    accountName: 'Itaú Corrente',
+    monthOffset: -2,
+    day: 5,
+    received: true,
+  },
+];
+
 function generateEntries(
   transactionId: number,
   txData: TransactionSeed,
@@ -227,12 +305,13 @@ async function seed() {
   try {
     // 1. Clear all tables (reverse FK order)
     console.log('  🗑️  Clearing existing data...');
-    const deletedEntries = await db.delete(entries);
-    const deletedTransactions = await db.delete(transactions);
-    const deletedBudgets = await db.delete(budgets);
-    const deletedCategories = await db.delete(categories);
-    const deletedAccounts = await db.delete(accounts);
-    console.log(`  ✓ Data cleared (accounts: ${deletedAccounts.rowsAffected}, entries: ${deletedEntries.rowsAffected})\n`);
+    await db.delete(income);
+    await db.delete(entries);
+    await db.delete(transactions);
+    await db.delete(budgets);
+    await db.delete(categories);
+    await db.delete(accounts);
+    console.log('  ✓ Data cleared\n');
 
     // 2. Insert accounts
     console.log('  💳 Inserting accounts...');
@@ -272,6 +351,19 @@ async function seed() {
     console.log(`  ✓ ${transactionsData.length} transactions created`);
     console.log(`  ✓ ${totalEntries} entries created\n`);
 
+    // 6. Insert income
+    console.log('  💵 Inserting income...');
+    const incomeRecords = incomeData.map(inc => ({
+      description: inc.description,
+      amount: inc.amount,
+      categoryId: categoryMap[inc.categoryName],
+      accountId: accountMap[inc.accountName],
+      receivedDate: getRelativeDate(inc.monthOffset, inc.day),
+      receivedAt: inc.received ? new Date(getRelativeDate(inc.monthOffset, inc.day)) : null,
+    }));
+    await db.insert(income).values(incomeRecords);
+    console.log(`  ✓ ${incomeRecords.length} income entries created\n`);
+
     console.log('✅ Seeding complete!\n');
     console.log('📊 Summary:');
     console.log(`   Accounts: ${insertedAccounts.length}`);
@@ -279,6 +371,7 @@ async function seed() {
     console.log(`   Budgets: ${budgetRecords.length}`);
     console.log(`   Transactions: ${transactionsData.length}`);
     console.log(`   Entries: ${totalEntries}`);
+    console.log(`   Income: ${incomeRecords.length}`);
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     process.exit(1);

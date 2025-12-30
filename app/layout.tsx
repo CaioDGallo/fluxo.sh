@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { FAB } from '@/components/fab';
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
@@ -38,17 +36,8 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger />
-              <span className="font-semibold md:hidden">Northstar</span>
-            </header>
-            <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
-        <FAB />
+        {children}
+        <Toaster />
       </body>
     </html>
   );

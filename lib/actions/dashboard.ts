@@ -1,12 +1,14 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { entries, transactions, categories, budgets, accounts } from '@/lib/schema';
+import { entries, transactions, categories, budgets, accounts, income } from '@/lib/schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 
 export type DashboardData = {
   totalSpent: number;
   totalBudget: number;
+  totalIncome: number;
+  netBalance: number;
   categoryBreakdown: {
     categoryId: number;
     categoryName: string;
@@ -20,6 +22,16 @@ export type DashboardData = {
     description: string;
     amount: number;
     dueDate: string;
+    categoryName: string;
+    categoryColor: string;
+    categoryIcon: string | null;
+    accountName: string;
+  }[];
+  recentIncome: {
+    incomeId: number;
+    description: string;
+    amount: number;
+    receivedDate: string;
     categoryName: string;
     categoryColor: string;
     categoryIcon: string | null;
@@ -71,11 +83,22 @@ export async function getDashboardData(yearMonth: string): Promise<DashboardData
     };
   });
 
-  // 4. Calculate totals
+  // 4. Get income for the month
+  const incomeData = await db
+    .select({
+      amount: income.amount,
+    })
+    .from(income)
+    .where(and(gte(income.receivedDate, startDate), lte(income.receivedDate, endDate)));
+
+  const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
+
+  // 5. Calculate totals
   const totalBudget = categoryBreakdown.reduce((sum, cat) => sum + cat.budget, 0);
   const totalSpent = categoryBreakdown.reduce((sum, cat) => sum + cat.spent, 0);
+  const netBalance = totalIncome - totalSpent;
 
-  // 5. Get recent 5 expenses
+  // 6. Get recent 5 expenses
   const recentExpenses = await db
     .select({
       entryId: entries.id,
@@ -95,10 +118,32 @@ export async function getDashboardData(yearMonth: string): Promise<DashboardData
     .orderBy(desc(entries.createdAt))
     .limit(5);
 
+  // 7. Get recent 5 income
+  const recentIncome = await db
+    .select({
+      incomeId: income.id,
+      description: income.description,
+      amount: income.amount,
+      receivedDate: income.receivedDate,
+      categoryName: categories.name,
+      categoryColor: categories.color,
+      categoryIcon: categories.icon,
+      accountName: accounts.name,
+    })
+    .from(income)
+    .innerJoin(categories, eq(income.categoryId, categories.id))
+    .innerJoin(accounts, eq(income.accountId, accounts.id))
+    .where(and(gte(income.receivedDate, startDate), lte(income.receivedDate, endDate)))
+    .orderBy(desc(income.createdAt))
+    .limit(5);
+
   return {
     totalSpent,
     totalBudget,
+    totalIncome,
+    netBalance,
     categoryBreakdown,
     recentExpenses,
+    recentIncome,
   };
 }

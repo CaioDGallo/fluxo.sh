@@ -1,27 +1,5 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1767086028353,
-      "tag": "0000_round_colossus",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1767091723059,
-      "tag": "0001_reflective_spirit",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1767092852004,
-      "tag": "0002_cultured_mad_thinker",
-      "breakpoints": true
-    }
-  ]
+  "entries": []
 }

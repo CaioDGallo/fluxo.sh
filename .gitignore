@@ -41,6 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# supabase local
+supabase/.branches
+supabase/.temp
+
 # pwa
 public/sw.js
 public/sw.js.map

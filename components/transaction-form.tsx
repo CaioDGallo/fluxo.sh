@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { createExpense, updateExpense } from '@/lib/actions/expenses';
 import { createIncome, updateIncome } from '@/lib/actions/income';
+import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
+import { useIncomeContextOptional } from '@/lib/contexts/income-context';
 import { displayToCents, centsToDisplay, formatCurrency } from '@/lib/utils';
 import type { Account, Category, Transaction, Entry, Income } from '@/lib/schema';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -57,6 +59,9 @@ export function TransactionForm({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? onOpenChange! : setInternalOpen;
 
+  const expenseContext = useExpenseContextOptional();
+  const incomeContext = useIncomeContextOptional();
+
   const existingData = mode === 'expense' ? transaction : income;
   const [amount, setAmount] = useState(
     existingData
@@ -107,7 +112,21 @@ export function TransactionForm({
         if (transaction) {
           await updateExpense(transaction.id, data);
         } else {
-          await createExpense(data);
+          // Use optimistic context if available (on expense page)
+          if (expenseContext) {
+            const category = categories.find((c) => c.id === categoryId);
+            const account = accounts.find((a) => a.id === accountId);
+
+            await expenseContext.addExpense({
+              ...data,
+              categoryName: category?.name || '',
+              categoryColor: category?.color || '#000000',
+              categoryIcon: category?.icon || null,
+              accountName: account?.name || '',
+            });
+          } else {
+            await createExpense(data);
+          }
         }
       } else {
         const data = {
@@ -121,7 +140,21 @@ export function TransactionForm({
         if (income) {
           await updateIncome(income.id, data);
         } else {
-          await createIncome(data);
+          // Use optimistic context if available (on income page)
+          if (incomeContext) {
+            const category = categories.find((c) => c.id === categoryId);
+            const account = accounts.find((a) => a.id === accountId);
+
+            await incomeContext.addIncome({
+              ...data,
+              categoryName: category?.name || '',
+              categoryColor: category?.color || '#000000',
+              categoryIcon: category?.icon || null,
+              accountName: account?.name || '',
+            });
+          } else {
+            await createIncome(data);
+          }
         }
       }
 

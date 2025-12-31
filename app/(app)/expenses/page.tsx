@@ -1,7 +1,7 @@
 import { getExpenses, type ExpenseFilters as ExpenseFiltersType } from '@/lib/actions/expenses';
 import { getAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
-import { ExpenseCard } from '@/components/expense-card';
+import { ExpenseList, ExpenseListProvider } from '@/components/expense-list';
 import { ExpenseFilters } from '@/components/expense-filters';
 import { ImportModal } from '@/components/import-expenses/import-modal';
 import { Button } from '@/components/ui/button';
@@ -32,21 +32,8 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
   const [expenses, accounts, categories] = await Promise.all([
     getExpenses(filters),
     getAccounts(),
-    getCategories(),
+    getCategories('expense'),
   ]);
-
-  // Group entries by date
-  const groupedByDate = expenses.reduce(
-    (acc, expense) => {
-      const date = expense.dueDate;
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(expense);
-      return acc;
-    },
-    {} as Record<string, typeof expenses>
-  );
-
-  const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
 
   return (
     <div>
@@ -70,34 +57,14 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
         currentMonth={currentMonth}
       />
 
-      {expenses.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-gray-500">No expenses found for this period.</p>
-          <p className="mt-2 text-sm text-gray-400">
-            Use the + button to add an expense
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {dates.map((date) => (
-            <div key={date}>
-              <h2 className="mb-3 text-sm font-medium text-gray-500">
-                {new Date(date).toLocaleDateString('pt-BR', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </h2>
-              <div className="space-y-3">
-                {groupedByDate[date].map((expense) => (
-                  <ExpenseCard key={expense.id} entry={expense} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <ExpenseListProvider
+        initialExpenses={expenses}
+        accounts={accounts}
+        categories={categories}
+        filters={filters}
+      >
+        <ExpenseList />
+      </ExpenseListProvider>
     </div>
   );
 }

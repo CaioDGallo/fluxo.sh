@@ -1,11 +1,16 @@
 'use client';
 
-import { formatCurrency } from '@/lib/utils';
+import { useState, useOptimistic, useTransition } from 'react';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/icon-picker';
-import { markEntryPaid, markEntryPending, deleteExpense } from '@/lib/actions/expenses';
+import { markEntryPaid, markEntryPending, deleteExpense, updateTransactionCategory } from '@/lib/actions/expenses';
+import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
+import type { Category } from '@/lib/schema';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,38 +41,85 @@ type ExpenseCardProps = {
     transactionId: number;
     description: string;
     totalInstallments: number;
+    categoryId: number;
     categoryName: string;
     categoryColor: string;
     categoryIcon: string | null;
     accountName: string;
   };
+  categories: Category[];
+  isOptimistic?: boolean;
 };
 
-export function ExpenseCard({ entry }: ExpenseCardProps) {
+export function ExpenseCard({ entry, categories, isOptimistic = false }: ExpenseCardProps) {
   const isPaid = !!entry.paidAt;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const context = useExpenseContextOptional();
+
+  const [optimisticCategory, setOptimisticCategory] = useOptimistic(
+    { id: entry.categoryId, color: entry.categoryColor, icon: entry.categoryIcon, name: entry.categoryName },
+    (_, newCategory: Category) => ({
+      id: newCategory.id,
+      color: newCategory.color,
+      icon: newCategory.icon,
+      name: newCategory.name,
+    })
+  );
 
   const handleMarkPaid = async () => {
-    await markEntryPaid(entry.id);
+    if (context) {
+      await context.togglePaid(entry.id, entry.paidAt);
+    } else {
+      await markEntryPaid(entry.id);
+    }
   };
 
   const handleMarkPending = async () => {
-    await markEntryPending(entry.id);
+    if (context) {
+      await context.togglePaid(entry.id, entry.paidAt);
+    } else {
+      await markEntryPending(entry.id);
+    }
   };
 
   const handleDelete = async () => {
-    await deleteExpense(entry.transactionId);
+    if (context) {
+      await context.removeExpense(entry.transactionId);
+    } else {
+      await deleteExpense(entry.transactionId);
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: number) => {
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category) return;
+
+    setPickerOpen(false);
+    startTransition(() => {
+      setOptimisticCategory(category);
+    });
+
+    try {
+      await updateTransactionCategory(entry.transactionId, categoryId);
+    } catch {
+      toast.error('Failed to update category');
+    }
   };
 
   return (
-    <Card className="py-0">
-      <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
-        {/* Category icon */}
-        <div
-          className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
-          style={{ backgroundColor: entry.categoryColor }}
-        >
-          <CategoryIcon icon={entry.categoryIcon} />
-        </div>
+    <>
+      <Card className={cn("py-0", isOptimistic && "opacity-70 animate-pulse")}>
+        <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+          {/* Category icon - clickable */}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            style={{ backgroundColor: optimisticCategory.color }}
+          >
+            <CategoryIcon icon={optimisticCategory.icon} />
+          </button>
 
         {/* Description + installment badge + mobile date */}
         <div className="flex-1 min-w-0">
@@ -87,7 +139,7 @@ export function ExpenseCard({ entry }: ExpenseCardProps) {
 
         {/* Desktop only: Category + Account */}
         <div className="hidden md:block text-sm text-gray-500 shrink-0">
-          {entry.categoryName} • {entry.accountName}
+          {optimisticCategory.name} • {entry.accountName}
         </div>
 
         {/* Desktop only: Full date */}
@@ -155,5 +207,15 @@ export function ExpenseCard({ entry }: ExpenseCardProps) {
         </DropdownMenu>
       </CardContent>
     </Card>
+
+      <CategoryQuickPicker
+        categories={categories}
+        currentCategoryId={optimisticCategory.id}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={handleCategoryChange}
+        isUpdating={isPending}
+      />
+    </>
   );
 }

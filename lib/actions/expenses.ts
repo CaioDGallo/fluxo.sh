@@ -198,3 +198,13 @@ export async function markEntryPending(entryId: number) {
   revalidatePath('/expenses');
   revalidatePath('/dashboard');
 }
+
+export async function updateTransactionCategory(transactionId: number, categoryId: number) {
+  await db
+    .update(transactions)
+    .set({ categoryId })
+    .where(eq(transactions.id, transactionId));
+
+  revalidatePath('/expenses');
+  revalidatePath('/dashboard');
+}

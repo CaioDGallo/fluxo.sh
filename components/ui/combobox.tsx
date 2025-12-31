@@ -137,6 +137,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
 function ComboboxItem({
   className,
   children,
+  onClick,
   ...props
 }: ComboboxPrimitive.Item.Props) {
   return (
@@ -146,6 +147,10 @@ function ComboboxItem({
         "data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground gap-2 rounded-none py-2 pr-8 pl-2 text-xs [&_svg:not([class*='size-'])]:size-4 relative flex w-full cursor-default items-center outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(e);
+      }}
       {...props}
     >
       {children}

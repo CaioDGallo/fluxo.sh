@@ -1,10 +1,15 @@
 'use client';
 
-import { formatCurrency } from '@/lib/utils';
+import { useState, useOptimistic, useTransition } from 'react';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/icon-picker';
-import { markIncomeReceived, markIncomePending, deleteIncome } from '@/lib/actions/income';
+import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory } from '@/lib/actions/income';
+import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { useIncomeContextOptional } from '@/lib/contexts/income-context';
+import type { Category } from '@/lib/schema';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,38 +37,85 @@ type IncomeCardProps = {
     amount: number;
     receivedDate: string;
     receivedAt: string | null;
+    categoryId: number;
     categoryName: string;
     categoryColor: string;
     categoryIcon: string | null;
     accountName: string;
   };
+  categories: Category[];
+  isOptimistic?: boolean;
 };
 
-export function IncomeCard({ income }: IncomeCardProps) {
+export function IncomeCard({ income, categories, isOptimistic = false }: IncomeCardProps) {
   const isReceived = !!income.receivedAt;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const context = useIncomeContextOptional();
+
+  const [optimisticCategory, setOptimisticCategory] = useOptimistic(
+    { id: income.categoryId, color: income.categoryColor, icon: income.categoryIcon, name: income.categoryName },
+    (_, newCategory: Category) => ({
+      id: newCategory.id,
+      color: newCategory.color,
+      icon: newCategory.icon,
+      name: newCategory.name,
+    })
+  );
 
   const handleMarkReceived = async () => {
-    await markIncomeReceived(income.id);
+    if (context) {
+      await context.toggleReceived(income.id, income.receivedAt);
+    } else {
+      await markIncomeReceived(income.id);
+    }
   };
 
   const handleMarkPending = async () => {
-    await markIncomePending(income.id);
+    if (context) {
+      await context.toggleReceived(income.id, income.receivedAt);
+    } else {
+      await markIncomePending(income.id);
+    }
   };
 
   const handleDelete = async () => {
-    await deleteIncome(income.id);
+    if (context) {
+      await context.removeIncome(income.id);
+    } else {
+      await deleteIncome(income.id);
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: number) => {
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category) return;
+
+    setPickerOpen(false);
+    startTransition(() => {
+      setOptimisticCategory(category);
+    });
+
+    try {
+      await updateIncomeCategory(income.id, categoryId);
+    } catch {
+      toast.error('Failed to update category');
+    }
   };
 
   return (
-    <Card className="py-0">
-      <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
-        {/* Category icon */}
-        <div
-          className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
-          style={{ backgroundColor: income.categoryColor }}
-        >
-          <CategoryIcon icon={income.categoryIcon} />
-        </div>
+    <>
+      <Card className={cn("py-0", isOptimistic && "opacity-70 animate-pulse")}>
+        <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+          {/* Category icon - clickable */}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            style={{ backgroundColor: optimisticCategory.color }}
+          >
+            <CategoryIcon icon={optimisticCategory.icon} />
+          </button>
 
         {/* Description + mobile date */}
         <div className="flex-1 min-w-0">
@@ -76,7 +128,7 @@ export function IncomeCard({ income }: IncomeCardProps) {
 
         {/* Desktop only: Category + Account */}
         <div className="hidden md:block text-sm text-gray-500 shrink-0">
-          {income.categoryName} • {income.accountName}
+          {optimisticCategory.name} • {income.accountName}
         </div>
 
         {/* Desktop only: Full date */}
@@ -142,5 +194,15 @@ export function IncomeCard({ income }: IncomeCardProps) {
         </DropdownMenu>
       </CardContent>
     </Card>
+
+      <CategoryQuickPicker
+        categories={categories}
+        currentCategoryId={optimisticCategory.id}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={handleCategoryChange}
+        isUpdating={isPending}
+      />
+    </>
   );
 }

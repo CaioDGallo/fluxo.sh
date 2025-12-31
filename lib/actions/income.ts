@@ -203,3 +203,13 @@ export async function markIncomePending(incomeId: number) {
     throw new Error('Failed to update income status. Please try again.');
   }
 }
+
+export async function updateIncomeCategory(incomeId: number, categoryId: number) {
+  await db
+    .update(income)
+    .set({ categoryId })
+    .where(eq(income.id, incomeId));
+
+  revalidatePath('/income');
+  revalidatePath('/dashboard');
+}

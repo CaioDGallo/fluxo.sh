@@ -7,7 +7,12 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "npx tsx drizzle/seed.ts"
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "db:init": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c 'CREATE DATABASE northstar;' || true",
+    "db:migrate:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/northstar npx drizzle-kit migrate",
+    "db:setup": "pnpm db:init && pnpm db:migrate:local",
+    "db:seed": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/northstar npx tsx drizzle/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

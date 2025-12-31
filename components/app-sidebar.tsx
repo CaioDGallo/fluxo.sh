@@ -10,6 +10,7 @@ import {
   Settings01Icon,
   ArrowRight01Icon,
   SparklesIcon,
+  CreditCardIcon,
 } from '@hugeicons/core-free-icons';
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const navItems = [
   { title: 'Dashboard', href: '/dashboard', icon: Home01Icon },
   { title: 'Budgets', href: '/budgets', icon: Invoice03Icon },
   { title: 'Expenses', href: '/expenses', icon: Wallet01Icon },
+  { title: 'Faturas', href: '/faturas', icon: CreditCardIcon },
   { title: 'Income', href: '/income', icon: Wallet01Icon },
 ];
 

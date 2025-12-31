@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/icon-picker';
 import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory } from '@/lib/actions/income';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { useIncomeContextOptional } from '@/lib/contexts/income-context';
 import type { Category } from '@/lib/schema';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ type IncomeCardBaseProps = {
     categoryName: string;
     categoryColor: string;
     categoryIcon: string | null;
+    accountId: number;
     accountName: string;
   };
   categories: Category[];
@@ -66,6 +68,7 @@ export function IncomeCard(props: IncomeCardProps) {
   const { income, categories, isOptimistic = false } = props;
   const isReceived = !!income.receivedAt;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const context = useIncomeContextOptional();
 
@@ -121,7 +124,7 @@ export function IncomeCard(props: IncomeCardProps) {
 
   const longPressHandlers = useLongPress({
     onLongPress: props.selectionMode ? props.onLongPress : (props.onLongPress || (() => {})),
-    onTap: props.selectionMode ? props.onToggleSelection : undefined,
+    onTap: props.selectionMode ? props.onToggleSelection : () => setDetailOpen(true),
     disabled: !props.selectionMode && !props.onLongPress,
   });
 
@@ -256,6 +259,12 @@ export function IncomeCard(props: IncomeCardProps) {
         onOpenChange={setPickerOpen}
         onSelect={handleCategoryChange}
         isUpdating={isPending}
+      />
+
+      <TransactionDetailSheet
+        income={income}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
       />
     </>
   );

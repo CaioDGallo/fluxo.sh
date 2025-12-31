@@ -65,7 +65,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000, // R$ 100
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -88,7 +88,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 300000, // R$ 3000
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 3,
       });
 
@@ -112,7 +112,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 30000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 3,
       });
 
@@ -131,7 +131,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 3,
       });
 
@@ -156,7 +156,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -165,7 +165,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 20000,
         categoryId,
         accountId,
-        dueDate: '2025-02-15',
+        purchaseDate: '2025-02-15',
         installments: 1,
       });
     });
@@ -214,7 +214,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 5000,
         categoryId: newCategory.id,
         accountId,
-        dueDate: '2025-01-20',
+        purchaseDate: '2025-01-20',
         installments: 1,
       });
 
@@ -235,7 +235,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 5000,
         categoryId,
         accountId: newAccount.id,
-        dueDate: '2025-01-20',
+        purchaseDate: '2025-01-20',
         installments: 1,
       });
 
@@ -253,7 +253,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -265,7 +265,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 20000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -281,7 +281,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 12000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 2,
       });
 
@@ -295,7 +295,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 12000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 4,
       });
 
@@ -316,7 +316,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 30000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 3,
       });
 
@@ -337,7 +337,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -356,7 +356,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -374,7 +374,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 30000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 3,
       });
 
@@ -395,7 +395,7 @@ describe('Expense Actions - Happy Path', () => {
         totalAmount: 10000,
         categoryId,
         accountId,
-        dueDate: '2025-01-15',
+        purchaseDate: '2025-01-15',
         installments: 1,
       });
 
@@ -411,5 +411,157 @@ describe('Expense Actions - Happy Path', () => {
       expect(updated[0].categoryId).toBe(newCategory.id);
       expect(updated[0].categoryName).toBe('New Category');
     });
+  });
+
+  describe('Fatura Integration', () => {
+    let ccAccountId: number;
+
+    beforeEach(async () => {
+      await clearAllTables();
+
+      // Create CC with billing config
+      const [account] = await db
+        .insert(schema.accounts)
+        .values(testAccounts.creditCardWithBilling)
+        .returning();
+
+      const [category] = await db
+        .insert(schema.categories)
+        .values(testCategories.expense)
+        .returning();
+
+      ccAccountId = account.id;
+      categoryId = category.id;
+    });
+
+    describe('faturaMonth computation', () => {
+    it('purchase before closing day belongs to current month fatura', async () => {
+      // closingDay=15, purchase on Jan 10
+      await createExpense({
+        description: 'Before Closing',
+        totalAmount: 10000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-10',
+        installments: 1,
+      });
+
+      const expenses = await getExpenses();
+      expect(expenses[0].faturaMonth).toBe('2025-01');
+    });
+
+    it('purchase on closing day belongs to current month fatura', async () => {
+      // closingDay=15, purchase on Jan 15
+      await createExpense({
+        description: 'On Closing Day',
+        totalAmount: 10000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-15',
+        installments: 1,
+      });
+
+      const expenses = await getExpenses();
+      expect(expenses[0].faturaMonth).toBe('2025-01');
+    });
+
+    it('purchase after closing day belongs to next month fatura', async () => {
+      // closingDay=15, purchase on Jan 20
+      await createExpense({
+        description: 'After Closing',
+        totalAmount: 10000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-20',
+        installments: 1,
+      });
+
+      const expenses = await getExpenses();
+      expect(expenses[0].faturaMonth).toBe('2025-02');
+    });
+  });
+
+  describe('dueDate computation', () => {
+    it('computes dueDate as month after fatura + paymentDueDay', async () => {
+      // faturaMonth='2025-01', paymentDueDay=5 → dueDate='2025-02-05'
+      await createExpense({
+        description: 'Test',
+        totalAmount: 10000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-10', // faturaMonth='2025-01'
+        installments: 1,
+      });
+
+      const expenses = await getExpenses();
+      expect(expenses[0].dueDate).toBe('2025-02-05');
+    });
+  });
+
+  describe('installments span multiple faturas', () => {
+    it('creates entries with correct faturaMonth and dueDate for each installment', async () => {
+      // Purchase on Jan 10, 3 installments
+      await createExpense({
+        description: 'Multi-installment',
+        totalAmount: 30000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-10',
+        installments: 3,
+      });
+
+      const expenses = await getExpenses();
+      expect(expenses).toHaveLength(3);
+
+      // Ordered desc by dueDate, so newest first
+      // Entry 3 (Mar): purchaseDate=2025-03-10, faturaMonth=2025-03, dueDate=2025-04-05
+      expect(expenses[0].installmentNumber).toBe(3);
+      expect(expenses[0].purchaseDate).toBe('2025-03-10');
+      expect(expenses[0].faturaMonth).toBe('2025-03');
+      expect(expenses[0].dueDate).toBe('2025-04-05');
+
+      // Entry 2 (Feb): purchaseDate=2025-02-10, faturaMonth=2025-02, dueDate=2025-03-05
+      expect(expenses[1].installmentNumber).toBe(2);
+      expect(expenses[1].purchaseDate).toBe('2025-02-10');
+      expect(expenses[1].faturaMonth).toBe('2025-02');
+      expect(expenses[1].dueDate).toBe('2025-03-05');
+
+      // Entry 1 (Jan): purchaseDate=2025-01-10, faturaMonth=2025-01, dueDate=2025-02-05
+      expect(expenses[2].installmentNumber).toBe(1);
+      expect(expenses[2].purchaseDate).toBe('2025-01-10');
+      expect(expenses[2].faturaMonth).toBe('2025-01');
+      expect(expenses[2].dueDate).toBe('2025-02-05');
+    });
+  });
+
+  describe('getExpenses filters by purchaseDate (budget month)', () => {
+    it('filters by purchaseDate month, not dueDate or faturaMonth', async () => {
+      // Purchase on Jan 20 (after closing)
+      // → purchaseDate='2025-01-20'
+      // → faturaMonth='2025-02' (next month)
+      // → dueDate='2025-03-05' (month after fatura)
+      await createExpense({
+        description: 'Late January Purchase',
+        totalAmount: 10000,
+        categoryId,
+        accountId: ccAccountId,
+        purchaseDate: '2025-01-20',
+        installments: 1,
+      });
+
+      // Should appear in January budget (purchaseDate month)
+      const janExpenses = await getExpenses({ yearMonth: '2025-01' });
+      expect(janExpenses).toHaveLength(1);
+      expect(janExpenses[0].description).toBe('Late January Purchase');
+
+      // Should NOT appear in February budget
+      const febExpenses = await getExpenses({ yearMonth: '2025-02' });
+      expect(febExpenses).toHaveLength(0);
+
+      // Should NOT appear in March budget
+      const marExpenses = await getExpenses({ yearMonth: '2025-03' });
+      expect(marExpenses).toHaveLength(0);
+    });
+  });
   });
 });

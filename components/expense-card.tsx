@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/icon-picker';
 import { markEntryPaid, markEntryPending, deleteExpense, updateTransactionCategory } from '@/lib/actions/expenses';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
 import type { Category } from '@/lib/schema';
 import { toast } from 'sonner';
@@ -36,6 +37,8 @@ type ExpenseCardBaseProps = {
   entry: {
     id: number;
     amount: number;
+    purchaseDate: string;
+    faturaMonth: string;
     dueDate: string;
     paidAt: string | null;
     installmentNumber: number;
@@ -46,6 +49,7 @@ type ExpenseCardBaseProps = {
     categoryName: string;
     categoryColor: string;
     categoryIcon: string | null;
+    accountId: number;
     accountName: string;
   };
   categories: Category[];
@@ -70,6 +74,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
   const { entry, categories, isOptimistic = false } = props;
   const isPaid = !!entry.paidAt;
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const context = useExpenseContextOptional();
 
@@ -125,7 +130,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
 
   const longPressHandlers = useLongPress({
     onLongPress: props.selectionMode ? props.onLongPress : (props.onLongPress || (() => {})),
-    onTap: props.selectionMode ? props.onToggleSelection : undefined,
+    onTap: props.selectionMode ? props.onToggleSelection : () => setDetailOpen(true),
     disabled: !props.selectionMode && !props.onLongPress,
   });
 
@@ -268,6 +273,12 @@ export function ExpenseCard(props: ExpenseCardProps) {
         onOpenChange={setPickerOpen}
         onSelect={handleCategoryChange}
         isUpdating={isPending}
+      />
+
+      <TransactionDetailSheet
+        expense={entry}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
       />
     </>
   );

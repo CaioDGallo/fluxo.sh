@@ -71,8 +71,8 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
   );
 }
 
-export function CategoryIcon({ icon }: { icon: string | null }) {
+export function CategoryIcon({ icon, className }: { icon: string | null; className?: string }) {
   if (!isValidIconName(icon)) return null;
   const IconComponent = CATEGORY_ICONS[icon];
-  return <HugeiconsIcon icon={IconComponent} strokeWidth={2} />;
+  return <HugeiconsIcon icon={IconComponent} strokeWidth={2} className={className} />;
 }

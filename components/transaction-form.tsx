@@ -79,7 +79,7 @@ export function TransactionForm({
   );
   const [date, setDate] = useState(
     mode === 'expense'
-      ? (transaction?.entries[0]?.dueDate || new Date().toISOString().split('T')[0])
+      ? (transaction?.entries[0]?.purchaseDate || new Date().toISOString().split('T')[0])
       : (income?.receivedDate || new Date().toISOString().split('T')[0])
   );
   const [installments, setInstallments] = useState(
@@ -105,7 +105,7 @@ export function TransactionForm({
           totalAmount: totalCents,
           categoryId,
           accountId,
-          dueDate: date,
+          purchaseDate: date,
           installments,
         };
 
@@ -185,7 +185,7 @@ export function TransactionForm({
     ? 'Add Expense'
     : 'Add Income';
 
-  const dateLabel = mode === 'expense' ? 'Date (first installment)' : 'Received Date';
+  const dateLabel = mode === 'expense' ? 'Purchase Date' : 'Received Date';
   const descriptionPlaceholder = mode === 'expense' ? 'Groceries at Walmart' : 'Monthly salary';
 
   return (

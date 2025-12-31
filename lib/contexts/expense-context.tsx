@@ -16,6 +16,8 @@ import {
 export type ExpenseEntry = {
   id: number;
   amount: number;
+  purchaseDate: string;
+  faturaMonth: string;
   dueDate: string;
   paidAt: string | null;
   installmentNumber: number;
@@ -42,7 +44,7 @@ export type CreateExpenseInput = {
   totalAmount: number; // cents
   categoryId: number;
   accountId: number;
-  dueDate: string; // 'YYYY-MM-DD'
+  purchaseDate: string; // 'YYYY-MM-DD'
   installments: number;
   // Metadata for optimistic UI
   categoryName: string;
@@ -134,7 +136,7 @@ function generateOptimisticEntries(
 ): OptimisticExpenseEntry[] {
   const entries: OptimisticExpenseEntry[] = [];
   const amountPerInstallment = Math.round(input.totalAmount / input.installments);
-  const baseDate = new Date(input.dueDate);
+  const baseDate = new Date(input.purchaseDate);
   const tempTransactionId = -Date.now();
 
   for (let i = 0; i < input.installments; i++) {
@@ -146,10 +148,16 @@ function generateOptimisticEntries(
         ? input.totalAmount - amountPerInstallment * (input.installments - 1)
         : amountPerInstallment;
 
+    const dueDate = installmentDate.toISOString().split('T')[0];
+    const purchaseDate = dueDate; // Approximate for optimistic UI
+    const faturaMonth = dueDate.slice(0, 7); // YYYY-MM
+
     entries.push({
       id: -(Date.now() + i), // Negative temp ID
       amount,
-      dueDate: installmentDate.toISOString().split('T')[0],
+      purchaseDate,
+      faturaMonth,
+      dueDate,
       paidAt: null,
       installmentNumber: i + 1,
       transactionId: tempTransactionId,
@@ -196,7 +204,7 @@ export function ExpenseListProvider({
           totalAmount: input.totalAmount,
           categoryId: input.categoryId,
           accountId: input.accountId,
-          dueDate: input.dueDate,
+          purchaseDate: input.purchaseDate,
           installments: input.installments,
         });
         // revalidatePath in server action will update the server state

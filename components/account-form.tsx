@@ -18,16 +18,24 @@ export function AccountForm({ account }: AccountFormProps) {
   const [type, setType] = useState<'credit_card' | 'checking' | 'savings' | 'cash'>(
     account?.type || 'checking'
   );
+  const [closingDay, setClosingDay] = useState<number | null>(account?.closingDay ?? null);
+  const [paymentDueDay, setPaymentDueDay] = useState<number | null>(account?.paymentDueDay ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const data = {
+        name,
+        type,
+        ...(type === 'credit_card' && { closingDay, paymentDueDay }),
+      };
+
       if (account) {
-        await updateAccount(account.id, { name, type });
+        await updateAccount(account.id, data);
       } else {
-        await createAccount({ name, type });
+        await createAccount(data);
       }
     } finally {
       setIsSubmitting(false);
@@ -65,6 +73,52 @@ export function AccountForm({ account }: AccountFormProps) {
             </SelectContent>
           </Select>
         </Field>
+
+        {type === 'credit_card' && (
+          <>
+            <Field>
+              <FieldLabel htmlFor="closingDay">Closing Day (1-28)</FieldLabel>
+              <Select
+                value={closingDay?.toString() || ''}
+                onValueChange={(v) => setClosingDay(v ? Number(v) : null)}
+              >
+                <SelectTrigger id="closingDay">
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                      <SelectItem key={day} value={day.toString()}>
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="paymentDueDay">Payment Due Day (1-28)</FieldLabel>
+              <Select
+                value={paymentDueDay?.toString() || ''}
+                onValueChange={(v) => setPaymentDueDay(v ? Number(v) : null)}
+              >
+                <SelectTrigger id="paymentDueDay">
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                      <SelectItem key={day} value={day.toString()}>
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </>
+        )}
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

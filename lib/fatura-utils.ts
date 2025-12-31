@@ -1,0 +1,77 @@
+/**
+ * Fatura (Credit Card Statement) Utilities
+ *
+ * Logic for computing which fatura a purchase belongs to based on
+ * the purchase date and credit card closing day.
+ */
+
+/**
+ * Determines which fatura (statement) a purchase belongs to based on closing day.
+ *
+ * Logic:
+ * - Purchases on/before closing day → current month's fatura
+ * - Purchases after closing day → next month's fatura
+ *
+ * Example: closingDay = 15
+ * - Purchase on Jan 10 → "2025-01" (closes Jan 15)
+ * - Purchase on Jan 20 → "2025-02" (closes Feb 15)
+ *
+ * @param purchaseDate - When the purchase occurred
+ * @param closingDay - Day of month when statement closes (1-28)
+ * @returns Fatura month in "YYYY-MM" format
+ */
+export function getFaturaMonth(purchaseDate: Date, closingDay: number): string {
+  const year = purchaseDate.getFullYear();
+  const month = purchaseDate.getMonth(); // 0-indexed
+  const day = purchaseDate.getDate();
+
+  if (day <= closingDay) {
+    // Purchase on/before closing → belongs to current month's fatura
+    return `${year}-${String(month + 1).padStart(2, '0')}`;
+  } else {
+    // Purchase after closing → belongs to next month's fatura
+    const nextMonth = new Date(year, month + 1, 1);
+    return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`;
+  }
+}
+
+/**
+ * Calculates the payment due date for a fatura.
+ *
+ * Fatura payment is always due in the month AFTER the fatura month.
+ *
+ * Example: fatura "2025-01" with paymentDueDay = 5
+ * → Payment due: 2025-02-05
+ *
+ * @param faturaMonth - Fatura month in "YYYY-MM" format
+ * @param paymentDueDay - Day of month when payment is due (1-28)
+ * @returns Due date in "YYYY-MM-DD" format
+ */
+export function getFaturaPaymentDueDate(faturaMonth: string, paymentDueDay: number): string {
+  const [year, month] = faturaMonth.split('-').map(Number);
+  // month is already 1-indexed from string, so we use it directly for next month
+  const paymentDate = new Date(year, month, paymentDueDay);
+  return paymentDate.toISOString().split('T')[0];
+}
+
+/**
+ * Formats a fatura month for display.
+ *
+ * @param yearMonth - Fatura month in "YYYY-MM" format
+ * @returns Formatted string like "January 2025"
+ */
+export function formatFaturaMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Gets the current fatura month for a credit card based on today's date.
+ *
+ * @param closingDay - Day of month when statement closes (1-28)
+ * @returns Current fatura month in "YYYY-MM" format
+ */
+export function getCurrentFaturaMonth(closingDay: number): string {
+  return getFaturaMonth(new Date(), closingDay);
+}

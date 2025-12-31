@@ -8,6 +8,7 @@ import {
   SparklesIcon,
   Invoice03Icon,
   ArrowUp01Icon,
+  CreditCardIcon,
 } from '@hugeicons/core-free-icons';
 import {
   Sheet,
@@ -20,6 +21,7 @@ import { ThemeToggleRow } from './theme-toggle-row';
 import type { Account, Category } from '@/lib/schema';
 
 const moreItems = [
+  { title: 'Faturas', href: '/faturas', icon: CreditCardIcon },
   { title: 'Income', href: '/income', icon: ArrowUp01Icon },
   { title: 'Accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { title: 'Categories', href: '/settings/categories', icon: SparklesIcon },

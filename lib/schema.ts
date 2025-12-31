@@ -12,6 +12,9 @@ export const accounts = pgTable('accounts', {
   name: text('name').notNull(),
   type: accountTypeEnum('type').notNull(),
   currency: text('currency').default('BRL'),
+  // Credit card billing cycle config (1-28, null for non-CC accounts)
+  closingDay: integer('closing_day'),
+  paymentDueDay: integer('payment_due_day'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -72,11 +75,33 @@ export const entries = pgTable('entries', {
     .notNull()
     .references(() => accounts.id),
   amount: integer('amount').notNull(), // cents
-  dueDate: date('due_date').notNull(), // DATE type
+  purchaseDate: date('purchase_date').notNull(), // When expense occurred (budget impact)
+  faturaMonth: text('fatura_month').notNull(), // "YYYY-MM" format - which statement it belongs to
+  dueDate: date('due_date').notNull(), // When fatura payment is due (cash flow impact)
   paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
   installmentNumber: integer('installment_number').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Faturas table (credit card statements/bills)
+export const faturas = pgTable(
+  'faturas',
+  {
+    id: serial('id').primaryKey(),
+    accountId: integer('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    yearMonth: text('year_month').notNull(), // "2025-01"
+    totalAmount: integer('total_amount').notNull().default(0), // cached sum of entries
+    dueDate: date('due_date').notNull(), // when payment is due
+    paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
+    paidFromAccountId: integer('paid_from_account_id').references(() => accounts.id), // which checking account paid it
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueAccountMonth: unique().on(table.accountId, table.yearMonth),
+  })
+);
 
 // Income table
 export const income = pgTable('income', {
@@ -115,6 +140,9 @@ export type NewEntry = typeof entries.$inferInsert;
 
 export type Income = typeof income.$inferSelect;
 export type NewIncome = typeof income.$inferInsert;
+
+export type Fatura = typeof faturas.$inferSelect;
+export type NewFatura = typeof faturas.$inferInsert;
 
 // Relations
 import { relations } from 'drizzle-orm';
@@ -155,6 +183,17 @@ export const incomeRelations = relations(income, ({ one }) => ({
   }),
   account: one(accounts, {
     fields: [income.accountId],
+    references: [accounts.id],
+  }),
+}));
+
+export const faturasRelations = relations(faturas, ({ one }) => ({
+  account: one(accounts, {
+    fields: [faturas.accountId],
+    references: [accounts.id],
+  }),
+  paidFromAccount: one(accounts, {
+    fields: [faturas.paidFromAccountId],
     references: [accounts.id],
   }),
 }));

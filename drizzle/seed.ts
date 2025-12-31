@@ -288,6 +288,8 @@ function generateEntries(
       transactionId,
       accountId: accountMap[txData.accountName],
       amount,
+      purchaseDate: dueDate, // For seed data, use dueDate as purchaseDate
+      faturaMonth: dueDate.slice(0, 7), // Extract YYYY-MM
       dueDate, // date type accepts string 'YYYY-MM-DD'
       paidAt,  // timestamp type needs Date object
       installmentNumber: i + 1,

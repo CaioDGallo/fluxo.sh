@@ -5,6 +5,12 @@ export const testAccounts = {
     name: 'Test Credit Card',
     type: 'credit_card' as const,
   },
+  creditCardWithBilling: {
+    name: 'Test CC with Billing',
+    type: 'credit_card' as const,
+    closingDay: 15,
+    paymentDueDay: 5,
+  },
   checking: {
     name: 'Test Checking',
     type: 'checking' as const,
@@ -37,11 +43,14 @@ export function createTestTransaction(overrides: Partial<NewTransaction> = {}): 
 }
 
 export function createTestEntry(overrides: Partial<NewEntry> = {}): NewEntry {
+  const date = new Date().toISOString().split('T')[0];
   return {
     transactionId: 1,
     accountId: 1,
     amount: 10000,
-    dueDate: new Date().toISOString().split('T')[0],
+    purchaseDate: date,
+    faturaMonth: date.slice(0, 7),
+    dueDate: date,
     installmentNumber: 1,
     paidAt: null,
     ...overrides,

@@ -22,6 +22,7 @@ export type DashboardData = {
     entryId: number;
     description: string;
     amount: number;
+    purchaseDate: string;
     dueDate: string;
     categoryName: string;
     categoryColor: string;
@@ -60,7 +61,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .innerJoin(categories, eq(budgets.categoryId, categories.id))
     .where(eq(budgets.yearMonth, yearMonth));
 
-  // 2. Get spending by category for the month
+  // 2. Get spending by category for the month (using purchaseDate for budget impact)
   const spending = await db
     .select({
       categoryId: transactions.categoryId,
@@ -68,7 +69,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     })
     .from(entries)
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .where(and(gte(entries.dueDate, startDate), lte(entries.dueDate, endDate)))
+    .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
     .groupBy(transactions.categoryId);
 
   // 3. Merge budgets and spending
@@ -99,12 +100,13 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
   const totalSpent = categoryBreakdown.reduce((sum, cat) => sum + cat.spent, 0);
   const netBalance = totalIncome - totalSpent;
 
-  // 6. Get recent 5 expenses
+  // 6. Get recent 5 expenses (filtered by purchaseDate)
   const recentExpenses = await db
     .select({
       entryId: entries.id,
       description: transactions.description,
       amount: entries.amount,
+      purchaseDate: entries.purchaseDate,
       dueDate: entries.dueDate,
       categoryName: categories.name,
       categoryColor: categories.color,
@@ -115,7 +117,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
     .innerJoin(accounts, eq(entries.accountId, accounts.id))
-    .where(and(gte(entries.dueDate, startDate), lte(entries.dueDate, endDate)))
+    .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
     .orderBy(desc(entries.createdAt))
     .limit(5);
 

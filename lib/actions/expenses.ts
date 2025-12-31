@@ -5,13 +5,15 @@ import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
 import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 
 type CreateExpenseData = {
   description: string;
   totalAmount: number; // cents
   categoryId: number;
   accountId: number;
-  dueDate: string; // 'YYYY-MM-DD' for first installment
+  purchaseDate: string; // 'YYYY-MM-DD' for first installment
   installments: number;
 };
 
@@ -32,12 +34,22 @@ export async function createExpense(data: CreateExpenseData) {
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
     throw new Error('Invalid account ID');
   }
-  if (!data.dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate)) {
-    throw new Error('Invalid due date format (expected YYYY-MM-DD)');
+  if (!data.purchaseDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.purchaseDate)) {
+    throw new Error('Invalid purchase date format (expected YYYY-MM-DD)');
   }
 
   try {
-    // 1. Create transaction
+    // 1. Get account to check type and billing config
+    const account = await db.select().from(accounts).where(eq(accounts.id, data.accountId)).limit(1);
+
+    if (!account[0]) {
+      throw new Error('Account not found');
+    }
+
+    const isCreditCard = account[0].type === 'credit_card';
+    const hasBillingConfig = isCreditCard && account[0].closingDay && account[0].paymentDueDay;
+
+    // 2. Create transaction
     const [transaction] = await db
       .insert(transactions)
       .values({
@@ -48,15 +60,16 @@ export async function createExpense(data: CreateExpenseData) {
       })
       .returning();
 
-    // 2. Generate entries for each installment
+    // 3. Generate entries for each installment
     const amountPerInstallment = Math.round(data.totalAmount / data.installments);
-    const baseDate = new Date(data.dueDate);
+    const basePurchaseDate = new Date(data.purchaseDate);
 
     const entriesToInsert: NewEntry[] = [];
+    const affectedFaturas = new Set<string>();
 
     for (let i = 0; i < data.installments; i++) {
-      const installmentDate = new Date(baseDate);
-      installmentDate.setMonth(installmentDate.getMonth() + i);
+      const installmentPurchaseDate = new Date(basePurchaseDate);
+      installmentPurchaseDate.setMonth(installmentPurchaseDate.getMonth() + i);
 
       // Adjust for last installment (rounding differences)
       const amount =
@@ -64,11 +77,27 @@ export async function createExpense(data: CreateExpenseData) {
           ? data.totalAmount - amountPerInstallment * (data.installments - 1)
           : amountPerInstallment;
 
+      let faturaMonth: string;
+      let dueDate: string;
+
+      if (hasBillingConfig) {
+        // Credit card with billing config: compute fatura month and due date
+        faturaMonth = getFaturaMonth(installmentPurchaseDate, account[0].closingDay!);
+        dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!);
+        affectedFaturas.add(faturaMonth);
+      } else {
+        // Non-credit card or card without config: fatura = purchase month
+        faturaMonth = installmentPurchaseDate.toISOString().slice(0, 7); // YYYY-MM
+        dueDate = installmentPurchaseDate.toISOString().split('T')[0];
+      }
+
       entriesToInsert.push({
         transactionId: transaction.id,
         accountId: data.accountId,
         amount,
-        dueDate: installmentDate.toISOString().split('T')[0],
+        purchaseDate: installmentPurchaseDate.toISOString().split('T')[0],
+        faturaMonth,
+        dueDate,
         installmentNumber: i + 1,
         paidAt: null,
       });
@@ -76,8 +105,17 @@ export async function createExpense(data: CreateExpenseData) {
 
     await db.insert(entries).values(entriesToInsert);
 
+    // 4. Ensure faturas exist and update totals for credit cards
+    if (hasBillingConfig) {
+      for (const month of affectedFaturas) {
+        await ensureFaturaExists(data.accountId, month);
+        await updateFaturaTotal(data.accountId, month);
+      }
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to create expense:', { data, error });
     throw new Error('Failed to create expense. Please try again.');
@@ -114,12 +152,36 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
     throw new Error('Invalid account ID');
   }
-  if (!data.dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.dueDate)) {
-    throw new Error('Invalid due date format (expected YYYY-MM-DD)');
+  if (!data.purchaseDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.purchaseDate)) {
+    throw new Error('Invalid purchase date format (expected YYYY-MM-DD)');
   }
 
   try {
-    // 1. Update transaction
+    // 1. Get old entries to track affected faturas for cleanup
+    const oldEntries = await db
+      .select()
+      .from(entries)
+      .where(eq(entries.transactionId, transactionId));
+
+    const oldFaturas = new Map<number, Set<string>>();
+    for (const entry of oldEntries) {
+      if (!oldFaturas.has(entry.accountId)) {
+        oldFaturas.set(entry.accountId, new Set());
+      }
+      oldFaturas.get(entry.accountId)!.add(entry.faturaMonth);
+    }
+
+    // 2. Get account to check type and billing config
+    const account = await db.select().from(accounts).where(eq(accounts.id, data.accountId)).limit(1);
+
+    if (!account[0]) {
+      throw new Error('Account not found');
+    }
+
+    const isCreditCard = account[0].type === 'credit_card';
+    const hasBillingConfig = isCreditCard && account[0].closingDay && account[0].paymentDueDay;
+
+    // 3. Update transaction
     await db
       .update(transactions)
       .set({
@@ -130,29 +192,44 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       })
       .where(eq(transactions.id, transactionId));
 
-    // 2. Delete old entries
+    // 4. Delete old entries
     await db.delete(entries).where(eq(entries.transactionId, transactionId));
 
-    // 3. Regenerate entries (same logic as create)
+    // 5. Regenerate entries (same logic as create)
     const amountPerInstallment = Math.round(data.totalAmount / data.installments);
-    const baseDate = new Date(data.dueDate);
+    const basePurchaseDate = new Date(data.purchaseDate);
 
     const entriesToInsert: NewEntry[] = [];
+    const newFaturas = new Set<string>();
 
     for (let i = 0; i < data.installments; i++) {
-      const installmentDate = new Date(baseDate);
-      installmentDate.setMonth(installmentDate.getMonth() + i);
+      const installmentPurchaseDate = new Date(basePurchaseDate);
+      installmentPurchaseDate.setMonth(installmentPurchaseDate.getMonth() + i);
 
       const amount =
         i === data.installments - 1
           ? data.totalAmount - amountPerInstallment * (data.installments - 1)
           : amountPerInstallment;
 
+      let faturaMonth: string;
+      let dueDate: string;
+
+      if (hasBillingConfig) {
+        faturaMonth = getFaturaMonth(installmentPurchaseDate, account[0].closingDay!);
+        dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!);
+        newFaturas.add(faturaMonth);
+      } else {
+        faturaMonth = installmentPurchaseDate.toISOString().slice(0, 7);
+        dueDate = installmentPurchaseDate.toISOString().split('T')[0];
+      }
+
       entriesToInsert.push({
         transactionId,
         accountId: data.accountId,
         amount,
-        dueDate: installmentDate.toISOString().split('T')[0],
+        purchaseDate: installmentPurchaseDate.toISOString().split('T')[0],
+        faturaMonth,
+        dueDate,
         installmentNumber: i + 1,
         paidAt: null,
       });
@@ -160,8 +237,23 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
 
     await db.insert(entries).values(entriesToInsert);
 
+    // 6. Update fatura totals (both old and new)
+    if (hasBillingConfig) {
+      const allAffectedFaturas = new Set([...newFaturas]);
+      const oldAccountFaturas = oldFaturas.get(data.accountId) || new Set();
+      for (const month of oldAccountFaturas) {
+        allAffectedFaturas.add(month);
+      }
+
+      for (const month of allAffectedFaturas) {
+        await ensureFaturaExists(data.accountId, month);
+        await updateFaturaTotal(data.accountId, month);
+      }
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to update expense:', { transactionId, data, error });
     throw new Error('Failed to update expense. Please try again.');
@@ -174,10 +266,33 @@ export async function deleteExpense(transactionId: number) {
   }
 
   try {
+    // Get entries before deletion to update affected faturas
+    const oldEntries = await db
+      .select()
+      .from(entries)
+      .where(eq(entries.transactionId, transactionId));
+
+    const affectedFaturas = new Map<number, Set<string>>();
+    for (const entry of oldEntries) {
+      if (!affectedFaturas.has(entry.accountId)) {
+        affectedFaturas.set(entry.accountId, new Set());
+      }
+      affectedFaturas.get(entry.accountId)!.add(entry.faturaMonth);
+    }
+
     // CASCADE will delete entries automatically
     await db.delete(transactions).where(eq(transactions.id, transactionId));
+
+    // Update fatura totals for affected faturas
+    for (const [accountId, months] of affectedFaturas) {
+      for (const month of months) {
+        await updateFaturaTotal(accountId, month);
+      }
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to delete expense:', { transactionId, error });
     throw new Error('Failed to delete expense. Please try again.');
@@ -196,9 +311,9 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
 
   const conditions = [];
 
-  // Filter by month using SQL to extract year-month from dueDate
+  // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
   if (yearMonth) {
-    conditions.push(sql`to_char(${entries.dueDate}, 'YYYY-MM') = ${yearMonth}`);
+    conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
   }
 
   if (categoryId) {
@@ -219,6 +334,8 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
     .select({
       id: entries.id,
       amount: entries.amount,
+      purchaseDate: entries.purchaseDate,
+      faturaMonth: entries.faturaMonth,
       dueDate: entries.dueDate,
       paidAt: sql<string | null>`${entries.paidAt}::text`,
       installmentNumber: entries.installmentNumber,

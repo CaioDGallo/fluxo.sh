@@ -69,6 +69,8 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
           transactionId: transaction.id,
           accountId,
           amount: row.amountCents,
+          purchaseDate: row.date,
+          faturaMonth: row.date.slice(0, 7), // Extract YYYY-MM
           dueDate: row.date,
           installmentNumber: 1,
           paidAt: null,

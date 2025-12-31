@@ -8,6 +8,7 @@ import {
   deleteExpense as serverDeleteExpense,
   markEntryPaid as serverMarkEntryPaid,
   markEntryPending as serverMarkEntryPending,
+  bulkUpdateTransactionCategories as serverBulkUpdateTransactionCategories,
   type ExpenseFilters,
 } from '@/lib/actions/expenses';
 
@@ -54,7 +55,8 @@ export type CreateExpenseInput = {
 type ReducerAction =
   | { type: 'add'; items: OptimisticExpenseEntry[] }
   | { type: 'toggle'; id: number; paidAt: string | null }
-  | { type: 'remove'; transactionId: number };
+  | { type: 'remove'; transactionId: number }
+  | { type: 'bulkUpdateCategory'; transactionIds: number[]; category: Category };
 
 // Reducer for useOptimistic
 function expenseReducer(
@@ -70,6 +72,19 @@ function expenseReducer(
       );
     case 'remove':
       return state.filter((e) => e.transactionId !== action.transactionId);
+    case 'bulkUpdateCategory':
+      return state.map((e) =>
+        action.transactionIds.includes(e.transactionId)
+          ? {
+              ...e,
+              categoryId: action.category.id,
+              categoryName: action.category.name,
+              categoryColor: action.category.color,
+              categoryIcon: action.category.icon,
+              _optimistic: true,
+            }
+          : e
+      );
     default:
       return state;
   }
@@ -86,6 +101,7 @@ type ExpenseContextValue = {
   addExpense: (data: CreateExpenseInput) => Promise<void>;
   togglePaid: (id: number, currentPaidAt: string | null) => Promise<void>;
   removeExpense: (transactionId: number) => Promise<void>;
+  bulkUpdateCategory: (transactionIds: number[], categoryId: number) => Promise<void>;
 };
 
 const ExpenseContext = createContext<ExpenseContextValue | null>(null);
@@ -230,6 +246,27 @@ export function ExpenseListProvider({
     [dispatch]
   );
 
+  // Bulk update category
+  const bulkUpdateCategory = useCallback(
+    async (transactionIds: number[], categoryId: number) => {
+      const category = categories.find((c) => c.id === categoryId);
+      if (!category) return;
+
+      startTransition(() => {
+        dispatch({ type: 'bulkUpdateCategory', transactionIds, category });
+      });
+
+      try {
+        await serverBulkUpdateTransactionCategories(transactionIds, categoryId);
+        toast.success(`Updated ${transactionIds.length} item${transactionIds.length > 1 ? 's' : ''}`);
+      } catch {
+        toast.error('Failed to update categories');
+        throw new Error('Failed to update categories');
+      }
+    },
+    [categories, dispatch]
+  );
+
   const value: ExpenseContextValue = {
     expenses: optimisticExpenses,
     accounts,
@@ -238,6 +275,7 @@ export function ExpenseListProvider({
     addExpense,
     togglePaid,
     removeExpense,
+    bulkUpdateCategory,
   };
 
   return <ExpenseContext.Provider value={value}>{children}</ExpenseContext.Provider>;

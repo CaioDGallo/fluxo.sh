@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { income, categories, accounts } from '@/lib/schema';
-import { eq, and, gte, lte, desc, isNull, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export type CreateIncomeData = {
@@ -209,6 +209,19 @@ export async function updateIncomeCategory(incomeId: number, categoryId: number)
     .update(income)
     .set({ categoryId })
     .where(eq(income.id, incomeId));
+
+  revalidatePath('/income');
+  revalidatePath('/dashboard');
+}
+
+export async function bulkUpdateIncomeCategories(
+  incomeIds: number[],
+  categoryId: number
+) {
+  await db
+    .update(income)
+    .set({ categoryId })
+    .where(inArray(income.id, incomeIds));
 
   revalidatePath('/income');
   revalidatePath('/dashboard');

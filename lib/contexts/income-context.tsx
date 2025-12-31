@@ -8,6 +8,7 @@ import {
   deleteIncome as serverDeleteIncome,
   markIncomeReceived as serverMarkIncomeReceived,
   markIncomePending as serverMarkIncomePending,
+  bulkUpdateIncomeCategories as serverBulkUpdateIncomeCategories,
   type IncomeFilters,
 } from '@/lib/actions/income';
 
@@ -50,7 +51,8 @@ export type CreateIncomeInput = {
 type ReducerAction =
   | { type: 'add'; item: OptimisticIncomeEntry }
   | { type: 'toggle'; id: number; receivedAt: string | null }
-  | { type: 'remove'; id: number };
+  | { type: 'remove'; id: number }
+  | { type: 'bulkUpdateCategory'; incomeIds: number[]; category: Category };
 
 // Reducer for useOptimistic
 function incomeReducer(
@@ -66,6 +68,19 @@ function incomeReducer(
       );
     case 'remove':
       return state.filter((item) => item.id !== action.id);
+    case 'bulkUpdateCategory':
+      return state.map((item) =>
+        action.incomeIds.includes(item.id)
+          ? {
+              ...item,
+              categoryId: action.category.id,
+              categoryName: action.category.name,
+              categoryColor: action.category.color,
+              categoryIcon: action.category.icon,
+              _optimistic: true,
+            }
+          : item
+      );
     default:
       return state;
   }
@@ -82,6 +97,7 @@ type IncomeContextValue = {
   addIncome: (data: CreateIncomeInput) => Promise<void>;
   toggleReceived: (id: number, currentReceivedAt: string | null) => Promise<void>;
   removeIncome: (id: number) => Promise<void>;
+  bulkUpdateCategory: (incomeIds: number[], categoryId: number) => Promise<void>;
 };
 
 const IncomeContext = createContext<IncomeContextValue | null>(null);
@@ -202,6 +218,27 @@ export function IncomeListProvider({
     [dispatch]
   );
 
+  // Bulk update category
+  const bulkUpdateCategory = useCallback(
+    async (incomeIds: number[], categoryId: number) => {
+      const category = categories.find((c) => c.id === categoryId);
+      if (!category) return;
+
+      startTransition(() => {
+        dispatch({ type: 'bulkUpdateCategory', incomeIds, category });
+      });
+
+      try {
+        await serverBulkUpdateIncomeCategories(incomeIds, categoryId);
+        toast.success(`Updated ${incomeIds.length} item${incomeIds.length > 1 ? 's' : ''}`);
+      } catch {
+        toast.error('Failed to update categories');
+        throw new Error('Failed to update categories');
+      }
+    },
+    [categories, dispatch]
+  );
+
   const value: IncomeContextValue = {
     income: optimisticIncome,
     accounts,
@@ -210,6 +247,7 @@ export function IncomeListProvider({
     addIncome,
     toggleReceived,
     removeIncome,
+    bulkUpdateCategory,
   };
 
   return <IncomeContext.Provider value={value}>{children}</IncomeContext.Provider>;

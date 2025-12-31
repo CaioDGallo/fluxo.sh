@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useOptimistic, useTransition } from 'react';
+import { useLongPress } from '@/lib/hooks/use-long-press';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,9 +46,21 @@ type IncomeCardProps = {
   };
   categories: Category[];
   isOptimistic?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
+  onLongPress?: () => void;
+  onToggleSelection?: () => void;
 };
 
-export function IncomeCard({ income, categories, isOptimistic = false }: IncomeCardProps) {
+export function IncomeCard({
+  income,
+  categories,
+  isOptimistic = false,
+  isSelected = false,
+  isSelectionMode = false,
+  onLongPress,
+  onToggleSelection,
+}: IncomeCardProps) {
   const isReceived = !!income.receivedAt;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -103,14 +116,52 @@ export function IncomeCard({ income, categories, isOptimistic = false }: IncomeC
     }
   };
 
+  const longPressHandlers = useLongPress({
+    onLongPress: onLongPress || (() => {}),
+    onTap: isSelectionMode ? onToggleSelection : undefined,
+    disabled: !onLongPress && !isSelectionMode,
+  });
+
   return (
     <>
-      <Card className={cn("py-0", isOptimistic && "opacity-70 animate-pulse")}>
-        <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+      <Card className={cn(
+        "py-0 relative",
+        isOptimistic && "opacity-70 animate-pulse",
+        isSelectionMode && "cursor-pointer",
+        isSelected && "ring-2 ring-primary ring-offset-2"
+      )}>
+        {/* Checkbox indicator - only shown in selection mode */}
+        {isSelectionMode && (
+          <div className="absolute -left-1 -top-1 z-10">
+            <div className={cn(
+              "size-6 rounded-full border-2 flex items-center justify-center transition-all",
+              isSelected
+                ? "bg-primary border-primary"
+                : "bg-white border-gray-300"
+            )}>
+              {isSelected && (
+                <HugeiconsIcon
+                  icon={Tick02Icon}
+                  className="size-4 text-white"
+                  strokeWidth={3}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        <CardContent {...longPressHandlers} className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
           {/* Category icon - clickable */}
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isSelectionMode) {
+                onToggleSelection?.();
+              } else {
+                setPickerOpen(true);
+              }
+            }}
             className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             style={{ backgroundColor: optimisticCategory.color }}
           >

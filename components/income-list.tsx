@@ -1,12 +1,20 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useIncomeContext, IncomeListProvider } from '@/lib/contexts/income-context';
 import { IncomeCard } from '@/components/income-card';
+import { useSelection } from '@/lib/hooks/use-selection';
+import { SelectionActionBar } from '@/components/selection-action-bar';
+import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { toast } from 'sonner';
 
 export { IncomeListProvider };
 
 export function IncomeList() {
-  const { income, categories } = useIncomeContext();
+  const context = useIncomeContext();
+  const { income, categories, filters } = context;
+  const selection = useSelection();
+  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   // Group by date (same logic as original page)
   const groupedByDate = income.reduce(
@@ -20,6 +28,32 @@ export function IncomeList() {
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+  // Watch filter changes (clear selection when month changes)
+  const prevYearMonthRef = useRef(filters.yearMonth);
+
+  useEffect(() => {
+    if (prevYearMonthRef.current !== filters.yearMonth) {
+      selection.exitSelectionMode();
+    }
+    prevYearMonthRef.current = filters.yearMonth;
+  }, [filters.yearMonth, selection]);
+
+  // Bulk category handler
+  const handleBulkCategoryChange = async (categoryId: number) => {
+    setBulkPickerOpen(false);
+
+    // Filter out optimistic items (negative IDs)
+    const realIncomeIds = Array.from(selection.selectedIds).filter((id) => id > 0);
+
+    if (realIncomeIds.length === 0) {
+      toast.error('Cannot update pending items');
+      return;
+    }
+
+    await context.bulkUpdateCategory(realIncomeIds, categoryId);
+    selection.exitSelectionMode();
+  };
 
   if (income.length === 0) {
     return (
@@ -49,11 +83,33 @@ export function IncomeList() {
                 income={inc}
                 categories={categories}
                 isOptimistic={inc._optimistic}
+                isSelected={selection.isSelected(inc.id)}
+                isSelectionMode={selection.isSelectionMode}
+                onLongPress={() => selection.enterSelectionMode(inc.id)}
+                onToggleSelection={() => selection.toggleSelection(inc.id)}
               />
             ))}
           </div>
         </div>
       ))}
+
+      {/* Selection action bar */}
+      {selection.isSelectionMode && (
+        <SelectionActionBar
+          selectedCount={selection.selectedCount}
+          onChangeCategory={() => setBulkPickerOpen(true)}
+          onCancel={selection.exitSelectionMode}
+        />
+      )}
+
+      {/* Bulk category picker */}
+      <CategoryQuickPicker
+        categories={categories}
+        currentCategoryId={0}
+        open={bulkPickerOpen}
+        onOpenChange={setBulkPickerOpen}
+        onSelect={handleBulkCategoryChange}
+      />
     </div>
   );
 }

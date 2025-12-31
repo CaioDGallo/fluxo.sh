@@ -1,12 +1,20 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useExpenseContext, ExpenseListProvider } from '@/lib/contexts/expense-context';
 import { ExpenseCard } from '@/components/expense-card';
+import { useSelection } from '@/lib/hooks/use-selection';
+import { SelectionActionBar } from '@/components/selection-action-bar';
+import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { toast } from 'sonner';
 
 export { ExpenseListProvider };
 
 export function ExpenseList() {
-  const { expenses, categories } = useExpenseContext();
+  const context = useExpenseContext();
+  const { expenses, categories, filters } = context;
+  const selection = useSelection();
+  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   // Group by date (same logic as original page)
   const groupedByDate = expenses.reduce(
@@ -20,6 +28,40 @@ export function ExpenseList() {
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+  // Watch filter changes (clear selection when month changes)
+  const prevYearMonthRef = useRef(filters.yearMonth);
+
+  useEffect(() => {
+    if (prevYearMonthRef.current !== filters.yearMonth) {
+      selection.exitSelectionMode();
+    }
+    prevYearMonthRef.current = filters.yearMonth;
+  }, [filters.yearMonth, selection]);
+
+  // Bulk category handler
+  const handleBulkCategoryChange = async (categoryId: number) => {
+    setBulkPickerOpen(false);
+
+    // Filter out optimistic items (negative IDs) and map entry.id -> transactionId
+    const realTransactionIds = Array.from(selection.selectedIds)
+      .map((id) => {
+        const entry = expenses.find((e) => e.id === id);
+        return entry && entry.transactionId > 0 ? entry.transactionId : null;
+      })
+      .filter((id): id is number => id !== null);
+
+    // Get unique transaction IDs
+    const uniqueTransactionIds = [...new Set(realTransactionIds)];
+
+    if (uniqueTransactionIds.length === 0) {
+      toast.error('Cannot update pending items');
+      return;
+    }
+
+    await context.bulkUpdateCategory(uniqueTransactionIds, categoryId);
+    selection.exitSelectionMode();
+  };
 
   if (expenses.length === 0) {
     return (
@@ -49,11 +91,33 @@ export function ExpenseList() {
                 entry={expense}
                 categories={categories}
                 isOptimistic={expense._optimistic}
+                isSelected={selection.isSelected(expense.id)}
+                isSelectionMode={selection.isSelectionMode}
+                onLongPress={() => selection.enterSelectionMode(expense.id)}
+                onToggleSelection={() => selection.toggleSelection(expense.id)}
               />
             ))}
           </div>
         </div>
       ))}
+
+      {/* Selection action bar */}
+      {selection.isSelectionMode && (
+        <SelectionActionBar
+          selectedCount={selection.selectedCount}
+          onChangeCategory={() => setBulkPickerOpen(true)}
+          onCancel={selection.exitSelectionMode}
+        />
+      )}
+
+      {/* Bulk category picker */}
+      <CategoryQuickPicker
+        categories={categories}
+        currentCategoryId={0}
+        open={bulkPickerOpen}
+        onOpenChange={setBulkPickerOpen}
+        onSelect={handleBulkCategoryChange}
+      />
     </div>
   );
 }

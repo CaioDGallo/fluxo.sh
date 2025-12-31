@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
-import { eq, and, isNull, isNotNull, desc, sql } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 type CreateExpenseData = {
@@ -204,6 +204,19 @@ export async function updateTransactionCategory(transactionId: number, categoryI
     .update(transactions)
     .set({ categoryId })
     .where(eq(transactions.id, transactionId));
+
+  revalidatePath('/expenses');
+  revalidatePath('/dashboard');
+}
+
+export async function bulkUpdateTransactionCategories(
+  transactionIds: number[],
+  categoryId: number
+) {
+  await db
+    .update(transactions)
+    .set({ categoryId })
+    .where(inArray(transactions.id, transactionIds));
 
   revalidatePath('/expenses');
   revalidatePath('/dashboard');

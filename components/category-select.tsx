@@ -2,13 +2,13 @@
 
 import type { Category } from '@/lib/schema';
 import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxEmpty,
-} from '@/components/ui/combobox';
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CategoryIcon } from '@/components/icon-picker';
 
 type CategorySelectProps = {
@@ -18,41 +18,30 @@ type CategorySelectProps = {
 };
 
 export function CategorySelect({ categories, value, onChange }: CategorySelectProps) {
-  const items = categories.map(c => ({
-    ...c,
-    value: c.id.toString(),
-    label: c.name,
-  }));
-
-  const selectedItem = items.find(i => i.id === value) ?? null;
-
   return (
-    <Combobox
-      items={items}
-      value={selectedItem}
-      onValueChange={(item) => item && onChange(item.id)}
-    >
-      <ComboboxInput placeholder="Select category..." />
-      <ComboboxContent>
-        <ComboboxEmpty>No categories found</ComboboxEmpty>
-        <ComboboxList>
-          {(item) => (
-            <ComboboxItem key={item.id} value={item}>
+    <Select value={value.toString()} onValueChange={(v) => onChange(parseInt(v))}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {categories.map((category) => (
+            <SelectItem key={category.id} value={category.id.toString()}>
               <div className="flex items-center gap-2">
                 <div
                   className="flex h-6 w-6 items-center justify-center rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
+                  style={{ backgroundColor: category.color }}
                 >
                   <div className="text-white [&_svg]:size-3">
-                    <CategoryIcon icon={item.icon} />
+                    <CategoryIcon icon={category.icon} />
                   </div>
                 </div>
-                <span>{item.name}</span>
+                <span>{category.name}</span>
               </div>
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }

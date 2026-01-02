@@ -171,6 +171,14 @@
     "cash": "Cash",
     "noAccountsYet": "No accounts yet. Add your first account above."
   },
+  "categories": {
+    "title": "Categories",
+    "expenseCategories": "Expense Categories",
+    "incomeCategories": "Income Categories",
+    "add": "Add",
+    "noExpenseCategoriesYet": "No expense categories yet.",
+    "noIncomeCategoriesYet": "No income categories yet."
+  },
   "accountTypes": {
     "checking": "Checking",
     "savings": "Savings",

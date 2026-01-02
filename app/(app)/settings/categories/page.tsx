@@ -1,8 +1,10 @@
+import { getTranslations } from 'next-intl/server';
 import { getCategories } from '@/lib/actions/categories';
 import { AddCategoryButton } from '@/components/add-category-button';
 import { CategoryCard } from '@/components/category-card';
 
 export default async function CategoriesPage() {
+  const t = await getTranslations('categories');
   const categories = await getCategories();
 
   const expenseCategories = categories.filter(cat => cat.type === 'expense');
@@ -11,18 +13,18 @@ export default async function CategoriesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Categories</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>
 
       <div className="space-y-8">
         {/* Expense Categories */}
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-gray-500">Expense Categories</h2>
-            <AddCategoryButton type="expense">Add</AddCategoryButton>
+            <h2 className="text-sm font-medium text-gray-500">{t('expenseCategories')}</h2>
+            <AddCategoryButton type="expense">{t('add')}</AddCategoryButton>
           </div>
           {expenseCategories.length === 0 ? (
-            <p className="text-sm text-gray-500">No expense categories yet.</p>
+            <p className="text-sm text-gray-500">{t('noExpenseCategoriesYet')}</p>
           ) : (
             <div className="space-y-3">
               {expenseCategories.map((category) => (
@@ -35,11 +37,11 @@ export default async function CategoriesPage() {
         {/* Income Categories */}
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-gray-500">Income Categories</h2>
-            <AddCategoryButton type="income">Add</AddCategoryButton>
+            <h2 className="text-sm font-medium text-gray-500">{t('incomeCategories')}</h2>
+            <AddCategoryButton type="income">{t('add')}</AddCategoryButton>
           </div>
           {incomeCategories.length === 0 ? (
-            <p className="text-sm text-gray-500">No income categories yet.</p>
+            <p className="text-sm text-gray-500">{t('noIncomeCategoriesYet')}</p>
           ) : (
             <div className="space-y-3">
               {incomeCategories.map((category) => (

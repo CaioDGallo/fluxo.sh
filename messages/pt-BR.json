@@ -171,6 +171,14 @@
     "cash": "Dinheiro",
     "noAccountsYet": "Nenhuma conta ainda. Adicione sua primeira conta acima."
   },
+  "categories": {
+    "title": "Categorias",
+    "expenseCategories": "Categorias de Despesa",
+    "incomeCategories": "Categorias de Receita",
+    "add": "Adicionar",
+    "noExpenseCategoriesYet": "Nenhuma categoria de despesa ainda.",
+    "noIncomeCategoriesYet": "Nenhuma categoria de receita ainda."
+  },
   "accountTypes": {
     "checking": "Conta Corrente",
     "savings": "Poupança",

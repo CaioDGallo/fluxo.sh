@@ -197,7 +197,7 @@ describe('useLongPress', () => {
 
     it('does not crash if navigator.vibrate unavailable', () => {
       const originalVibrate = global.navigator.vibrate;
-      // @ts-ignore
+      // @ts-expect-error - AI generated test
       delete global.navigator.vibrate;
 
       const onLongPress = vi.fn();

@@ -1,9 +1,9 @@
 import 'dotenv/config';
 
 import { db } from '../lib/db';
-import { accounts, categories, budgets, transactions, entries, income, faturas } from '../lib/schema';
-import { getCurrentYearMonth, addMonths } from '../lib/utils';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
+import { accounts, budgets, categories, entries, income, transactions } from '../lib/schema';
+import { addMonths, getCurrentYearMonth } from '../lib/utils';
 
 // Production safety check
 if (process.env.NODE_ENV === 'production') {

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { getAccounts } from '@/lib/actions/accounts';
 import { AccountForm } from '@/components/account-form';
 import { AccountCard } from '@/components/account-card';
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default async function AccountsPage() {
+  const t = await getTranslations('accounts');
   const accounts = await getAccounts();
 
   // Group accounts by type
@@ -22,14 +24,14 @@ export default async function AccountsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Accounts</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="hollow">Add Account</Button>
+            <Button variant="hollow">{t('addAccount')}</Button>
           </AlertDialogTrigger>
           <AlertDialogContent closeOnBackdropClick>
             <AlertDialogHeader>
-              <AlertDialogTitle>Add Account</AlertDialogTitle>
+              <AlertDialogTitle>{t('addAccount')}</AlertDialogTitle>
             </AlertDialogHeader>
             <AccountForm />
           </AlertDialogContent>
@@ -40,7 +42,7 @@ export default async function AccountsPage() {
         {/* Credit Card Accounts */}
         {creditCardAccounts.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-medium text-gray-500">Credit Cards</h2>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">{t('creditCards')}</h2>
             <div className="space-y-3">
               {creditCardAccounts.map((account) => (
                 <AccountCard key={account.id} account={account} />
@@ -52,7 +54,7 @@ export default async function AccountsPage() {
         {/* Checking Accounts */}
         {checkingAccounts.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-medium text-gray-500">Checking Accounts</h2>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">{t('checkingAccounts')}</h2>
             <div className="space-y-3">
               {checkingAccounts.map((account) => (
                 <AccountCard key={account.id} account={account} />
@@ -64,7 +66,7 @@ export default async function AccountsPage() {
         {/* Savings Accounts */}
         {savingsAccounts.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-medium text-gray-500">Savings Accounts</h2>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">{t('savingsAccounts')}</h2>
             <div className="space-y-3">
               {savingsAccounts.map((account) => (
                 <AccountCard key={account.id} account={account} />
@@ -76,7 +78,7 @@ export default async function AccountsPage() {
         {/* Cash Accounts */}
         {cashAccounts.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-medium text-gray-500">Cash</h2>
+            <h2 className="mb-3 text-sm font-medium text-gray-500">{t('cash')}</h2>
             <div className="space-y-3">
               {cashAccounts.map((account) => (
                 <AccountCard key={account.id} account={account} />
@@ -87,7 +89,7 @@ export default async function AccountsPage() {
 
         {/* Empty state */}
         {accounts.length === 0 && (
-          <p className="text-sm text-gray-500">No accounts yet. Add your first account above.</p>
+          <p className="text-sm text-gray-500">{t('noAccountsYet')}</p>
         )}
       </div>
     </div>

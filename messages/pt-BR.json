@@ -162,6 +162,15 @@
     },
     "amountPlaceholder": "0,00"
   },
+  "accounts": {
+    "title": "Contas",
+    "addAccount": "Adicionar Conta",
+    "creditCards": "Cartões de Crédito",
+    "checkingAccounts": "Contas Correntes",
+    "savingsAccounts": "Contas Poupança",
+    "cash": "Dinheiro",
+    "noAccountsYet": "Nenhuma conta ainda. Adicione sua primeira conta acima."
+  },
   "accountTypes": {
     "checking": "Conta Corrente",
     "savings": "Poupança",

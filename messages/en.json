@@ -162,6 +162,15 @@
     },
     "amountPlaceholder": "0.00"
   },
+  "accounts": {
+    "title": "Accounts",
+    "addAccount": "Add Account",
+    "creditCards": "Credit Cards",
+    "checkingAccounts": "Checking Accounts",
+    "savingsAccounts": "Savings Accounts",
+    "cash": "Cash",
+    "noAccountsYet": "No accounts yet. Add your first account above."
+  },
   "accountTypes": {
     "checking": "Checking",
     "savings": "Savings",

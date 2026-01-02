@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import { db } from '../lib/db';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
-import { accounts, budgets, categories, entries, income, transactions } from '../lib/schema';
+import { accounts, budgets, categories, entries, faturas, income, transactions } from '../lib/schema';
 import { addMonths, getCurrentYearMonth } from '../lib/utils';
 
 // Production safety check
@@ -326,6 +326,7 @@ async function seed() {
     // 1. Clear all tables (reverse FK order)
     console.log('  🗑️  Clearing existing data...');
     await db.delete(income);
+    await db.delete(faturas);
     await db.delete(entries);
     await db.delete(transactions);
     await db.delete(budgets);
@@ -337,6 +338,9 @@ async function seed() {
     console.log('  💳 Inserting accounts...');
     const insertedAccounts = await db.insert(accounts).values(accountsData).returning();
     const accountMap = Object.fromEntries(insertedAccounts.map(a => [a.name, a.id]));
+    const accountsById = Object.fromEntries(
+      insertedAccounts.map((acc, idx) => [acc.id, accountsData[idx]])
+    );
     console.log(`  ✓ ${insertedAccounts.length} accounts created\n`);
 
     // 3. Insert categories
@@ -363,7 +367,7 @@ async function seed() {
         categoryId: categoryMap[txData.categoryName],
       }).returning();
 
-      const entryRecords = generateEntries(tx.id, txData, accountMap);
+      const entryRecords = generateEntries(tx.id, txData, accountMap, accountsById);
       await db.insert(entries).values(entryRecords);
       totalEntries += entryRecords.length;
     }
@@ -371,7 +375,64 @@ async function seed() {
     console.log(`  ✓ ${transactionsData.length} transactions created`);
     console.log(`  ✓ ${totalEntries} entries created\n`);
 
-    // 6. Insert income
+    // 6. Insert faturas (credit card statements)
+    console.log('  💳 Creating faturas...');
+    const allEntries = await db.query.entries.findMany();
+
+    // Group entries by (accountId, faturaMonth)
+    const faturaGroups = new Map<string, { accountId: number; faturaMonth: string; total: number }>();
+
+    for (const entry of allEntries) {
+      const key = `${entry.accountId}-${entry.faturaMonth}`;
+      const existing = faturaGroups.get(key);
+
+      if (existing) {
+        existing.total += entry.amount;
+      } else {
+        faturaGroups.set(key, {
+          accountId: entry.accountId,
+          faturaMonth: entry.faturaMonth,
+          total: entry.amount,
+        });
+      }
+    }
+
+    // Create fatura records
+    const faturaRecords: Array<{
+      accountId: number;
+      yearMonth: string;
+      totalAmount: number;
+      dueDate: string;
+      paidAt: null;
+    }> = [];
+
+    for (const group of faturaGroups.values()) {
+      const account = accountsById[group.accountId];
+
+      // Only create faturas for credit card accounts
+      if (account.type === 'credit_card' && account.closingDay && account.paymentDueDay) {
+        const dueDate = getFaturaPaymentDueDate(
+          group.faturaMonth,
+          account.paymentDueDay,
+          account.closingDay
+        );
+
+        faturaRecords.push({
+          accountId: group.accountId,
+          yearMonth: group.faturaMonth,
+          totalAmount: group.total,
+          dueDate,
+          paidAt: null, // All unpaid by default
+        });
+      }
+    }
+
+    if (faturaRecords.length > 0) {
+      await db.insert(faturas).values(faturaRecords);
+    }
+    console.log(`  ✓ ${faturaRecords.length} faturas created\n`);
+
+    // 7. Insert income
     console.log('  💵 Inserting income...');
     const incomeRecords = incomeData.map(inc => ({
       description: inc.description,
@@ -391,6 +452,7 @@ async function seed() {
     console.log(`   Budgets: ${budgetRecords.length}`);
     console.log(`   Transactions: ${transactionsData.length}`);
     console.log(`   Entries: ${totalEntries}`);
+    console.log(`   Faturas: ${faturaRecords.length}`);
     console.log(`   Income: ${incomeRecords.length}`);
   } catch (error) {
     console.error('❌ Seeding failed:', error);

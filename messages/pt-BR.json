@@ -155,7 +155,12 @@
     "icon": "Ícone",
     "noExpenseCategories": "Nenhuma categoria de despesa disponível. Crie uma em Configurações primeiro.",
     "noIncomeCategories": "Nenhuma categoria de receita disponível. Crie uma em Configurações primeiro.",
-    "noAccounts": "Nenhuma conta disponível. Crie uma em Configurações primeiro."
+    "noAccounts": "Nenhuma conta disponível. Crie uma em Configurações primeiro.",
+    "descriptionPlaceholder": {
+      "expense": "Compras no mercado",
+      "income": "Salário mensal"
+    },
+    "amountPlaceholder": "0,00"
   },
   "accountTypes": {
     "checking": "Conta Corrente",
@@ -261,5 +266,11 @@
     "system": "Sistema",
     "light": "Claro",
     "dark": "Escuro"
+  },
+  "filters": {
+    "allCategories": "Todas as Categorias",
+    "allAccounts": "Todas as Contas",
+    "allStatus": "Todos",
+    "uploadStep": "Fazer upload do CSV {parser}"
   }
 }

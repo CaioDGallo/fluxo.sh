@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useOptimistic, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { useLongPress } from '@/lib/hooks/use-long-press';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +79,10 @@ export function ExpenseCard(props: ExpenseCardProps) {
   const [isPending, startTransition] = useTransition();
   const context = useExpenseContextOptional();
 
+  const t = useTranslations('expenses');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
+
   const [optimisticCategory, setOptimisticCategory] = useOptimistic(
     { id: entry.categoryId, color: entry.categoryColor, icon: entry.categoryIcon, name: entry.categoryName },
     (_, newCategory: Category) => ({
@@ -124,7 +129,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
     try {
       await updateTransactionCategory(entry.transactionId, categoryId);
     } catch {
-      toast.error('Failed to update category');
+      toast.error(tErrors('failedToUpdateCategory'));
     }
   };
 
@@ -219,7 +224,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
               strokeWidth={2}
             />
             <span className={`hidden md:inline text-sm ${isPaid ? 'text-green-600' : 'text-gray-500'}`}>
-              {isPaid ? 'Paid' : 'Pending'}
+              {isPaid ? t('paid') : t('pending')}
             </span>
           </div>
 
@@ -232,35 +237,33 @@ export function ExpenseCard(props: ExpenseCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setDetailOpen(true)}>
-                View Details
+                {t('viewDetails')}
               </DropdownMenuItem>
               {isPaid ? (
                 <DropdownMenuItem onClick={handleMarkPending}>
-                  Mark as Pending
+                  {t('markAsPending')}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onClick={handleMarkPaid}>
-                  Mark as Paid
+                  {t('markAsPaid')}
                 </DropdownMenuItem>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    Delete Transaction
+                    {t('deleteTransaction')}
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('deleteConfirmationTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will delete all {entry.totalInstallments} installment
-                      {entry.totalInstallments > 1 ? 's' : ''} for &quot;{entry.description}&quot;.
-                      This action cannot be undone.
+                      {t('deleteConfirmation', { count: entry.totalInstallments, description: entry.description })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                    <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>{tCommon('delete')}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

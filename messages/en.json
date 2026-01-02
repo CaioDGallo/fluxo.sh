@@ -155,7 +155,12 @@
     "icon": "Icon",
     "noExpenseCategories": "No expense categories available. Create one in Settings first.",
     "noIncomeCategories": "No income categories available. Create one in Settings first.",
-    "noAccounts": "No accounts available. Create one in Settings first."
+    "noAccounts": "No accounts available. Create one in Settings first.",
+    "descriptionPlaceholder": {
+      "expense": "Groceries at Walmart",
+      "income": "Monthly salary"
+    },
+    "amountPlaceholder": "0.00"
   },
   "accountTypes": {
     "checking": "Checking",
@@ -261,5 +266,11 @@
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "filters": {
+    "allCategories": "All Categories",
+    "allAccounts": "All Accounts",
+    "allStatus": "All",
+    "uploadStep": "Upload {parser} CSV"
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Sheet,
   SheetContent,
@@ -39,6 +40,8 @@ export function FaturaDetailSheet({
   const [fatura, setFatura] = useState<FaturaDetail | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations('faturas');
+  const tCommon = useTranslations('common');
 
   useEffect(() => {
     if (open) {
@@ -50,12 +53,12 @@ export function FaturaDetailSheet({
     startTransition(async () => {
       try {
         await markFaturaUnpaid(faturaId);
-        toast.success('Pagamento revertido');
+        toast.success(t('paymentReverted'));
         // Refresh data
         const updated = await getFaturaWithEntries(faturaId);
         setFatura(updated);
       } catch (error) {
-        toast.error('Erro ao reverter pagamento');
+        toast.error(t('errorRevertingPayment'));
         console.error(error);
       }
     });
@@ -69,7 +72,7 @@ export function FaturaDetailSheet({
 
   // Group entries by category
   const entriesByCategory = fatura.entries.reduce((acc, entry) => {
-    const categoryName = entry.categoryName || 'Sem categoria';
+    const categoryName = entry.categoryName || t('noCategory');
     if (!acc[categoryName]) {
       acc[categoryName] = {
         categoryColor: entry.categoryColor || '#6b7280',
@@ -103,18 +106,18 @@ export function FaturaDetailSheet({
             {/* Summary */}
             <div className="border-b pb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">Total:</span>
+                <span className="text-sm text-gray-600">{t('total')}</span>
                 <span className="text-2xl font-bold">
                   {formatCurrency(fatura.totalAmount)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Vencimento:</span>
+                <span className="text-gray-600">{t('dueDate')}</span>
                 <span>{formatDate(fatura.dueDate)}</span>
               </div>
               {isPaid && (
                 <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-gray-600">Pago em:</span>
+                  <span className="text-gray-600">{t('paidOn')}</span>
                   <span className="text-green-600">
                     {formatDate(fatura.paidAt!)}
                   </span>
@@ -125,7 +128,7 @@ export function FaturaDetailSheet({
             {/* Entries grouped by category */}
             {fatura.entries.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-gray-500">Nenhuma compra nesta fatura</p>
+                <p className="text-gray-500">{t('noPurchases')}</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -187,14 +190,14 @@ export function FaturaDetailSheet({
                 onClick={handleUnpay}
                 disabled={isPending}
               >
-                {isPending ? 'Revertendo...' : 'Reverter Pagamento'}
+                {isPending ? tCommon('reverting') : t('revertPayment')}
               </Button>
             ) : (
               <Button
                 className="flex-1"
                 onClick={() => setPayDialogOpen(true)}
               >
-                Pagar Fatura
+                {t('payFatura')}
               </Button>
             )}
           </div>

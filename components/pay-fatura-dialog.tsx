@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -41,21 +42,23 @@ export function PayFaturaDialog({
 }: PayFaturaDialogProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations('faturas');
+  const tCommon = useTranslations('common');
 
   const handlePay = async () => {
     if (!selectedAccountId) {
-      toast.error('Selecione uma conta para pagamento');
+      toast.error(t('selectAccountError'));
       return;
     }
 
     startTransition(async () => {
       try {
         await payFatura(faturaId, parseInt(selectedAccountId));
-        toast.success('Fatura paga com sucesso!');
+        toast.success(t('faturaPaidSuccess'));
         onOpenChange(false);
         setSelectedAccountId('');
       } catch (error) {
-        toast.error('Erro ao pagar fatura');
+        toast.error(t('errorPayingFatura'));
         console.error(error);
       }
     });
@@ -65,22 +68,22 @@ export function PayFaturaDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent closeOnBackdropClick>
         <AlertDialogHeader>
-          <AlertDialogTitle>Pagar Fatura</AlertDialogTitle>
+          <AlertDialogTitle>{t('payFatura')}</AlertDialogTitle>
         </AlertDialogHeader>
 
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-gray-600">Cartão: {accountName}</p>
+            <p className="text-sm text-gray-600">{t('cardLabel')} {accountName}</p>
             <p className="text-2xl font-bold mt-2">{formatCurrency(totalAmount)}</p>
           </div>
 
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Pagar com conta:
+              {t('payWithAccount')}
             </label>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma conta" />
+                <SelectValue placeholder={t('selectAccount')} />
               </SelectTrigger>
               <SelectContent>
                 {checkingAccounts.map((account) => (
@@ -94,9 +97,9 @@ export function PayFaturaDialog({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{tCommon('cancel')}</AlertDialogCancel>
           <Button onClick={handlePay} disabled={isPending || !selectedAccountId}>
-            {isPending ? 'Pagando...' : 'Confirmar Pagamento'}
+            {isPending ? tCommon('paying') : t('confirmPayment')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

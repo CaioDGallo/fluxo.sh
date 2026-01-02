@@ -1,25 +1,25 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  Wallet01Icon,
-  SparklesIcon,
-  Invoice03Icon,
-  ArrowUp01Icon,
-  CreditCardIcon,
-} from '@hugeicons/core-free-icons';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
-import { ThemeToggleRow } from './theme-toggle-row';
 import type { Account, Category } from '@/lib/schema';
+import { cn } from '@/lib/utils';
+import {
+  ArrowUp01Icon,
+  CreditCardIcon,
+  Invoice03Icon,
+  SparklesIcon,
+  Wallet01Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ThemeToggleRow } from './theme-toggle-row';
 
 const moreItems = [
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
@@ -40,9 +40,6 @@ type MoreSheetProps = {
 export function MoreSheet({
   open,
   onOpenChange,
-  accounts,
-  expenseCategories,
-  incomeCategories,
 }: MoreSheetProps) {
   const t = useTranslations('navigation');
   const pathname = usePathname();

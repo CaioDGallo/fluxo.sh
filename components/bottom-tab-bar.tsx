@@ -153,10 +153,10 @@ export function BottomTabBar({
       >
         <div className="flex items-end justify-around h-16 px-2">
           {/* Dashboard tab */}
-          <TabButton title={t(tabs[0].key)} {...tabs[0]} active={isActive(tabs[0].href)} />
+          <TabButton title={t(tabs[0].key)} {...tabs[0]} key={tabs[0].key} active={isActive(tabs[0].href)} />
 
           {/* Budgets tab */}
-          <TabButton title={t(tabs[1].key)} {...tabs[1]} active={isActive(tabs[1].href)} />
+          <TabButton title={t(tabs[1].key)} {...tabs[1]} key={tabs[1].key} active={isActive(tabs[1].href)} />
 
           {/* Center FAB */}
           <CenterFAB
@@ -165,12 +165,13 @@ export function BottomTabBar({
           />
 
           {/* Expenses tab */}
-          <TabButton title={t(tabs[2].key)} {...tabs[2]} active={isActive(tabs[2].href)} />
+          <TabButton title={t(tabs[2].key)} {...tabs[2]} key={tabs[2].key} active={isActive(tabs[2].href)} />
 
           {/* More tab */}
           <TabButton
             title={t(tabs[3].key)}
             {...tabs[3]}
+            key={tabs[3].key}
             active={isMoreActive}
             onClick={() => setMoreOpen(true)}
           />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,10 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id?.toString() || '');
   const [isImporting, setIsImporting] = useState(false);
 
+  const t = useTranslations('import');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
+
   const handleFileSelect = (content: string) => {
     if (!selectedTemplate) return;
 
@@ -40,7 +45,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       setStep('configure');
     } catch (error) {
       console.error('Failed to parse CSV:', error);
-      toast.error('Failed to parse CSV file. Please check the file format and try again.');
+      toast.error(tErrors('failedToParseCsv'));
     }
   };
 
@@ -57,7 +62,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       });
 
       if (result.success) {
-        toast.success(`Successfully imported ${result.imported} expense${result.imported === 1 ? '' : 's'}`);
+        toast.success(t('successMessage', { count: result.imported }));
         setOpen(false);
         resetState();
       } else {
@@ -65,7 +70,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       }
     } catch (error) {
       console.error('Failed to import expenses:', error);
-      toast.error('Failed to import expenses. Please try again.');
+      toast.error(t('errorMessage'));
     } finally {
       setIsImporting(false);
     }
@@ -88,14 +93,14 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent side="right" className="w-screen! lg:max-w-3xl overflow-y-auto p-2">
         <SheetHeader>
-          <SheetTitle>Import Expenses</SheetTitle>
+          <SheetTitle>{t('title')}</SheetTitle>
         </SheetHeader>
 
         <div className="flex mt-2 space-y-4">
           {/* Step 1: Select Template */}
           {step === 'template' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Select the CSV format to import</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('selectFormat')}</p>
               <div className="space-y-2">
                 {parserList.map((parser) => (
                   <button
@@ -119,19 +124,19 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <button onClick={() => setStep('template')} className="hover:underline">
-                  Templates
+                  {t('templates')}
                 </button>
                 <span>/</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">Upload</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{t('upload')}</span>
               </div>
 
               <div>
-                <h3 className="font-medium mb-2">Upload {parsers[selectedTemplate].name} CSV</h3>
+                <h3 className="font-medium mb-2">{t('uploadStep', { parser: parsers[selectedTemplate].name })}</h3>
                 <FileDropzone onFileContent={handleFileSelect} />
               </div>
 
               <Button variant="outline" onClick={() => setStep('template')} className="w-full">
-                Back
+                {t('back')}
               </Button>
             </div>
           )}
@@ -141,21 +146,21 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
             <div className="space-y-4 w-full">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <button onClick={() => setStep('template')} className="hover:underline">
-                  Templates
+                  {t('templates')}
                 </button>
                 <span>/</span>
                 <button onClick={() => setStep('upload')} className="hover:underline">
-                  Upload
+                  {t('upload')}
                 </button>
                 <span>/</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">Configure</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{t('configure')}</span>
               </div>
 
               <ImportPreview parseResult={parseResult} />
 
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="account">Account</FieldLabel>
+                  <FieldLabel htmlFor="account">{t('account')}</FieldLabel>
                   <Select value={accountId} onValueChange={setAccountId}>
                     <SelectTrigger id="account">
                       <SelectValue />
@@ -171,7 +176,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="category">Category</FieldLabel>
+                  <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
                   <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger id="category">
                       <SelectValue />
@@ -189,14 +194,14 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep('upload')} className="flex-1">
-                  Back
+                  {t('back')}
                 </Button>
                 <Button
                   onClick={handleImport}
                   disabled={isImporting || parseResult.rows.length === 0}
                   className="flex-1"
                 >
-                  {isImporting ? 'Importing...' : `Import ${parseResult.rows.length} Expense${parseResult.rows.length === 1 ? '' : 's'}`}
+                  {isImporting ? tCommon('importing') : t('importExpenses', { count: parseResult.rows.length })}
                 </Button>
               </div>
             </div>

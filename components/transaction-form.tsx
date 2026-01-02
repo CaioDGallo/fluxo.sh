@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createExpense, updateExpense } from '@/lib/actions/expenses';
 import { createIncome, updateIncome } from '@/lib/actions/income';
 import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
@@ -58,6 +59,11 @@ export function TransactionForm({
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const t = useTranslations('form');
+  const tCommon = useTranslations('common');
+  const tExpenses = useTranslations('expenses');
+  const tIncome = useTranslations('income');
 
   const expenseContext = useExpenseContextOptional();
   const incomeContext = useIncomeContextOptional();
@@ -179,14 +185,16 @@ export function TransactionForm({
 
   const title = existingData
     ? mode === 'expense'
-      ? 'Edit Expense'
-      : 'Edit Income'
+      ? tExpenses('editExpense')
+      : tIncome('editIncome')
     : mode === 'expense'
-    ? 'Add Expense'
-    : 'Add Income';
+    ? tExpenses('addExpense')
+    : tIncome('addIncome');
 
-  const dateLabel = mode === 'expense' ? 'Purchase Date' : 'Received Date';
-  const descriptionPlaceholder = mode === 'expense' ? 'Groceries at Walmart' : 'Monthly salary';
+  const dateLabel = mode === 'expense' ? t('purchaseDate') : t('receivedDate');
+  const descriptionPlaceholder = mode === 'expense'
+    ? t('descriptionPlaceholder.expense')
+    : t('descriptionPlaceholder.income');
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -200,7 +208,7 @@ export function TransactionForm({
           <FieldGroup>
             {/* Amount */}
             <Field>
-              <FieldLabel htmlFor="amount">Amount</FieldLabel>
+              <FieldLabel htmlFor="amount">{t('amount')}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon align="inline-start">
                   <InputGroupText>R$</InputGroupText>
@@ -212,14 +220,14 @@ export function TransactionForm({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  placeholder="0.00"
+                  placeholder={t('amountPlaceholder')}
                 />
               </InputGroup>
             </Field>
 
             {/* Description */}
             <Field>
-              <FieldLabel htmlFor="description">Description</FieldLabel>
+              <FieldLabel htmlFor="description">{t('description')}</FieldLabel>
               <Input
                 type="text"
                 id="description"
@@ -232,7 +240,7 @@ export function TransactionForm({
 
             {/* Category */}
             <Field>
-              <FieldLabel>Category</FieldLabel>
+              <FieldLabel>{t('category')}</FieldLabel>
               {hasCategories ? (
                 <CategorySelect
                   categories={categories}
@@ -241,14 +249,14 @@ export function TransactionForm({
                 />
               ) : (
                 <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-                  No {mode} categories available. Please create one in Settings first.
+                  {mode === 'expense' ? t('noExpenseCategories') : t('noIncomeCategories')}
                 </div>
               )}
             </Field>
 
             {/* Account */}
             <Field>
-              <FieldLabel htmlFor="account">Account</FieldLabel>
+              <FieldLabel htmlFor="account">{t('account')}</FieldLabel>
               {hasAccounts ? (
                 <Select
                   value={accountId.toString()}
@@ -269,7 +277,7 @@ export function TransactionForm({
                 </Select>
               ) : (
                 <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-                  No accounts available. Please create one in Settings first.
+                  {t('noAccounts')}
                 </div>
               )}
             </Field>
@@ -290,7 +298,7 @@ export function TransactionForm({
             {mode === 'expense' && (
               <Field>
                 <div className="flex items-center justify-between mb-2">
-                  <FieldLabel htmlFor="installments">Installments</FieldLabel>
+                  <FieldLabel htmlFor="installments">{t('installments')}</FieldLabel>
                   {installments > 1 && (
                     <span className="text-xs text-neutral-500">
                       {installments}x de {formatCurrency(perInstallment)}
@@ -314,9 +322,9 @@ export function TransactionForm({
             )}
 
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
               <Button type="submit" disabled={!canSubmit}>
-                {isSubmitting ? 'Saving...' : existingData ? 'Update' : 'Create'}
+                {isSubmitting ? tCommon('saving') : existingData ? tCommon('update') : tCommon('create')}
               </Button>
             </AlertDialogFooter>
           </FieldGroup>

@@ -61,7 +61,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .innerJoin(categories, eq(budgets.categoryId, categories.id))
     .where(eq(budgets.yearMonth, yearMonth));
 
-  // 2. Get spending by category for the month (using purchaseDate for budget impact)
+  // 2. Get spending by category for the month (by purchase date)
   const spending = await db
     .select({
       categoryId: transactions.categoryId,
@@ -72,18 +72,21 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
     .groupBy(transactions.categoryId);
 
+  // Build spending map
+  const spendingMap = new Map<number, number>();
+  for (const s of spending) {
+    spendingMap.set(s.categoryId, s.spent);
+  }
+
   // 3. Merge budgets and spending
-  const categoryBreakdown = monthBudgets.map((budget) => {
-    const spentData = spending.find((s) => s.categoryId === budget.categoryId);
-    return {
-      categoryId: budget.categoryId,
-      categoryName: budget.categoryName,
-      categoryColor: budget.categoryColor,
-      categoryIcon: budget.categoryIcon,
-      spent: spentData?.spent || 0,
-      budget: budget.budget,
-    };
-  });
+  const categoryBreakdown = monthBudgets.map((budget) => ({
+    categoryId: budget.categoryId,
+    categoryName: budget.categoryName,
+    categoryColor: budget.categoryColor,
+    categoryIcon: budget.categoryIcon,
+    spent: spendingMap.get(budget.categoryId) || 0,
+    budget: budget.budget,
+  }));
 
   // 4. Get income for the month
   const incomeData = await db
@@ -97,7 +100,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
 
   // 5. Calculate totals
   const totalBudget = categoryBreakdown.reduce((sum, cat) => sum + cat.budget, 0);
-  const totalSpent = categoryBreakdown.reduce((sum, cat) => sum + cat.spent, 0);
+  const totalSpent = Array.from(spendingMap.values()).reduce((sum, spent) => sum + spent, 0);
   const netBalance = totalIncome - totalSpent;
 
   // 6. Get recent 5 expenses (filtered by purchaseDate)

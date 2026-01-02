@@ -5,6 +5,8 @@ import { transactions, entries, accounts, categories } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow } from '@/lib/import/types';
+import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 
 type ImportExpenseData = {
   rows: ValidatedImportRow[];
@@ -38,7 +40,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
   }
 
   try {
-    // Verify account exists
+    // Verify account exists and fetch billing config
     const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
     if (account.length === 0) {
       return { success: false, error: 'Account not found' };
@@ -50,9 +52,32 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
       return { success: false, error: 'Category not found' };
     }
 
+    // Check if this is a credit card with billing config
+    const isCreditCard = account[0].type === 'credit_card';
+    const hasBillingConfig = isCreditCard && account[0].closingDay && account[0].paymentDueDay;
+
+    // Track affected fatura months for credit card accounts
+    const affectedFaturas = new Set<string>();
+
     // Use transaction for atomicity
     await db.transaction(async (tx) => {
       for (const row of rows) {
+        // Calculate fatura month and due date based on account type
+        let faturaMonth: string;
+        let dueDate: string;
+
+        if (hasBillingConfig) {
+          // Credit card with billing config: compute fatura month and due date
+          const purchaseDate = new Date(row.date + 'T00:00:00Z');
+          faturaMonth = getFaturaMonth(purchaseDate, account[0].closingDay!);
+          dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!);
+          affectedFaturas.add(faturaMonth);
+        } else {
+          // Non-credit card or card without config: fatura = purchase month
+          faturaMonth = row.date.slice(0, 7);
+          dueDate = row.date;
+        }
+
         // 1. Create transaction (single installment)
         const [transaction] = await tx
           .insert(transactions)
@@ -64,22 +89,31 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
           })
           .returning();
 
-        // 2. Create single entry
+        // 2. Create single entry with correct fatura month and due date
         await tx.insert(entries).values({
           transactionId: transaction.id,
           accountId,
           amount: row.amountCents,
           purchaseDate: row.date,
-          faturaMonth: row.date.slice(0, 7), // Extract YYYY-MM
-          dueDate: row.date,
+          faturaMonth,
+          dueDate,
           installmentNumber: 1,
           paidAt: null,
         });
       }
     });
 
+    // Ensure faturas exist and update totals for credit cards
+    if (hasBillingConfig) {
+      for (const month of affectedFaturas) {
+        await ensureFaturaExists(accountId, month);
+        await updateFaturaTotal(accountId, month);
+      }
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
 
     return { success: true, imported: rows.length };
   } catch (error) {

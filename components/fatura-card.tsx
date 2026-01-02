@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ type FaturaCardProps = {
 
 export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const t = useTranslations('faturas');
 
   const isPaid = !!fatura.paidAt;
   const isOverdue = !fatura.paidAt && new Date(fatura.dueDate) < new Date();
@@ -70,7 +72,7 @@ export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
               {formatFaturaMonth(fatura.yearMonth)}
             </h3>
             <p className="text-xs text-gray-500">
-              Vence: {formatDate(fatura.dueDate)}
+              {t('dueDate')} {formatDate(fatura.dueDate)}
             </p>
           </div>
 
@@ -81,7 +83,7 @@ export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
 
           {/* Status badge */}
           <Badge variant={badgeVariant} className={cn('shrink-0', badgeClass)}>
-            {status === 'paid' ? 'Paga' : status === 'overdue' ? 'Vencida' : 'Pendente'}
+            {status === 'paid' ? t('paid') : status === 'overdue' ? t('overdue') : t('pending')}
           </Badge>
         </CardContent>
       </Card>

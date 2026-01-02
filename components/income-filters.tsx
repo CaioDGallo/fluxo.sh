@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -27,6 +28,9 @@ export function IncomeFilters({
 }: IncomeFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
+  const t = useTranslations('filters');
+  const tIncome = useTranslations('income');
 
   function navigateMonth(direction: -1 | 1) {
     const newMonth = addMonths(currentMonth, direction);
@@ -47,7 +51,7 @@ export function IncomeFilters({
 
   const [year, month] = currentMonth.split('-');
   const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString(
-    'pt-BR',
+    locale,
     { month: 'long', year: 'numeric' }
   );
 
@@ -75,10 +79,10 @@ export function IncomeFilters({
           onValueChange={(value) => updateFilter('category', value)}
         >
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder={t('allCategories')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">{t('allCategories')}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id.toString()}>
                 {cat.name}
@@ -92,10 +96,10 @@ export function IncomeFilters({
           onValueChange={(value) => updateFilter('account', value)}
         >
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Accounts" />
+            <SelectValue placeholder={t('allAccounts')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Accounts</SelectItem>
+            <SelectItem value="all">{t('allAccounts')}</SelectItem>
             {accounts.map((acc) => (
               <SelectItem key={acc.id} value={acc.id.toString()}>
                 {acc.name}
@@ -109,12 +113,12 @@ export function IncomeFilters({
           onValueChange={(value) => updateFilter('status', value)}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="All Status" />
+            <SelectValue placeholder={t('allStatus')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="received">Received</SelectItem>
+            <SelectItem value="all">{t('allStatus')}</SelectItem>
+            <SelectItem value="pending">{tIncome('pending')}</SelectItem>
+            <SelectItem value="received">{tIncome('received')}</SelectItem>
           </SelectContent>
         </Select>
       </div>

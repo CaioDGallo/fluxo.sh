@@ -59,7 +59,7 @@
   "navigation": {
     "northstar": "Northstar",
     "navigation": "Navegação",
-    "dashboard": "Dashboard",
+    "dashboard": "Início",
     "budgets": "Orçamentos",
     "expenses": "Despesas",
     "income": "Receitas",
@@ -71,7 +71,7 @@
     "expandSidebar": "Expandir barra lateral"
   },
   "dashboard": {
-    "title": "Dashboard",
+    "title": "Visão Geral",
     "noBudgets": "Nenhum orçamento definido para este mês",
     "noBudgetsDescription": "Configure seus orçamentos mensais para começar a acompanhar seus gastos.",
     "setBudgets": "Definir Orçamentos",
@@ -135,7 +135,19 @@
     "setBudgets": "Definir Orçamentos",
     "budgetByCategory": "Orçamento por Categoria",
     "copyFromPreviousMonth": "Copiar do mês anterior",
-    "totalMonthlyBudget": "Orçamento Mensal Total"
+    "totalMonthlyBudget": "Orçamento Mensal Total",
+    "leftFromBudget": "R${remaining} restantes de R${total} de orçamento",
+    "overBudget": "R${over} acima do seu orçamento de R${total}",
+    "percentAllocated": "{percent}% alocado",
+    "copiedMonthlyBudgetOnly": "Orçamento mensal copiado (nenhum orçamento de categoria para copiar)",
+    "noBudgetsToCopy": "Nenhum orçamento para copiar do mês anterior",
+    "copiedMonthlyBudgetAllExist": "Orçamento mensal copiado (todos os {total} orçamentos de categoria já existem)",
+    "allBudgetsExist": "Todos os {total} orçamentos já existem",
+    "copiedWithMonthlyBudget": "Copiados {copied} orçamentos + orçamento mensal",
+    "copiedBudgets": "Copiados {copied} orçamentos",
+    "copiedWithMonthlyBudgetPartial": "Copiados {copied} orçamentos + orçamento mensal ({skipped} já existiam)",
+    "copiedBudgetsPartial": "Copiados {copied} orçamentos ({skipped} já existiam)",
+    "failedToCopy": "Falha ao copiar orçamentos. Tente novamente."
   },
   "form": {
     "amount": "Valor",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { upsertBudget, upsertMonthlyBudget } from '@/lib/actions/budgets';
 import { displayToCents, centsToDisplay } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,8 @@ type BudgetFormProps = {
 };
 
 export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProps) {
+  const t = useTranslations('budgets');
+  const tErrors = useTranslations('errors');
   const [values, setValues] = useState<Record<number, string>>(
     Object.fromEntries(
       budgets.map((b) => [
@@ -47,7 +50,7 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
           return next;
         });
       } catch (error) {
-        setErrors((prev) => ({ ...prev, [categoryId]: 'Failed to save' }));
+        setErrors((prev) => ({ ...prev, [categoryId]: tErrors('failedToSave') }));
         console.error('Budget save error:', error);
       }
     }
@@ -71,7 +74,7 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
         await upsertMonthlyBudget(yearMonth, cents);
         setTotalBudgetError('');
       } catch (error) {
-        setTotalBudgetError('Failed to save');
+        setTotalBudgetError(tErrors('failedToSave'));
         console.error('Monthly budget save error:', error);
       }
     }
@@ -113,7 +116,7 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
       {/* Total Monthly Budget Input */}
       <Card className="p-4">
         <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold">Total Monthly Budget</span>
+          <span className="text-lg font-semibold">{t('totalMonthlyBudget')}</span>
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
               <span className="text-sm text-neutral-500">R$</span>
@@ -140,20 +143,18 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className={getTextColor()}>
-                {remainingBudget >= 0 ? (
-                  <>
-                    R${centsToDisplay(remainingBudget)} left from R$
-                    {centsToDisplay(totalBudgetCents)} budget
-                  </>
-                ) : (
-                  <>
-                    R${centsToDisplay(Math.abs(remainingBudget))} over your R$
-                    {centsToDisplay(totalBudgetCents)} budget
-                  </>
-                )}
+                {remainingBudget >= 0
+                  ? t('leftFromBudget', {
+                      remaining: centsToDisplay(remainingBudget),
+                      total: centsToDisplay(totalBudgetCents),
+                    })
+                  : t('overBudget', {
+                      over: centsToDisplay(Math.abs(remainingBudget)),
+                      total: centsToDisplay(totalBudgetCents),
+                    })}
               </span>
               <span className={getTextColor()}>
-                {allocationPercentage.toFixed(1)}% allocated
+                {t('percentAllocated', { percent: allocationPercentage.toFixed(1) })}
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">

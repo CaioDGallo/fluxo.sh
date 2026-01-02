@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { copyBudgetsFromMonth } from '@/lib/actions/budgets';
 import { addMonths } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,8 @@ type CopyBudgetsButtonProps = {
 };
 
 export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
+  const t = useTranslations('budgets');
+  const tCommon = useTranslations('common');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -24,30 +27,36 @@ export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
       if (result.total === 0) {
         setMessage(
           result.monthlyBudgetCopied
-            ? 'Copied monthly budget (no category budgets to copy)'
-            : 'No budgets to copy from previous month'
+            ? t('copiedMonthlyBudgetOnly')
+            : t('noBudgetsToCopy')
         );
       } else if (result.copied === 0) {
         setMessage(
           result.monthlyBudgetCopied
-            ? `Copied monthly budget (all ${result.total} category budgets already exist)`
-            : `All ${result.total} budgets already exist`
+            ? t('copiedMonthlyBudgetAllExist', { total: result.total })
+            : t('allBudgetsExist', { total: result.total })
         );
       } else if (result.skipped === 0) {
         setMessage(
           result.monthlyBudgetCopied
-            ? `Copied ${result.copied} budgets + monthly budget`
-            : `Copied ${result.copied} budgets`
+            ? t('copiedWithMonthlyBudget', { copied: result.copied })
+            : t('copiedBudgets', { copied: result.copied })
         );
       } else {
         setMessage(
           result.monthlyBudgetCopied
-            ? `Copied ${result.copied} budgets + monthly budget (${result.skipped} already existed)`
-            : `Copied ${result.copied} budgets (${result.skipped} already existed)`
+            ? t('copiedWithMonthlyBudgetPartial', {
+                copied: result.copied,
+                skipped: result.skipped,
+              })
+            : t('copiedBudgetsPartial', {
+                copied: result.copied,
+                skipped: result.skipped,
+              })
         );
       }
     } catch (error) {
-      setMessage('Failed to copy budgets. Please try again.');
+      setMessage(t('failedToCopy'));
       console.error('Copy budgets error:', error);
     } finally {
       setIsLoading(false);
@@ -57,7 +66,7 @@ export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
   return (
     <div className="flex items-center gap-3">
       <Button onClick={handleCopy} disabled={isLoading} variant="hollow">
-        {isLoading ? 'Copying...' : 'Copy from previous month'}
+        {isLoading ? tCommon('copying') : t('copyFromPreviousMonth')}
       </Button>
       {message && <span className="text-sm text-neutral-600">{message}</span>}
     </div>

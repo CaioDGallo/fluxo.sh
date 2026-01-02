@@ -135,7 +135,19 @@
     "setBudgets": "Set Budgets",
     "budgetByCategory": "Budget by Category",
     "copyFromPreviousMonth": "Copy from previous month",
-    "totalMonthlyBudget": "Total Monthly Budget"
+    "totalMonthlyBudget": "Total Monthly Budget",
+    "leftFromBudget": "R${remaining} left from R${total} budget",
+    "overBudget": "R${over} over your R${total} budget",
+    "percentAllocated": "{percent}% allocated",
+    "copiedMonthlyBudgetOnly": "Copied monthly budget (no category budgets to copy)",
+    "noBudgetsToCopy": "No budgets to copy from previous month",
+    "copiedMonthlyBudgetAllExist": "Copied monthly budget (all {total} category budgets already exist)",
+    "allBudgetsExist": "All {total} budgets already exist",
+    "copiedWithMonthlyBudget": "Copied {copied} budgets + monthly budget",
+    "copiedBudgets": "Copied {copied} budgets",
+    "copiedWithMonthlyBudgetPartial": "Copied {copied} budgets + monthly budget ({skipped} already existed)",
+    "copiedBudgetsPartial": "Copied {copied} budgets ({skipped} already existed)",
+    "failedToCopy": "Failed to copy budgets. Please try again."
   },
   "form": {
     "amount": "Amount",

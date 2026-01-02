@@ -1,6 +1,9 @@
+'use client';
+
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { CategoryIcon } from '@/components/icon-picker';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 type RecentExpensesProps = {
@@ -17,14 +20,16 @@ type RecentExpensesProps = {
 };
 
 export function RecentExpenses({ expenses }: RecentExpensesProps) {
+  const t = useTranslations('recentExpenses');
+
   if (expenses.length === 0) {
     return (
       <Card data-slot="recent-expenses">
         <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500">No expenses this month yet.</p>
+          <p className="text-center text-gray-500">{t('noExpenses')}</p>
         </CardContent>
       </Card>
     );
@@ -34,9 +39,9 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
     <Card data-slot="recent-expenses">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Recent Expenses</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
           <Link href="/expenses" className="text-xs text-blue-600 hover:underline">
-            View all
+            {t('viewAll')}
           </Link>
         </div>
       </CardHeader>

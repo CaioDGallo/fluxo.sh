@@ -1,5 +1,8 @@
+'use client';
+
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
 
 type SummaryCardProps = {
   spent: number; // cents
@@ -7,6 +10,7 @@ type SummaryCardProps = {
 };
 
 export function SummaryCard({ spent, budget }: SummaryCardProps) {
+  const t = useTranslations('summary');
   const percentage = budget > 0 ? (spent / budget) * 100 : 0;
   const remaining = budget - spent;
   const isOverBudget = remaining < 0;
@@ -14,16 +18,16 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
   return (
     <Card data-slot="summary-card">
       <CardHeader>
-        <CardTitle>Monthly Summary</CardTitle>
+        <CardTitle>{t('monthlySummary')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <div className="text-xs text-gray-500">Total Spent</div>
+          <div className="text-xs text-gray-500">{t('totalSpent')}</div>
           <div className="text-3xl font-bold">{formatCurrency(spent)}</div>
         </div>
 
         <div>
-          <div className="text-xs text-gray-500">Total Budget</div>
+          <div className="text-xs text-gray-500">{t('totalBudget')}</div>
           <div className="text-2xl font-semibold text-gray-700">
             {formatCurrency(budget)}
           </div>
@@ -31,7 +35,7 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
 
         <div className="border-t pt-4">
           <div className="text-xs text-gray-500">
-            {isOverBudget ? 'Over Budget' : 'Remaining'}
+            {isOverBudget ? t('overBudget') : t('remaining')}
           </div>
           <div
             className={`text-2xl font-semibold ${
@@ -55,7 +59,7 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
           />
         </div>
         <div className="text-center text-xs text-gray-500">
-          {percentage.toFixed(1)}% of budget used
+          {percentage.toFixed(1)}% {t('budgetUsed')}
         </div>
       </CardContent>
     </Card>

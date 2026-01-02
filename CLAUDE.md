@@ -26,7 +26,7 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 
 For full workflow details: `bd prime`
 
-## Landing the Plane (Session Completion)
+## Landing the Plane (Session Completion) - IMPORTANT
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 

@@ -1,5 +1,8 @@
+'use client';
+
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
 
 type BalanceSummaryProps = {
   income: number; // cents
@@ -8,30 +11,31 @@ type BalanceSummaryProps = {
 };
 
 export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryProps) {
+  const t = useTranslations('summary');
   const isPositive = netBalance >= 0;
 
   return (
     <Card data-slot="balance-summary">
       <CardHeader>
-        <CardTitle>Balance Summary</CardTitle>
+        <CardTitle>{t('balanceSummary')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <div className="text-xs text-gray-500">Total Income</div>
+          <div className="text-xs text-gray-500">{t('totalIncome')}</div>
           <div className="text-3xl font-bold text-green-600">
             +{formatCurrency(income)}
           </div>
         </div>
 
         <div>
-          <div className="text-xs text-gray-500">Total Expenses</div>
+          <div className="text-xs text-gray-500">{t('totalExpenses')}</div>
           <div className="text-2xl font-semibold text-red-600">
             -{formatCurrency(expenses)}
           </div>
         </div>
 
         <div className="border-t pt-4">
-          <div className="text-xs text-gray-500">Net Balance</div>
+          <div className="text-xs text-gray-500">{t('netBalance')}</div>
           <div
             className={`text-2xl font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'
               }`}
@@ -51,8 +55,8 @@ export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryP
         </div>
         <div className="text-center text-xs text-gray-500">
           {income > 0
-            ? `${((expenses / income) * 100).toFixed(1)}% of income spent`
-            : 'No income recorded'}
+            ? `${((expenses / income) * 100).toFixed(1)}% ${t('incomeSpent')}`
+            : t('noIncome')}
         </div>
       </CardContent>
     </Card>

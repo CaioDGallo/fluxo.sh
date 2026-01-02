@@ -151,7 +151,7 @@ export function BottomTabBar({
           'pb-[env(safe-area-inset-bottom)]'
         )}
       >
-        <div className="flex items-end justify-around h-16 px-2">
+        <div className="flex items-end justify-around h-16 px-2 pb-3">
           {/* Dashboard tab */}
           <TabButton title={t(tabs[0].key)} {...tabs[0]} key={tabs[0].key} active={isActive(tabs[0].href)} />
 

@@ -11,6 +11,10 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
+// Test user ID for development seeding
+// In a real scenario, you'd get this from auth.users or create a test user
+const TEST_USER_ID = 'test-user-seed-id';
+
 // Date helpers
 const CURRENT_MONTH = getCurrentYearMonth();
 const PREV_MONTH = addMonths(CURRENT_MONTH, -1);
@@ -49,7 +53,7 @@ const categoriesData = [
   { name: 'Outros', color: '#64748b', icon: 'CoinsIcon', type: 'income' as const },
 ];
 
-function createBudgets(categoryIds: Record<string, number>) {
+function createBudgets(categoryIds: Record<string, number>, userId: string) {
   const months = [CURRENT_MONTH, PREV_MONTH, TWO_MONTHS_AGO];
   const budgetAmounts: Record<string, number> = {
     'Alimentação': 80000,    // R$ 800
@@ -63,6 +67,7 @@ function createBudgets(categoryIds: Record<string, number>) {
 
   return months.flatMap(month =>
     Object.entries(budgetAmounts).map(([name, amount]) => ({
+      userId,
       categoryId: categoryIds[name],
       yearMonth: month,
       amount,
@@ -261,7 +266,8 @@ function generateEntries(
   transactionId: number,
   txData: TransactionSeed,
   accountMap: Record<string, number>,
-  accountsById: Record<number, typeof accountsData[0]>
+  accountsById: Record<number, typeof accountsData[0]>,
+  userId: string
 ) {
   const amountPerInstallment = Math.round(txData.totalAmount / txData.installments);
   const result = [];
@@ -303,6 +309,7 @@ function generateEntries(
       : amountPerInstallment;
 
     result.push({
+      userId,
       transactionId,
       accountId,
       amount,
@@ -336,7 +343,9 @@ async function seed() {
 
     // 2. Insert accounts
     console.log('  💳 Inserting accounts...');
-    const insertedAccounts = await db.insert(accounts).values(accountsData).returning();
+    const insertedAccounts = await db.insert(accounts).values(
+      accountsData.map(a => ({ ...a, userId: TEST_USER_ID }))
+    ).returning();
     const accountMap = Object.fromEntries(insertedAccounts.map(a => [a.name, a.id]));
     const accountsById = Object.fromEntries(
       insertedAccounts.map((acc, idx) => [acc.id, accountsData[idx]])
@@ -345,13 +354,15 @@ async function seed() {
 
     // 3. Insert categories
     console.log('  🏷️  Inserting categories...');
-    const insertedCategories = await db.insert(categories).values(categoriesData).returning();
+    const insertedCategories = await db.insert(categories).values(
+      categoriesData.map(c => ({ ...c, userId: TEST_USER_ID }))
+    ).returning();
     const categoryMap = Object.fromEntries(insertedCategories.map(c => [c.name, c.id]));
     console.log(`  ✓ ${insertedCategories.length} categories created\n`);
 
     // 4. Insert budgets
     console.log('  💰 Inserting budgets...');
-    const budgetRecords = createBudgets(categoryMap);
+    const budgetRecords = createBudgets(categoryMap, TEST_USER_ID);
     await db.insert(budgets).values(budgetRecords);
     console.log(`  ✓ ${budgetRecords.length} budgets created\n`);
 
@@ -361,13 +372,14 @@ async function seed() {
 
     for (const txData of transactionsData) {
       const [tx] = await db.insert(transactions).values({
+        userId: TEST_USER_ID,
         description: txData.description,
         totalAmount: txData.totalAmount,
         totalInstallments: txData.installments,
         categoryId: categoryMap[txData.categoryName],
       }).returning();
 
-      const entryRecords = generateEntries(tx.id, txData, accountMap, accountsById);
+      const entryRecords = generateEntries(tx.id, txData, accountMap, accountsById, TEST_USER_ID);
       await db.insert(entries).values(entryRecords);
       totalEntries += entryRecords.length;
     }
@@ -399,6 +411,7 @@ async function seed() {
 
     // Create fatura records
     const faturaRecords: Array<{
+      userId: string;
       accountId: number;
       yearMonth: string;
       totalAmount: number;
@@ -418,6 +431,7 @@ async function seed() {
         );
 
         faturaRecords.push({
+          userId: TEST_USER_ID,
           accountId: group.accountId,
           yearMonth: group.faturaMonth,
           totalAmount: group.total,
@@ -435,6 +449,7 @@ async function seed() {
     // 7. Insert income
     console.log('  💵 Inserting income...');
     const incomeRecords = incomeData.map(inc => ({
+      userId: TEST_USER_ID,
       description: inc.description,
       amount: inc.amount,
       categoryId: categoryMap[inc.categoryName],

@@ -9,6 +9,7 @@ export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
 // Accounts table
 export const accounts = pgTable('accounts', {
   id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
   name: text('name').notNull(),
   type: accountTypeEnum('type').notNull(),
   currency: text('currency').default('BRL'),
@@ -21,6 +22,7 @@ export const accounts = pgTable('accounts', {
 // Categories table
 export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
   name: text('name').notNull(),
   color: text('color').notNull().default('#6b7280'),
   icon: text('icon'),
@@ -33,6 +35,7 @@ export const budgets = pgTable(
   'budgets',
   {
     id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
     categoryId: integer('category_id')
       .notNull()
       .references(() => categories.id, { onDelete: 'cascade' }),
@@ -41,21 +44,29 @@ export const budgets = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
-    uniqueCategoryMonth: unique().on(table.categoryId, table.yearMonth),
+    uniqueCategoryMonth: unique().on(table.userId, table.categoryId, table.yearMonth),
   })
 );
 
 // Monthly Budgets table (total budget per month)
-export const monthlyBudgets = pgTable('monthly_budgets', {
-  id: serial('id').primaryKey(),
-  yearMonth: text('year_month').notNull().unique(),
-  amount: integer('amount').notNull(), // cents
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const monthlyBudgets = pgTable(
+  'monthly_budgets',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    yearMonth: text('year_month').notNull(),
+    amount: integer('amount').notNull(), // cents
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserMonth: unique().on(table.userId, table.yearMonth),
+  })
+);
 
 // Transactions table (parent for installments)
 export const transactions = pgTable('transactions', {
   id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
   description: text('description').notNull(),
   totalAmount: integer('total_amount').notNull(), // cents
   totalInstallments: integer('total_installments').notNull().default(1),
@@ -68,6 +79,7 @@ export const transactions = pgTable('transactions', {
 // Entries table (actual monthly charges)
 export const entries = pgTable('entries', {
   id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
   transactionId: integer('transaction_id')
     .notNull()
     .references(() => transactions.id, { onDelete: 'cascade' }),
@@ -88,6 +100,7 @@ export const faturas = pgTable(
   'faturas',
   {
     id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
     accountId: integer('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
@@ -106,6 +119,7 @@ export const faturas = pgTable(
 // Income table
 export const income = pgTable('income', {
   id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
   description: text('description').notNull(),
   amount: integer('amount').notNull(), // cents
   categoryId: integer('category_id')

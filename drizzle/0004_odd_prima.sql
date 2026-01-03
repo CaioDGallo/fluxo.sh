@@ -7,12 +7,9 @@ DO $$
 DECLARE
   v_user_id TEXT;
 BEGIN
-  -- Get the single user ID from auth.users
-  SELECT id::TEXT INTO v_user_id FROM auth.users LIMIT 1;
-
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'No user found in auth.users - cannot migrate data';
-  END IF;
+  -- Hardcoded user ID (replace with your actual user ID from auth.users)
+  -- To get your user ID: psql <postgres_db_url> -c "SELECT id FROM auth.users;"
+  v_user_id := 'f58dd388-190e-4d12-9d8f-126add711507'; -- TODO: Replace with your user ID
 
   -- Add nullable columns first
   ALTER TABLE "accounts" ADD COLUMN "user_id" TEXT;

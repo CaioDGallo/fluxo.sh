@@ -17,6 +17,13 @@ export const getCategories = cache(async (type?: 'expense' | 'income') => {
   return await db.select().from(categories).where(eq(categories.userId, userId)).orderBy(categories.name);
 });
 
+export async function getCategoriesByUser(userId: string, type?: 'expense' | 'income') {
+  if (type) {
+    return await db.select().from(categories).where(and(eq(categories.userId, userId), eq(categories.type, type))).orderBy(categories.name);
+  }
+  return await db.select().from(categories).where(eq(categories.userId, userId)).orderBy(categories.name);
+}
+
 export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();

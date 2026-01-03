@@ -2,11 +2,12 @@
 
 import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow } from '@/lib/import/types';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
+import { getCurrentUserId } from '@/lib/auth';
 
 type ImportExpenseData = {
   rows: ValidatedImportRow[];
@@ -40,14 +41,16 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // Verify account exists and fetch billing config
-    const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
+    const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);
     if (account.length === 0) {
       return { success: false, error: 'Account not found' };
     }
 
     // Verify category exists
-    const category = await db.select().from(categories).where(eq(categories.id, categoryId)).limit(1);
+    const category = await db.select().from(categories).where(and(eq(categories.userId, userId), eq(categories.id, categoryId))).limit(1);
     if (category.length === 0) {
       return { success: false, error: 'Category not found' };
     }
@@ -82,6 +85,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
         const [transaction] = await tx
           .insert(transactions)
           .values({
+            userId,
             description: row.description,
             totalAmount: row.amountCents,
             totalInstallments: 1,
@@ -91,6 +95,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
 
         // 2. Create single entry with correct fatura month and due date
         await tx.insert(entries).values({
+          userId,
           transactionId: transaction.id,
           accountId,
           amount: row.amountCents,

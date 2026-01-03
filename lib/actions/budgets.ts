@@ -5,9 +5,11 @@ import { db } from '@/lib/db';
 import { budgets, categories, entries, transactions, monthlyBudgets } from '@/lib/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { getCurrentUserId } from '@/lib/auth';
 
 export async function getBudgetsForMonth(yearMonth: string) {
   try {
+    const userId = await getCurrentUserId();
     const result = await db
       .select({
         categoryId: categories.id,
@@ -20,8 +22,13 @@ export async function getBudgetsForMonth(yearMonth: string) {
       .from(categories)
       .leftJoin(
         budgets,
-        and(eq(budgets.categoryId, categories.id), eq(budgets.yearMonth, yearMonth))
+        and(
+          eq(budgets.categoryId, categories.id),
+          eq(budgets.yearMonth, yearMonth),
+          eq(budgets.userId, userId)
+        )
       )
+      .where(eq(categories.userId, userId))
       .orderBy(categories.name);
 
     return result;
@@ -48,19 +55,24 @@ export async function upsertBudget(
   }
 
   try {
+    const userId = await getCurrentUserId();
     const existing = await db
       .select()
       .from(budgets)
-      .where(and(eq(budgets.categoryId, categoryId), eq(budgets.yearMonth, yearMonth)))
+      .where(and(
+        eq(budgets.userId, userId),
+        eq(budgets.categoryId, categoryId),
+        eq(budgets.yearMonth, yearMonth)
+      ))
       .limit(1);
 
     if (existing.length > 0) {
       await db
         .update(budgets)
         .set({ amount })
-        .where(eq(budgets.id, existing[0].id));
+        .where(and(eq(budgets.id, existing[0].id), eq(budgets.userId, userId)));
     } else {
-      await db.insert(budgets).values({ categoryId, yearMonth, amount });
+      await db.insert(budgets).values({ userId, categoryId, yearMonth, amount });
     }
 
     revalidatePath('/settings/budgets');
@@ -77,10 +89,11 @@ export async function getMonthlyBudget(yearMonth: string): Promise<number | null
   }
 
   try {
+    const userId = await getCurrentUserId();
     const result = await db
       .select({ amount: monthlyBudgets.amount })
       .from(monthlyBudgets)
-      .where(eq(monthlyBudgets.yearMonth, yearMonth))
+      .where(and(eq(monthlyBudgets.userId, userId), eq(monthlyBudgets.yearMonth, yearMonth)))
       .limit(1);
 
     return result.length > 0 ? result[0].amount : null;
@@ -99,19 +112,20 @@ export async function upsertMonthlyBudget(yearMonth: string, amount: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
     const existing = await db
       .select()
       .from(monthlyBudgets)
-      .where(eq(monthlyBudgets.yearMonth, yearMonth))
+      .where(and(eq(monthlyBudgets.userId, userId), eq(monthlyBudgets.yearMonth, yearMonth)))
       .limit(1);
 
     if (existing.length > 0) {
       await db
         .update(monthlyBudgets)
         .set({ amount })
-        .where(eq(monthlyBudgets.id, existing[0].id));
+        .where(and(eq(monthlyBudgets.id, existing[0].id), eq(monthlyBudgets.userId, userId)));
     } else {
-      await db.insert(monthlyBudgets).values({ yearMonth, amount });
+      await db.insert(monthlyBudgets).values({ userId, yearMonth, amount });
     }
 
     revalidatePath('/settings/budgets');
@@ -152,6 +166,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
   }
 
   try {
+    const userId = await getCurrentUserId();
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endOfMonth = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${endOfMonth}`;
@@ -167,7 +182,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       })
       .from(budgets)
       .innerJoin(categories, eq(budgets.categoryId, categories.id))
-      .where(eq(budgets.yearMonth, yearMonth));
+      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, yearMonth)));
 
     // 2. Get spending by category for the month (using purchaseDate for budget impact)
     const spending = await db
@@ -177,7 +192,11 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       })
       .from(entries)
       .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-      .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
+      .where(and(
+        eq(entries.userId, userId),
+        gte(entries.purchaseDate, startDate),
+        lte(entries.purchaseDate, endDate)
+      ))
       .groupBy(transactions.categoryId);
 
     // 3. Merge budgets and spending
@@ -220,6 +239,8 @@ export async function copyBudgetsFromMonth(
   targetMonth: string
 ): Promise<CopyBudgetsResult> {
   try {
+    const userId = await getCurrentUserId();
+
     // 1. Get all budgets from source month
     const sourceBudgets = await db
       .select({
@@ -227,7 +248,7 @@ export async function copyBudgetsFromMonth(
         amount: budgets.amount,
       })
       .from(budgets)
-      .where(eq(budgets.yearMonth, sourceMonth));
+      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, sourceMonth)));
 
     if (sourceBudgets.length === 0) {
       return { copied: 0, skipped: 0, total: 0, monthlyBudgetCopied: false };
@@ -237,7 +258,7 @@ export async function copyBudgetsFromMonth(
     const existingBudgets = await db
       .select({ categoryId: budgets.categoryId })
       .from(budgets)
-      .where(eq(budgets.yearMonth, targetMonth));
+      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, targetMonth)));
 
     const existingCategoryIds = new Set(existingBudgets.map((b) => b.categoryId));
 
@@ -250,6 +271,7 @@ export async function copyBudgetsFromMonth(
     if (budgetsToCopy.length > 0) {
       await db.insert(budgets).values(
         budgetsToCopy.map((budget) => ({
+          userId,
           categoryId: budget.categoryId,
           yearMonth: targetMonth,
           amount: budget.amount,

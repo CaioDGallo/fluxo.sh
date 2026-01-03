@@ -6,17 +6,20 @@ import { accounts, categories, entries, faturas, transactions, type Fatura } fro
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
+import { getCurrentUserId } from '@/lib/auth';
 
 /**
  * Ensures a fatura exists for a given account and month.
  * Creates it if it doesn't exist.
  */
 export async function ensureFaturaExists(accountId: number, yearMonth: string): Promise<Fatura> {
+  const userId = await getCurrentUserId();
+
   // Check if fatura exists
   const existing = await db
     .select()
     .from(faturas)
-    .where(and(eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)))
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)))
     .limit(1);
 
   if (existing.length > 0) {
@@ -24,7 +27,7 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
   }
 
   // Get account to compute due date
-  const account = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
+  const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);
 
   if (!account[0]) {
     throw new Error('Account not found');
@@ -39,6 +42,7 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
   const [fatura] = await db
     .insert(faturas)
     .values({
+      userId,
       accountId,
       yearMonth,
       totalAmount: 0,
@@ -53,28 +57,31 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
  * Updates the total amount for a fatura by summing all its entries.
  */
 export async function updateFaturaTotal(accountId: number, yearMonth: string): Promise<void> {
+  const userId = await getCurrentUserId();
+
   // Sum all entries for this fatura
   const result = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(and(eq(entries.accountId, accountId), eq(entries.faturaMonth, yearMonth)));
+    .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId), eq(entries.faturaMonth, yearMonth)));
 
   const totalAmount = result[0]?.total || 0;
 
   await db
     .update(faturas)
     .set({ totalAmount })
-    .where(and(eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)));
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)));
 }
 
 /**
  * Gets all faturas for a specific account, ordered by month descending.
  */
 export const getFaturasByAccount = cache(async (accountId: number) => {
+  const userId = await getCurrentUserId();
   return await db
     .select()
     .from(faturas)
-    .where(eq(faturas.accountId, accountId))
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId)))
     .orderBy(desc(faturas.yearMonth));
 });
 
@@ -82,6 +89,7 @@ export const getFaturasByAccount = cache(async (accountId: number) => {
  * Gets all faturas for a specific month across all credit card accounts.
  */
 export const getFaturasByMonth = cache(async (yearMonth: string) => {
+  const userId = await getCurrentUserId();
   return await db
     .select({
       id: faturas.id,
@@ -95,7 +103,7 @@ export const getFaturasByMonth = cache(async (yearMonth: string) => {
     })
     .from(faturas)
     .innerJoin(accounts, eq(faturas.accountId, accounts.id))
-    .where(eq(faturas.yearMonth, yearMonth))
+    .where(and(eq(faturas.userId, userId), eq(faturas.yearMonth, yearMonth)))
     .orderBy(accounts.name);
 });
 
@@ -103,7 +111,8 @@ export const getFaturasByMonth = cache(async (yearMonth: string) => {
  * Gets fatura details including all entries.
  */
 export const getFaturaWithEntries = cache(async (faturaId: number) => {
-  const fatura = await db.select().from(faturas).where(eq(faturas.id, faturaId)).limit(1);
+  const userId = await getCurrentUserId();
+  const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
 
   if (!fatura[0]) {
     return null;
@@ -130,6 +139,7 @@ export const getFaturaWithEntries = cache(async (faturaId: number) => {
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
     .where(
       and(
+        eq(entries.userId, userId),
         eq(entries.accountId, fatura[0].accountId),
         eq(entries.faturaMonth, fatura[0].yearMonth)
       )
@@ -155,8 +165,10 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // 1. Get fatura details
-    const fatura = await db.select().from(faturas).where(eq(faturas.id, faturaId)).limit(1);
+    const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
 
     if (!fatura[0]) {
       throw new Error('Fatura not found');
@@ -170,7 +182,7 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
     const sourceAccount = await db
       .select()
       .from(accounts)
-      .where(eq(accounts.id, fromAccountId))
+      .where(and(eq(accounts.userId, userId), eq(accounts.id, fromAccountId)))
       .limit(1);
 
     if (!sourceAccount[0]) {
@@ -188,7 +200,7 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
         paidAt: new Date(),
         paidFromAccountId: fromAccountId,
       })
-      .where(eq(faturas.id, faturaId));
+      .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 
     // 4. Mark all entries in this fatura as paid
     await db
@@ -196,6 +208,7 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
       .set({ paidAt: new Date() })
       .where(
         and(
+          eq(entries.userId, userId),
           eq(entries.accountId, fatura[0].accountId),
           eq(entries.faturaMonth, fatura[0].yearMonth)
         )
@@ -219,8 +232,10 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // Get fatura details
-    const fatura = await db.select().from(faturas).where(eq(faturas.id, faturaId)).limit(1);
+    const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
 
     if (!fatura[0]) {
       throw new Error('Fatura not found');
@@ -233,7 +248,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
         paidAt: null,
         paidFromAccountId: null,
       })
-      .where(eq(faturas.id, faturaId));
+      .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 
     // Mark all entries in this fatura as unpaid
     await db
@@ -241,6 +256,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
       .set({ paidAt: null })
       .where(
         and(
+          eq(entries.userId, userId),
           eq(entries.accountId, fatura[0].accountId),
           eq(entries.faturaMonth, fatura[0].yearMonth)
         )
@@ -262,6 +278,8 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
  */
 export async function backfillFaturas(): Promise<{ created: number }> {
   try {
+    const userId = await getCurrentUserId();
+
     // Get all distinct (accountId, faturaMonth) combinations from entries
     // Only for credit card accounts
     const distinctCombinations = await db
@@ -271,7 +289,7 @@ export async function backfillFaturas(): Promise<{ created: number }> {
       })
       .from(entries)
       .innerJoin(accounts, eq(entries.accountId, accounts.id))
-      .where(eq(accounts.type, 'credit_card'));
+      .where(and(eq(entries.userId, userId), eq(accounts.type, 'credit_card')));
 
     let created = 0;
 
@@ -280,7 +298,11 @@ export async function backfillFaturas(): Promise<{ created: number }> {
       const existing = await db
         .select()
         .from(faturas)
-        .where(and(eq(faturas.accountId, combo.accountId), eq(faturas.yearMonth, combo.faturaMonth)))
+        .where(and(
+          eq(faturas.userId, userId),
+          eq(faturas.accountId, combo.accountId),
+          eq(faturas.yearMonth, combo.faturaMonth)
+        ))
         .limit(1);
 
       // Skip if fatura already exists

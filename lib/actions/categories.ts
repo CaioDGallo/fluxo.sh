@@ -3,21 +3,24 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { categories, transactions, income, type NewCategory } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { getCurrentUserId } from '@/lib/auth';
 
 type ActionResult = { success: true } | { success: false; error: string };
 
 export const getCategories = cache(async (type?: 'expense' | 'income') => {
+  const userId = await getCurrentUserId();
   if (type) {
-    return await db.select().from(categories).where(eq(categories.type, type)).orderBy(categories.name);
+    return await db.select().from(categories).where(and(eq(categories.userId, userId), eq(categories.type, type))).orderBy(categories.name);
   }
-  return await db.select().from(categories).orderBy(categories.name);
+  return await db.select().from(categories).where(eq(categories.userId, userId)).orderBy(categories.name);
 });
 
-export async function createCategory(data: Omit<NewCategory, 'id' | 'createdAt'>): Promise<ActionResult> {
+export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {
   try {
-    await db.insert(categories).values(data);
+    const userId = await getCurrentUserId();
+    await db.insert(categories).values({ ...data, userId });
     revalidatePath('/settings/categories');
     revalidateTag('categories', 'max');
     if (data.type === 'expense') {
@@ -32,9 +35,10 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'createdAt'>
   }
 }
 
-export async function updateCategory(id: number, data: Partial<Omit<NewCategory, 'id' | 'createdAt'>>): Promise<ActionResult> {
+export async function updateCategory(id: number, data: Partial<Omit<NewCategory, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
   try {
-    await db.update(categories).set(data).where(eq(categories.id, id));
+    const userId = await getCurrentUserId();
+    await db.update(categories).set(data).where(and(eq(categories.id, id), eq(categories.userId, userId)));
     revalidatePath('/settings/categories');
     revalidateTag('categories', 'max');
     revalidateTag('expense-categories', 'max');
@@ -48,11 +52,13 @@ export async function updateCategory(id: number, data: Partial<Omit<NewCategory,
 
 export async function deleteCategory(id: number): Promise<ActionResult> {
   try {
+    const userId = await getCurrentUserId();
+
     // Check if category is used by any transactions
     const usedByTransactions = await db
       .select({ id: transactions.id })
       .from(transactions)
-      .where(eq(transactions.categoryId, id))
+      .where(and(eq(transactions.categoryId, id), eq(transactions.userId, userId)))
       .limit(1);
 
     if (usedByTransactions.length > 0) {
@@ -63,14 +69,14 @@ export async function deleteCategory(id: number): Promise<ActionResult> {
     const usedByIncome = await db
       .select({ id: income.id })
       .from(income)
-      .where(eq(income.categoryId, id))
+      .where(and(eq(income.categoryId, id), eq(income.userId, userId)))
       .limit(1);
 
     if (usedByIncome.length > 0) {
       return { success: false, error: 'Cannot delete category with existing income entries' };
     }
 
-    await db.delete(categories).where(eq(categories.id, id));
+    await db.delete(categories).where(and(eq(categories.id, id), eq(categories.userId, userId)));
     revalidatePath('/settings/categories');
     revalidateTag('categories', 'max');
     revalidateTag('expense-categories', 'max');

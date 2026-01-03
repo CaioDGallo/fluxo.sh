@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { income, categories, accounts } from '@/lib/schema';
 import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { getCurrentUserId } from '@/lib/auth';
 
 export type CreateIncomeData = {
   description: string;
@@ -33,7 +34,10 @@ export async function createIncome(data: CreateIncomeData) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db.insert(income).values({
+      userId,
       description: data.description.trim(),
       amount: data.amount,
       categoryId: data.categoryId,
@@ -71,6 +75,8 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(income)
       .set({
@@ -80,7 +86,7 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
         accountId: data.accountId,
         receivedDate: data.receivedDate,
       })
-      .where(eq(income.id, incomeId));
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
@@ -96,7 +102,9 @@ export async function deleteIncome(incomeId: number) {
   }
 
   try {
-    await db.delete(income).where(eq(income.id, incomeId));
+    const userId = await getCurrentUserId();
+
+    await db.delete(income).where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
@@ -114,7 +122,8 @@ export type IncomeFilters = {
 };
 
 export const getIncome = cache(async (filters: IncomeFilters = {}) => {
-  const conditions = [];
+  const userId = await getCurrentUserId();
+  const conditions = [eq(income.userId, userId)];
 
   // Filter by month
   if (filters.yearMonth) {
@@ -161,7 +170,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))
     .innerJoin(accounts, eq(income.accountId, accounts.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(income.receivedDate), desc(income.createdAt));
 
   return results;
@@ -173,10 +182,12 @@ export async function markIncomeReceived(incomeId: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(income)
       .set({ receivedAt: new Date() })
-      .where(eq(income.id, incomeId));
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
@@ -192,10 +203,12 @@ export async function markIncomePending(incomeId: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(income)
       .set({ receivedAt: null })
-      .where(eq(income.id, incomeId));
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
@@ -206,10 +219,12 @@ export async function markIncomePending(incomeId: number) {
 }
 
 export async function updateIncomeCategory(incomeId: number, categoryId: number) {
+  const userId = await getCurrentUserId();
+
   await db
     .update(income)
     .set({ categoryId })
-    .where(eq(income.id, incomeId));
+    .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
   revalidatePath('/income');
   revalidatePath('/dashboard');
@@ -219,10 +234,12 @@ export async function bulkUpdateIncomeCategories(
   incomeIds: number[],
   categoryId: number
 ) {
+  const userId = await getCurrentUserId();
+
   await db
     .update(income)
     .set({ categoryId })
-    .where(inArray(income.id, incomeIds));
+    .where(and(eq(income.userId, userId), inArray(income.id, incomeIds)));
 
   revalidatePath('/income');
   revalidatePath('/dashboard');

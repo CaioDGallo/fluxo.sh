@@ -3,27 +3,32 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { accounts, type NewAccount } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { getCurrentUserId } from '@/lib/auth';
 
 export const getAccounts = cache(async () => {
-  return await db.select().from(accounts).orderBy(accounts.name);
+  const userId = await getCurrentUserId();
+  return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
 });
 
-export async function createAccount(data: Omit<NewAccount, 'id' | 'createdAt'>) {
-  await db.insert(accounts).values(data);
+export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'createdAt'>) {
+  const userId = await getCurrentUserId();
+  await db.insert(accounts).values({ ...data, userId });
   revalidatePath('/settings/accounts');
   revalidateTag('accounts', 'max');
 }
 
-export async function updateAccount(id: number, data: Partial<Omit<NewAccount, 'id' | 'createdAt'>>) {
-  await db.update(accounts).set(data).where(eq(accounts.id, id));
+export async function updateAccount(id: number, data: Partial<Omit<NewAccount, 'id' | 'userId' | 'createdAt'>>) {
+  const userId = await getCurrentUserId();
+  await db.update(accounts).set(data).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
   revalidatePath('/settings/accounts');
   revalidateTag('accounts', 'max');
 }
 
 export async function deleteAccount(id: number) {
-  await db.delete(accounts).where(eq(accounts.id, id));
+  const userId = await getCurrentUserId();
+  await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
   revalidatePath('/settings/accounts');
   revalidateTag('accounts', 'max');
 }

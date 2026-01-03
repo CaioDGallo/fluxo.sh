@@ -7,6 +7,7 @@ import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
+import { getCurrentUserId } from '@/lib/auth';
 
 type CreateExpenseData = {
   description: string;
@@ -39,8 +40,10 @@ export async function createExpense(data: CreateExpenseData) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // 1. Get account to check type and billing config
-    const account = await db.select().from(accounts).where(eq(accounts.id, data.accountId)).limit(1);
+    const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, data.accountId))).limit(1);
 
     if (!account[0]) {
       throw new Error('Account not found');
@@ -53,6 +56,7 @@ export async function createExpense(data: CreateExpenseData) {
     const [transaction] = await db
       .insert(transactions)
       .values({
+        userId,
         description: data.description,
         totalAmount: data.totalAmount,
         totalInstallments: data.installments,
@@ -92,6 +96,7 @@ export async function createExpense(data: CreateExpenseData) {
       }
 
       entriesToInsert.push({
+        userId,
         transactionId: transaction.id,
         accountId: data.accountId,
         amount,
@@ -123,8 +128,9 @@ export async function createExpense(data: CreateExpenseData) {
 }
 
 export async function getTransactionWithEntries(transactionId: number) {
+  const userId = await getCurrentUserId();
   const transaction = await db.query.transactions.findFirst({
-    where: eq(transactions.id, transactionId),
+    where: and(eq(transactions.userId, userId), eq(transactions.id, transactionId)),
     with: {
       entries: true,
     },
@@ -157,11 +163,13 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // 1. Get old entries to track affected faturas for cleanup
     const oldEntries = await db
       .select()
       .from(entries)
-      .where(eq(entries.transactionId, transactionId));
+      .where(and(eq(entries.userId, userId), eq(entries.transactionId, transactionId)));
 
     const oldFaturas = new Map<number, Set<string>>();
     for (const entry of oldEntries) {
@@ -172,7 +180,7 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
     }
 
     // 2. Get account to check type and billing config
-    const account = await db.select().from(accounts).where(eq(accounts.id, data.accountId)).limit(1);
+    const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, data.accountId))).limit(1);
 
     if (!account[0]) {
       throw new Error('Account not found');
@@ -190,10 +198,10 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
         totalInstallments: data.installments,
         categoryId: data.categoryId,
       })
-      .where(eq(transactions.id, transactionId));
+      .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
 
     // 4. Delete old entries
-    await db.delete(entries).where(eq(entries.transactionId, transactionId));
+    await db.delete(entries).where(and(eq(entries.userId, userId), eq(entries.transactionId, transactionId)));
 
     // 5. Regenerate entries (same logic as create)
     const amountPerInstallment = Math.round(data.totalAmount / data.installments);
@@ -224,6 +232,7 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       }
 
       entriesToInsert.push({
+        userId,
         transactionId,
         accountId: data.accountId,
         amount,
@@ -266,11 +275,13 @@ export async function deleteExpense(transactionId: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     // Get entries before deletion to update affected faturas
     const oldEntries = await db
       .select()
       .from(entries)
-      .where(eq(entries.transactionId, transactionId));
+      .where(and(eq(entries.userId, userId), eq(entries.transactionId, transactionId)));
 
     const affectedFaturas = new Map<number, Set<string>>();
     for (const entry of oldEntries) {
@@ -281,7 +292,7 @@ export async function deleteExpense(transactionId: number) {
     }
 
     // CASCADE will delete entries automatically
-    await db.delete(transactions).where(eq(transactions.id, transactionId));
+    await db.delete(transactions).where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
 
     // Update fatura totals for affected faturas
     for (const [accountId, months] of affectedFaturas) {
@@ -307,9 +318,10 @@ export type ExpenseFilters = {
 };
 
 export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
+  const userId = await getCurrentUserId();
   const { yearMonth, categoryId, accountId, status = 'all' } = filters;
 
-  const conditions = [];
+  const conditions = [eq(entries.userId, userId)];
 
   // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
   if (yearMonth) {
@@ -353,7 +365,7 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
     .innerJoin(accounts, eq(entries.accountId, accounts.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(entries.dueDate));
 
   return results;
@@ -365,10 +377,12 @@ export async function markEntryPaid(entryId: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(entries)
       .set({ paidAt: new Date() })
-      .where(eq(entries.id, entryId));
+      .where(and(eq(entries.userId, userId), eq(entries.id, entryId)));
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -384,10 +398,12 @@ export async function markEntryPending(entryId: number) {
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(entries)
       .set({ paidAt: null })
-      .where(eq(entries.id, entryId));
+      .where(and(eq(entries.userId, userId), eq(entries.id, entryId)));
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -406,10 +422,12 @@ export async function updateTransactionCategory(transactionId: number, categoryI
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(transactions)
       .set({ categoryId })
-      .where(eq(transactions.id, transactionId));
+      .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -431,10 +449,12 @@ export async function bulkUpdateTransactionCategories(
   }
 
   try {
+    const userId = await getCurrentUserId();
+
     await db
       .update(transactions)
       .set({ categoryId })
-      .where(inArray(transactions.id, transactionIds));
+      .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');

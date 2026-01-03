@@ -1,7 +1,5 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
-
 ## Quick Reference
 
 ```bash
@@ -26,7 +24,11 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 
 For full workflow details: `bd prime`
 
-## Landing the Plane (Session Completion) - IMPORTANT
+If you find work that must be done while doing a task, file beads issues for it. For example finding a bug in the middle of other task, a critical improvement, broken tests, any kind of work that is worth doing.
+
+While doing a code review, keep track of it and note your findings in a dedicated beads issue, so it can be later analyzed and worked on.
+
+## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 

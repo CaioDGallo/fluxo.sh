@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
+    "build:clean": "rm -rf .next && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "NODE_ENV=test vitest",

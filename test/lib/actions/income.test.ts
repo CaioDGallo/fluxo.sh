@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { setupTestDb, teardownTestDb, clearAllTables, getTestDb } from '@/test/db-utils';
+import { mockAuth } from '@/test/auth-utils';
 import * as schema from '@/lib/schema';
-import { testAccounts, testCategories } from '@/test/fixtures';
+import { testAccounts, testCategories, TEST_USER_ID } from '@/test/fixtures';
 
 describe('Income Actions - Happy Path', () => {
   let db: ReturnType<typeof getTestDb>;
@@ -24,6 +25,9 @@ describe('Income Actions - Happy Path', () => {
     vi.doMock('@/lib/db', () => ({
       db,
     }));
+
+    // Mock auth to prevent Next.js cookies() calls
+    mockAuth();
 
     // Import actions after mocking
     const actions = await import('@/lib/actions/income');
@@ -265,7 +269,7 @@ describe('Income Actions - Happy Path', () => {
     it('filters by categoryId', async () => {
       const [newCategory] = await db
         .insert(schema.categories)
-        .values({ name: 'Bonus', color: '#8b5cf6', type: 'income' })
+        .values({ userId: TEST_USER_ID, name: 'Bonus', color: '#8b5cf6', type: 'income' })
         .returning();
 
       await createIncome({
@@ -285,7 +289,7 @@ describe('Income Actions - Happy Path', () => {
     it('filters by accountId', async () => {
       const [newAccount] = await db
         .insert(schema.accounts)
-        .values({ name: 'Business Account', type: 'checking' })
+        .values({ userId: TEST_USER_ID, name: 'Business Account', type: 'checking' })
         .returning();
 
       await createIncome({
@@ -448,7 +452,7 @@ describe('Income Actions - Happy Path', () => {
 
       const [newCategory] = await db
         .insert(schema.categories)
-        .values({ name: 'New Income Category', color: '#10b981', type: 'income' })
+        .values({ userId: TEST_USER_ID, name: 'New Income Category', color: '#10b981', type: 'income' })
         .returning();
 
       const initial = await getIncome();

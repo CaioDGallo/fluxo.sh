@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { createExpense, updateExpense } from '@/lib/actions/expenses';
 import { createIncome, updateIncome } from '@/lib/actions/income';
@@ -92,6 +92,18 @@ export function TransactionForm({
     transaction?.totalInstallments || 1
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const amountInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure modal animation completes
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   const totalCents = amount ? displayToCents(amount) : 0;
   const perInstallment = installments > 0 ? totalCents / installments : 0;
@@ -214,6 +226,7 @@ export function TransactionForm({
                   <InputGroupText>R$</InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput
+                  ref={amountInputRef}
                   type="number"
                   id="amount"
                   step="0.01"

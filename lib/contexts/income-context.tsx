@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useOptimistic, useCallback, startTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Account, Category } from '@/lib/schema';
 import {
@@ -96,7 +97,7 @@ type IncomeContextValue = {
   filters: IncomeFilters;
 
   // Optimistic actions
-  addIncome: (data: CreateIncomeInput) => Promise<void>;
+  addIncome: (data: CreateIncomeInput) => void;
   toggleReceived: (id: number, currentReceivedAt: string | null) => Promise<void>;
   removeIncome: (id: number) => Promise<void>;
   bulkUpdateCategory: (incomeIds: number[], categoryId: number) => Promise<void>;
@@ -152,11 +153,12 @@ export function IncomeListProvider({
   categories,
   filters,
 }: IncomeListProviderProps) {
+  const router = useRouter();
   const [optimisticIncome, dispatch] = useOptimistic(initialIncome, incomeReducer);
 
   // Add income (create)
   const addIncome = useCallback(
-    async (input: CreateIncomeInput) => {
+    (input: CreateIncomeInput) => {
       const tempId = `temp-${Date.now()}`;
 
       // Generate optimistic entry
@@ -166,21 +168,19 @@ export function IncomeListProvider({
         dispatch({ type: 'add', item: optimisticEntry });
       });
 
-      try {
-        await serverCreateIncome({
-          description: input.description,
-          amount: input.amount,
-          categoryId: input.categoryId,
-          accountId: input.accountId,
-          receivedDate: input.receivedDate,
-        });
-        // revalidatePath in server action will update the server state
-      } catch (error) {
+      // Fire-and-forget - matches toggleReceived/removeIncome pattern
+      serverCreateIncome({
+        description: input.description,
+        amount: input.amount,
+        categoryId: input.categoryId,
+        accountId: input.accountId,
+        receivedDate: input.receivedDate,
+      }).catch(() => {
         toast.error('Failed to create income');
-        throw error;
-      }
+        router.refresh(); // Revert optimistic state
+      });
     },
-    [dispatch]
+    [dispatch, router]
   );
 
   // Toggle received/pending

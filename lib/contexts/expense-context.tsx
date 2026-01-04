@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useOptimistic, useCallback, startTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Account, Category } from '@/lib/schema';
 import {
@@ -102,7 +103,7 @@ type ExpenseContextValue = {
   filters: ExpenseFilters;
 
   // Optimistic actions
-  addExpense: (data: CreateExpenseInput) => Promise<void>;
+  addExpense: (data: CreateExpenseInput) => void;
   togglePaid: (id: number, currentPaidAt: string | null) => Promise<void>;
   removeExpense: (transactionId: number) => Promise<void>;
   bulkUpdateCategory: (transactionIds: number[], categoryId: number) => Promise<void>;
@@ -187,11 +188,12 @@ export function ExpenseListProvider({
   categories,
   filters,
 }: ExpenseListProviderProps) {
+  const router = useRouter();
   const [optimisticExpenses, dispatch] = useOptimistic(initialExpenses, expenseReducer);
 
   // Add expense (create)
   const addExpense = useCallback(
-    async (input: CreateExpenseInput) => {
+    (input: CreateExpenseInput) => {
       const tempId = `temp-${Date.now()}`;
 
       // Generate optimistic entries
@@ -201,22 +203,20 @@ export function ExpenseListProvider({
         dispatch({ type: 'add', items: optimisticEntries });
       });
 
-      try {
-        await serverCreateExpense({
-          description: input.description,
-          totalAmount: input.totalAmount,
-          categoryId: input.categoryId,
-          accountId: input.accountId,
-          purchaseDate: input.purchaseDate,
-          installments: input.installments,
-        });
-        // revalidatePath in server action will update the server state
-      } catch (error) {
+      // Fire-and-forget - matches togglePaid/removeExpense pattern
+      serverCreateExpense({
+        description: input.description,
+        totalAmount: input.totalAmount,
+        categoryId: input.categoryId,
+        accountId: input.accountId,
+        purchaseDate: input.purchaseDate,
+        installments: input.installments,
+      }).catch(() => {
         toast.error('Failed to create expense');
-        throw error;
-      }
+        router.refresh(); // Revert optimistic state
+      });
     },
-    [dispatch]
+    [dispatch, router]
   );
 
   // Toggle paid/pending

@@ -197,9 +197,11 @@ export function ExpenseCard(props: ExpenseCardProps) {
                 </Badge>
               )}
             </div>
-            {/* Mobile only: short date */}
-            <div className="text-xs text-gray-500 md:hidden">
-              {formatDate(entry.dueDate, { day: '2-digit', month: 'short' })}
+            {/* Mobile only: Category • Account */}
+            <div className="flex items-center gap-1 text-xs text-gray-500 md:hidden min-w-0">
+              <span className="truncate">{optimisticCategory.name}</span>
+              <span className="shrink-0">•</span>
+              <span className="shrink-0">{entry.accountName}</span>
             </div>
           </div>
 

@@ -9,13 +9,14 @@ import { backfillFaturas } from '@/lib/actions/faturas';
 async function main() {
   console.log('Starting fatura backfill...');
 
-  try {
-    const result = await backfillFaturas();
-    console.log(`✓ Successfully created ${result.created} fatura records`);
-  } catch (error) {
-    console.error('✗ Backfill failed:', error);
+  const result = await backfillFaturas();
+
+  if ('error' in result) {
+    console.error('✗ Backfill failed:', result.error);
     process.exit(1);
   }
+
+  console.log(`✓ Successfully created ${result.created} fatura records`);
 }
 
 main();

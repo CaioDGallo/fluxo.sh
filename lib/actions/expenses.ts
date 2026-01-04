@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { getCurrentUserId } from '@/lib/auth';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
 
 type CreateExpenseData = {
   description: string;
@@ -451,6 +452,11 @@ export async function bulkUpdateTransactionCategories(
 
   try {
     const userId = await getCurrentUserId();
+
+    const rateLimit = await checkBulkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      throw new Error(`Rate limited. Try again in ${rateLimit.retryAfter}s.`);
+    }
 
     await db
       .update(transactions)

@@ -7,6 +7,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
 import { getCurrentUserId } from '@/lib/auth';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
 
 /**
  * Ensures a fatura exists for a given account and month.
@@ -276,9 +277,14 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
  * Creates faturas for all distinct (accountId, faturaMonth) combinations
  * where entries exist but no fatura record exists yet.
  */
-export async function backfillFaturas(): Promise<{ created: number }> {
+export async function backfillFaturas(): Promise<{ created: number } | { error: string }> {
   try {
     const userId = await getCurrentUserId();
+
+    const rateLimit = await checkBulkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return { error: `Rate limited. Try again in ${rateLimit.retryAfter}s.` };
+    }
 
     // Get all distinct (accountId, faturaMonth) combinations from entries
     // Only for credit card accounts
@@ -320,6 +326,6 @@ export async function backfillFaturas(): Promise<{ created: number }> {
     return { created };
   } catch (error) {
     console.error('Failed to backfill faturas:', error);
-    throw error instanceof Error ? error : new Error('Failed to backfill faturas');
+    return { error: 'Failed to backfill faturas' };
   }
 }

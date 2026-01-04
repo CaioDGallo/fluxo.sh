@@ -8,6 +8,7 @@ import type { ValidatedImportRow } from '@/lib/import/types';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { getCurrentUserId } from '@/lib/auth';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
 
 type ImportExpenseData = {
   rows: ValidatedImportRow[];
@@ -42,6 +43,11 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
 
   try {
     const userId = await getCurrentUserId();
+
+    const rateLimit = await checkBulkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return { success: false, error: `Rate limited. Try again in ${rateLimit.retryAfter}s.` };
+    }
 
     // Verify account exists and fetch billing config
     const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);

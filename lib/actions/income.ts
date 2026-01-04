@@ -6,6 +6,7 @@ import { income, categories, accounts } from '@/lib/schema';
 import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
 
 export type CreateIncomeData = {
   description: string;
@@ -235,13 +236,30 @@ export async function bulkUpdateIncomeCategories(
   incomeIds: number[],
   categoryId: number
 ) {
-  const userId = await getCurrentUserId();
+  if (!Array.isArray(incomeIds) || incomeIds.length === 0) {
+    throw new Error('Income IDs array is required');
+  }
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    throw new Error('Invalid category ID');
+  }
 
-  await db
-    .update(income)
-    .set({ categoryId })
-    .where(and(eq(income.userId, userId), inArray(income.id, incomeIds)));
+  try {
+    const userId = await getCurrentUserId();
 
-  revalidatePath('/income');
-  revalidatePath('/dashboard');
+    const rateLimit = await checkBulkRateLimit(userId);
+    if (!rateLimit.allowed) {
+      throw new Error(`Rate limited. Try again in ${rateLimit.retryAfter}s.`);
+    }
+
+    await db
+      .update(income)
+      .set({ categoryId })
+      .where(and(eq(income.userId, userId), inArray(income.id, incomeIds)));
+
+    revalidatePath('/income');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    console.error('Failed to bulk update income categories:', { incomeIds, categoryId, error });
+    throw new Error('Failed to update income categories. Please try again.');
+  }
 }

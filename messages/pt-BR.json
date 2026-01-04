@@ -109,7 +109,8 @@
     "markAsPending": "Marcar como Pendente",
     "deleteIncome": "Excluir Receita",
     "deleteConfirmationTitle": "Excluir receita?",
-    "deleteConfirmation": "Isso excluirá \"{description}\". Esta ação não pode ser desfeita."
+    "deleteConfirmation": "Isso excluirá \"{description}\". Esta ação não pode ser desfeita.",
+    "viewDetails": "Ver Detalhes"
   },
   "settings": {
     "title": "Configurações",

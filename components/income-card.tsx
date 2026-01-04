@@ -78,6 +78,7 @@ export function IncomeCard(props: IncomeCardProps) {
   const [isPending, startTransition] = useTransition();
   const context = useIncomeContextOptional();
 
+  const t = useTranslations('income');
   const tCommon = useTranslations('common');
 
   const [optimisticCategory, setOptimisticCategory] = useOptimistic(
@@ -132,7 +133,7 @@ export function IncomeCard(props: IncomeCardProps) {
 
   const longPressHandlers = useLongPress({
     onLongPress: props.selectionMode ? props.onLongPress : (props.onLongPress || (() => { })),
-    onTap: props.selectionMode ? props.onToggleSelection : () => setDetailOpen(true),
+    onTap: props.selectionMode ? props.onToggleSelection : undefined,
     disabled: !props.selectionMode && !props.onLongPress,
   });
 
@@ -237,6 +238,9 @@ export function IncomeCard(props: IncomeCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setDetailOpen(true)}>
+                {t('viewDetails')}
+              </DropdownMenuItem>
               {isReceived ? (
                 <DropdownMenuItem onClick={handleMarkPending}>
                   Mark as Pending

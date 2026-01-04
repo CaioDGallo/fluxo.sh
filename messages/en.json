@@ -109,7 +109,8 @@
     "markAsPending": "Mark as Pending",
     "deleteIncome": "Delete Income",
     "deleteConfirmationTitle": "Delete income?",
-    "deleteConfirmation": "This will delete \"{description}\". This action cannot be undone."
+    "deleteConfirmation": "This will delete \"{description}\". This action cannot be undone.",
+    "viewDetails": "View Details"
   },
   "settings": {
     "title": "Settings",

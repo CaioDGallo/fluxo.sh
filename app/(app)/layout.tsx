@@ -7,19 +7,16 @@ import {
   getCachedExpenseCategories,
   getCachedIncomeCategories
 } from '@/lib/actions/cached-layout-data';
-import { getCurrentUserId } from '@/lib/auth';
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const userId = await getCurrentUserId();
-
   const [accounts, expenseCategories, incomeCategories] = await Promise.all([
-    getCachedAccounts(userId),
-    getCachedExpenseCategories(userId),
-    getCachedIncomeCategories(userId),
+    getCachedAccounts(),
+    getCachedExpenseCategories(),
+    getCachedIncomeCategories(),
   ]);
 
   return (

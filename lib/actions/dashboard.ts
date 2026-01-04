@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { db } from '@/lib/db';
 import { entries, transactions, categories, budgets, accounts, income } from '@/lib/schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { getCurrentUserId } from '@/lib/auth';
 
 export type DashboardData = {
   totalSpent: number;
@@ -42,6 +43,8 @@ export type DashboardData = {
 };
 
 export const getDashboardData = cache(async (yearMonth: string): Promise<DashboardData> => {
+  const userId = await getCurrentUserId();
+
   // Parse year-month to get start/end dates
   const [year, month] = yearMonth.split('-').map(Number);
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -59,7 +62,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     })
     .from(budgets)
     .innerJoin(categories, eq(budgets.categoryId, categories.id))
-    .where(eq(budgets.yearMonth, yearMonth));
+    .where(and(eq(budgets.yearMonth, yearMonth), eq(budgets.userId, userId)));
 
   // 2. Get spending by category for the month (by purchase date)
   const spending = await db
@@ -69,7 +72,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     })
     .from(entries)
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
+    .where(and(
+      gte(entries.purchaseDate, startDate),
+      lte(entries.purchaseDate, endDate),
+      eq(entries.userId, userId)
+    ))
     .groupBy(transactions.categoryId);
 
   // Build spending map
@@ -94,7 +101,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
       amount: income.amount,
     })
     .from(income)
-    .where(and(gte(income.receivedDate, startDate), lte(income.receivedDate, endDate)));
+    .where(and(
+      gte(income.receivedDate, startDate),
+      lte(income.receivedDate, endDate),
+      eq(income.userId, userId)
+    ));
 
   const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
 
@@ -120,7 +131,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
     .innerJoin(accounts, eq(entries.accountId, accounts.id))
-    .where(and(gte(entries.purchaseDate, startDate), lte(entries.purchaseDate, endDate)))
+    .where(and(
+      gte(entries.purchaseDate, startDate),
+      lte(entries.purchaseDate, endDate),
+      eq(entries.userId, userId)
+    ))
     .orderBy(desc(entries.createdAt))
     .limit(5);
 
@@ -139,7 +154,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))
     .innerJoin(accounts, eq(income.accountId, accounts.id))
-    .where(and(gte(income.receivedDate, startDate), lte(income.receivedDate, endDate)))
+    .where(and(
+      gte(income.receivedDate, startDate),
+      lte(income.receivedDate, endDate),
+      eq(income.userId, userId)
+    ))
     .orderBy(desc(income.createdAt))
     .limit(5);
 

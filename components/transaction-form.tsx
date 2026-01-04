@@ -97,11 +97,7 @@ export function TransactionForm({
 
   useEffect(() => {
     if (open) {
-      // Small delay to ensure modal animation completes
-      const timer = setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
+      amountInputRef.current?.focus();
     }
   }, [open]);
 

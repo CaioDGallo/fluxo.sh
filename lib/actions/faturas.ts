@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { t } from '@/lib/i18n/server-errors';
 
 /**
  * Ensures a fatura exists for a given account and month.
@@ -31,7 +32,7 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
   const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);
 
   if (!account[0]) {
-    throw new Error('Account not found');
+    throw new Error(await t('errors.accountNotFound'));
   }
 
   // For non-credit cards or cards without billing config, use first day of next month
@@ -159,10 +160,10 @@ export const getFaturaWithEntries = cache(async (faturaId: number) => {
  */
 export async function payFatura(faturaId: number, fromAccountId: number): Promise<void> {
   if (!Number.isInteger(faturaId) || faturaId <= 0) {
-    throw new Error('Invalid fatura ID');
+    throw new Error(await t('errors.invalidFaturaId'));
   }
   if (!Number.isInteger(fromAccountId) || fromAccountId <= 0) {
-    throw new Error('Invalid source account ID');
+    throw new Error(await t('errors.invalidAccountId'));
   }
 
   try {
@@ -187,11 +188,11 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
       .limit(1);
 
     if (!sourceAccount[0]) {
-      throw new Error('Source account not found');
+      throw new Error(await t('errors.accountNotFound'));
     }
 
     if (sourceAccount[0].type === 'credit_card') {
-      throw new Error('Cannot pay fatura from a credit card account');
+      throw new Error(await t('errors.cannotPayFromCreditCard'));
     }
 
     // 3. Mark fatura as paid
@@ -220,7 +221,7 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to pay fatura:', { faturaId, fromAccountId, error });
-    throw error instanceof Error ? error : new Error('Failed to pay fatura. Please try again.');
+    throw error instanceof Error ? error : new Error(await t('errors.failedToPay'));
   }
 }
 
@@ -229,7 +230,7 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
  */
 export async function markFaturaUnpaid(faturaId: number): Promise<void> {
   if (!Number.isInteger(faturaId) || faturaId <= 0) {
-    throw new Error('Invalid fatura ID');
+    throw new Error(await t('errors.invalidFaturaId'));
   }
 
   try {
@@ -239,7 +240,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
     const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
 
     if (!fatura[0]) {
-      throw new Error('Fatura not found');
+      throw new Error(await t('errors.faturaNotFound'));
     }
 
     // Mark fatura as unpaid
@@ -268,7 +269,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
-    throw new Error('Failed to mark fatura as unpaid. Please try again.');
+    throw new Error(await t('errors.failedToMarkPending'));
   }
 }
 
@@ -283,7 +284,7 @@ export async function backfillFaturas(): Promise<{ created: number } | { error: 
 
     const rateLimit = await checkBulkRateLimit(userId);
     if (!rateLimit.allowed) {
-      return { error: `Rate limited. Try again in ${rateLimit.retryAfter}s.` };
+      return { error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }) };
     }
 
     // Get all distinct (accountId, faturaMonth) combinations from entries
@@ -326,6 +327,6 @@ export async function backfillFaturas(): Promise<{ created: number } | { error: 
     return { created };
   } catch (error) {
     console.error('Failed to backfill faturas:', error);
-    return { error: 'Failed to backfill faturas' };
+    return { error: await t('errors.failedToBackfillFaturas') };
   }
 }

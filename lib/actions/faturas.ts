@@ -269,7 +269,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
-    throw new Error(await t('errors.failedToMarkPending'));
+    throw error instanceof Error ? error : new Error(await t('errors.failedToMarkPending'));
   }
 }
 

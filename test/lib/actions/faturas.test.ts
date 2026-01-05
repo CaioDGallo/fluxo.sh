@@ -465,11 +465,12 @@ describe('Fatura Actions', () => {
     });
 
     it('clears paid state for fatura and entries', async () => {
+      const checking = await seedAccount(testAccounts.checking);
       const paidAt = new Date('2025-01-20T00:00:00Z');
       const { account, fatura } = await seedFaturaWithEntry({
         entryPaidAt: paidAt,
         faturaPaidAt: paidAt,
-        paidFromAccountId: 123,
+        paidFromAccountId: checking.id,
       });
 
       await markFaturaUnpaid(fatura.id);

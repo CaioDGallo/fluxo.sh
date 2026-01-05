@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,6 +92,14 @@ function LoginForm() {
                 disabled={loading}
                 placeholder="••••••••"
               />
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-muted-foreground hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <div>

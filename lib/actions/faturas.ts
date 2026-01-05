@@ -173,11 +173,11 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
     const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
 
     if (!fatura[0]) {
-      throw new Error('Fatura not found');
+      throw new Error(await t('errors.faturaNotFound'));
     }
 
     if (fatura[0].paidAt) {
-      throw new Error('Fatura already paid');
+      throw new Error(await t('errors.faturaAlreadyPaid'));
     }
 
     // 2. Verify source account exists and is not a credit card

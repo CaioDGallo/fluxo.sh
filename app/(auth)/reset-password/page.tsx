@@ -128,7 +128,7 @@ function ResetPasswordForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
               />
               <p className="text-xs text-muted-foreground">
                 {t('passwordRequirements')}
@@ -144,7 +144,7 @@ function ResetPasswordForm() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading}
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
 

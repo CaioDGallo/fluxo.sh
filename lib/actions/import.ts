@@ -9,6 +9,7 @@ import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { t } from '@/lib/i18n/server-errors';
 
 type ImportExpenseData = {
   rows: ValidatedImportRow[];
@@ -30,15 +31,15 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
   const { rows, accountId, categoryId } = data;
 
   if (rows.length === 0) {
-    return { success: false, error: 'No valid rows to import' };
+    return { success: false, error: await t('errors.noValidRows') };
   }
 
   // Validate accountId and categoryId exist
   if (!Number.isInteger(accountId) || accountId <= 0) {
-    return { success: false, error: 'Invalid account ID' };
+    return { success: false, error: await t('errors.invalidAccountId') };
   }
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    return { success: false, error: 'Invalid category ID' };
+    return { success: false, error: await t('errors.invalidCategoryId') };
   }
 
   try {
@@ -46,19 +47,19 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
 
     const rateLimit = await checkBulkRateLimit(userId);
     if (!rateLimit.allowed) {
-      return { success: false, error: `Rate limited. Try again in ${rateLimit.retryAfter}s.` };
+      return { success: false, error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }) };
     }
 
     // Verify account exists and fetch billing config
     const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);
     if (account.length === 0) {
-      return { success: false, error: 'Account not found' };
+      return { success: false, error: await t('errors.accountNotFound') };
     }
 
     // Verify category exists
     const category = await db.select().from(categories).where(and(eq(categories.userId, userId), eq(categories.id, categoryId))).limit(1);
     if (category.length === 0) {
-      return { success: false, error: 'Category not found' };
+      return { success: false, error: await t('errors.categoryNotFound') };
     }
 
     // Check if this is a credit card with billing config
@@ -129,6 +130,6 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
     return { success: true, imported: rows.length };
   } catch (error) {
     console.error('[import:expenses] Failed:', error);
-    return { success: false, error: 'Failed to import expenses. Please try again.' };
+    return { success: false, error: await t('errors.failedToImport') };
   }
 }

@@ -3,11 +3,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { checkLoginRateLimit, checkPasswordResetRateLimit } from '@/lib/rate-limit';
+import { t } from '@/lib/i18n/server-errors';
 
 export async function login(email: string, password: string, captchaToken: string) {
   const rateLimit = await checkLoginRateLimit();
   if (!rateLimit.allowed) {
-    return { error: `Too many attempts. Try again in ${rateLimit.retryAfter}s.` };
+    return { error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }) };
   }
 
   const supabase = await createClient();
@@ -21,7 +22,7 @@ export async function login(email: string, password: string, captchaToken: strin
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: await t('login.authenticationFailed') };
   }
 
   return { error: null };
@@ -36,7 +37,7 @@ export async function logout() {
 export async function forgotPassword(email: string) {
   const rateLimit = await checkPasswordResetRateLimit();
   if (!rateLimit.allowed) {
-    return { error: `Too many attempts. Try again in ${rateLimit.retryAfter}s.` };
+    return { error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }) };
   }
 
   const supabase = await createClient();
@@ -61,21 +62,21 @@ export async function updatePassword(newPassword: string) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: 'Not authenticated' };
+    return { error: await t('errors.notAuthenticated') };
   }
 
   // Validate password requirements (8+ chars, letters + numbers)
   if (newPassword.length < 8) {
-    return { error: 'Password must be at least 8 characters' };
+    return { error: await t('errors.passwordTooShort') };
   }
   if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-    return { error: 'Password must contain letters and numbers' };
+    return { error: await t('errors.passwordRequirementsNotMet') };
   }
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
 
   if (error) {
-    return { error: error.message };
+    return { error: await t('errors.unexpectedError') };
   }
 
   return { error: null };

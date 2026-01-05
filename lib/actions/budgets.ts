@@ -6,6 +6,7 @@ import { budgets, categories, entries, transactions, monthlyBudgets } from '@/li
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
+import { t } from '@/lib/i18n/server-errors';
 
 export async function getBudgetsForMonth(yearMonth: string) {
   try {
@@ -34,7 +35,7 @@ export async function getBudgetsForMonth(yearMonth: string) {
     return result;
   } catch (error) {
     console.error('Failed to get budgets for month:', error);
-    throw new Error('Failed to load budgets. Please try again.');
+    throw new Error(await t('errors.failedToLoad'));
   }
 }
 
@@ -45,13 +46,13 @@ export async function upsertBudget(
 ) {
   // Validate inputs
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
   if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
-    throw new Error('Invalid year-month format (expected YYYY-MM)');
+    throw new Error(await t('errors.invalidYearMonthFormat'));
   }
   if (!Number.isInteger(amount) || amount < 0) {
-    throw new Error('Budget amount must be a non-negative integer (cents)');
+    throw new Error(await t('errors.budgetMustBeNonNegative'));
   }
 
   try {
@@ -79,13 +80,13 @@ export async function upsertBudget(
     revalidatePath('/budgets');
   } catch (error) {
     console.error('Failed to upsert budget:', error);
-    throw new Error('Failed to save budget. Please try again.');
+    throw new Error(await t('errors.failedToSave'));
   }
 }
 
 export async function getMonthlyBudget(yearMonth: string): Promise<number | null> {
   if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
-    throw new Error('Invalid year-month format (expected YYYY-MM)');
+    throw new Error(await t('errors.invalidYearMonthFormat'));
   }
 
   try {
@@ -99,16 +100,16 @@ export async function getMonthlyBudget(yearMonth: string): Promise<number | null
     return result.length > 0 ? result[0].amount : null;
   } catch (error) {
     console.error('Failed to get monthly budget:', error);
-    throw new Error('Failed to load monthly budget. Please try again.');
+    throw new Error(await t('errors.failedToLoad'));
   }
 }
 
 export async function upsertMonthlyBudget(yearMonth: string, amount: number) {
   if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
-    throw new Error('Invalid year-month format (expected YYYY-MM)');
+    throw new Error(await t('errors.invalidYearMonthFormat'));
   }
   if (!Number.isInteger(amount) || amount < 0) {
-    throw new Error('Monthly budget must be a non-negative integer (cents)');
+    throw new Error(await t('errors.monthlyBudgetMustBeNonNegative'));
   }
 
   try {
@@ -132,7 +133,7 @@ export async function upsertMonthlyBudget(yearMonth: string, amount: number) {
     revalidatePath('/budgets');
   } catch (error) {
     console.error('Failed to upsert monthly budget:', error);
-    throw new Error('Failed to save monthly budget. Please try again.');
+    throw new Error(await t('errors.failedToSave'));
   }
 }
 
@@ -154,7 +155,7 @@ export type BudgetsPageData = {
 export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<BudgetsPageData> => {
   // Validate year-month format
   if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
-    throw new Error('Invalid year-month format (expected YYYY-MM)');
+    throw new Error(await t('errors.invalidYearMonthFormat'));
   }
 
   // Parse year-month to get start/end dates
@@ -162,7 +163,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
 
   // Validate parsed values
   if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-    throw new Error('Invalid year or month value');
+    throw new Error(await t('errors.invalidYearMonth'));
   }
 
   try {
@@ -223,7 +224,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
     };
   } catch (error) {
     console.error('Failed to get budgets with spending:', error);
-    throw new Error('Failed to load budget data. Please try again.');
+    throw new Error(await t('errors.failedToLoad'));
   }
 });
 
@@ -301,6 +302,6 @@ export async function copyBudgetsFromMonth(
     };
   } catch (error) {
     console.error('Failed to copy budgets:', error);
-    throw new Error('Failed to copy budgets. Please try again.');
+    throw new Error(await t('errors.failedToCopy'));
   }
 }

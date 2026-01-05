@@ -9,6 +9,7 @@ import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { t } from '@/lib/i18n/server-errors';
 
 type CreateExpenseData = {
   description: string;
@@ -22,22 +23,22 @@ type CreateExpenseData = {
 export async function createExpense(data: CreateExpenseData) {
   // Validate inputs
   if (!data.description?.trim()) {
-    throw new Error('Description is required');
+    throw new Error(await t('errors.descriptionRequired'));
   }
   if (!Number.isInteger(data.totalAmount) || data.totalAmount <= 0) {
-    throw new Error('Amount must be a positive integer');
+    throw new Error(await t('errors.amountPositive'));
   }
   if (!Number.isInteger(data.installments) || data.installments < 1) {
-    throw new Error('Installments must be at least 1');
+    throw new Error(await t('errors.installmentsMinimum'));
   }
   if (!Number.isInteger(data.categoryId) || data.categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
-    throw new Error('Invalid account ID');
+    throw new Error(await t('errors.invalidAccountId'));
   }
   if (!data.purchaseDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.purchaseDate)) {
-    throw new Error('Invalid purchase date format (expected YYYY-MM-DD)');
+    throw new Error(await t('errors.invalidDateFormat'));
   }
 
   try {
@@ -47,7 +48,7 @@ export async function createExpense(data: CreateExpenseData) {
     const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, data.accountId))).limit(1);
 
     if (!account[0]) {
-      throw new Error('Account not found');
+      throw new Error(await t('errors.accountNotFound'));
     }
 
     const isCreditCard = account[0].type === 'credit_card';
@@ -124,7 +125,7 @@ export async function createExpense(data: CreateExpenseData) {
     revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to create expense:', { data, error });
-    throw new Error('Failed to create expense. Please try again.');
+    throw new Error(await t('errors.failedToCreate'));
   }
 }
 
@@ -142,25 +143,25 @@ export async function getTransactionWithEntries(transactionId: number) {
 export async function updateExpense(transactionId: number, data: CreateExpenseData) {
   // Validate inputs
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
-    throw new Error('Invalid transaction ID');
+    throw new Error(await t('errors.invalidTransactionId'));
   }
   if (!data.description?.trim()) {
-    throw new Error('Description is required');
+    throw new Error(await t('errors.descriptionRequired'));
   }
   if (!Number.isInteger(data.totalAmount) || data.totalAmount <= 0) {
-    throw new Error('Amount must be a positive integer');
+    throw new Error(await t('errors.amountPositive'));
   }
   if (!Number.isInteger(data.installments) || data.installments < 1) {
-    throw new Error('Installments must be at least 1');
+    throw new Error(await t('errors.installmentsMinimum'));
   }
   if (!Number.isInteger(data.categoryId) || data.categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
-    throw new Error('Invalid account ID');
+    throw new Error(await t('errors.invalidAccountId'));
   }
   if (!data.purchaseDate || !/^\d{4}-\d{2}-\d{2}$/.test(data.purchaseDate)) {
-    throw new Error('Invalid purchase date format (expected YYYY-MM-DD)');
+    throw new Error(await t('errors.invalidDateFormat'));
   }
 
   try {
@@ -184,7 +185,7 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
     const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, data.accountId))).limit(1);
 
     if (!account[0]) {
-      throw new Error('Account not found');
+      throw new Error(await t('errors.accountNotFound'));
     }
 
     const isCreditCard = account[0].type === 'credit_card';
@@ -266,13 +267,13 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
     revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to update expense:', { transactionId, data, error });
-    throw new Error('Failed to update expense. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }
 
 export async function deleteExpense(transactionId: number) {
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
-    throw new Error('Invalid transaction ID');
+    throw new Error(await t('errors.invalidTransactionId'));
   }
 
   try {
@@ -307,7 +308,7 @@ export async function deleteExpense(transactionId: number) {
     revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to delete expense:', { transactionId, error });
-    throw new Error('Failed to delete expense. Please try again.');
+    throw new Error(await t('errors.failedToDelete'));
   }
 }
 
@@ -375,7 +376,7 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
 
 export async function markEntryPaid(entryId: number) {
   if (!Number.isInteger(entryId) || entryId <= 0) {
-    throw new Error('Invalid entry ID');
+    throw new Error(await t('errors.invalidEntryId'));
   }
 
   try {
@@ -390,13 +391,13 @@ export async function markEntryPaid(entryId: number) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark entry paid:', { entryId, error });
-    throw new Error('Failed to mark entry as paid. Please try again.');
+    throw new Error(await t('errors.failedToMarkPaid'));
   }
 }
 
 export async function markEntryPending(entryId: number) {
   if (!Number.isInteger(entryId) || entryId <= 0) {
-    throw new Error('Invalid entry ID');
+    throw new Error(await t('errors.invalidEntryId'));
   }
 
   try {
@@ -411,16 +412,16 @@ export async function markEntryPending(entryId: number) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark entry pending:', { entryId, error });
-    throw new Error('Failed to mark entry as pending. Please try again.');
+    throw new Error(await t('errors.failedToMarkPending'));
   }
 }
 
 export async function updateTransactionCategory(transactionId: number, categoryId: number) {
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
-    throw new Error('Invalid transaction ID');
+    throw new Error(await t('errors.invalidTransactionId'));
   }
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
 
   try {
@@ -435,7 +436,7 @@ export async function updateTransactionCategory(transactionId: number, categoryI
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to update transaction category:', { transactionId, categoryId, error });
-    throw new Error('Failed to update category. Please try again.');
+    throw new Error(await t('errors.failedToUpdateCategory'));
   }
 }
 
@@ -444,10 +445,10 @@ export async function bulkUpdateTransactionCategories(
   categoryId: number
 ) {
   if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
-    throw new Error('Transaction IDs array is required');
+    throw new Error(await t('errors.transactionIdsRequired'));
   }
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
 
   try {
@@ -467,6 +468,6 @@ export async function bulkUpdateTransactionCategories(
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to bulk update categories:', { transactionIds, categoryId, error });
-    throw new Error('Failed to update categories. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }

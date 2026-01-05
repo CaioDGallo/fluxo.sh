@@ -7,6 +7,7 @@ import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzl
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { t } from '@/lib/i18n/server-errors';
 
 export type CreateIncomeData = {
   description: string;
@@ -19,19 +20,19 @@ export type CreateIncomeData = {
 export async function createIncome(data: CreateIncomeData) {
   // Validate inputs
   if (!data.description || data.description.trim().length === 0) {
-    throw new Error('Description is required');
+    throw new Error(await t('errors.descriptionRequired'));
   }
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
-    throw new Error('Amount must be a positive integer (cents)');
+    throw new Error(await t('errors.amountPositiveCents'));
   }
   if (!Number.isInteger(data.categoryId) || data.categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
-    throw new Error('Invalid account ID');
+    throw new Error(await t('errors.invalidAccountId'));
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data.receivedDate)) {
-    throw new Error('Invalid date format (expected YYYY-MM-DD)');
+    throw new Error(await t('errors.invalidDateFormat'));
   }
 
   try {
@@ -50,29 +51,29 @@ export async function createIncome(data: CreateIncomeData) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to create income:', error);
-    throw new Error('Failed to create income. Please try again.');
+    throw new Error(await t('errors.failedToCreate'));
   }
 }
 
 export async function updateIncome(incomeId: number, data: CreateIncomeData) {
   // Validate inputs
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
-    throw new Error('Invalid income ID');
+    throw new Error(await t('errors.invalidIncomeId'));
   }
   if (!data.description || data.description.trim().length === 0) {
-    throw new Error('Description is required');
+    throw new Error(await t('errors.descriptionRequired'));
   }
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
-    throw new Error('Amount must be a positive integer (cents)');
+    throw new Error(await t('errors.amountPositiveCents'));
   }
   if (!Number.isInteger(data.categoryId) || data.categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
   if (!Number.isInteger(data.accountId) || data.accountId <= 0) {
-    throw new Error('Invalid account ID');
+    throw new Error(await t('errors.invalidAccountId'));
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data.receivedDate)) {
-    throw new Error('Invalid date format (expected YYYY-MM-DD)');
+    throw new Error(await t('errors.invalidDateFormat'));
   }
 
   try {
@@ -93,13 +94,13 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to update income:', error);
-    throw new Error('Failed to update income. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }
 
 export async function deleteIncome(incomeId: number) {
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
-    throw new Error('Invalid income ID');
+    throw new Error(await t('errors.invalidIncomeId'));
   }
 
   try {
@@ -111,7 +112,7 @@ export async function deleteIncome(incomeId: number) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to delete income:', error);
-    throw new Error('Failed to delete income. Please try again.');
+    throw new Error(await t('errors.failedToDelete'));
   }
 }
 
@@ -180,7 +181,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
 
 export async function markIncomeReceived(incomeId: number) {
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
-    throw new Error('Invalid income ID');
+    throw new Error(await t('errors.invalidIncomeId'));
   }
 
   try {
@@ -195,13 +196,13 @@ export async function markIncomeReceived(incomeId: number) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark income as received:', error);
-    throw new Error('Failed to update income status. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }
 
 export async function markIncomePending(incomeId: number) {
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
-    throw new Error('Invalid income ID');
+    throw new Error(await t('errors.invalidIncomeId'));
   }
 
   try {
@@ -216,7 +217,7 @@ export async function markIncomePending(incomeId: number) {
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to mark income as pending:', error);
-    throw new Error('Failed to update income status. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }
 
@@ -240,7 +241,7 @@ export async function bulkUpdateIncomeCategories(
     throw new Error('Income IDs array is required');
   }
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    throw new Error('Invalid category ID');
+    throw new Error(await t('errors.invalidCategoryId'));
   }
 
   try {
@@ -260,6 +261,6 @@ export async function bulkUpdateIncomeCategories(
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to bulk update income categories:', { incomeIds, categoryId, error });
-    throw new Error('Failed to update income categories. Please try again.');
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }

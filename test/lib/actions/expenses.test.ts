@@ -4,19 +4,21 @@ import { mockAuth } from '@/test/auth-utils';
 import * as schema from '@/lib/schema';
 import { testAccounts, testCategories, TEST_USER_ID } from '@/test/fixtures';
 
+type ExpenseActions = typeof import('@/lib/actions/expenses');
+
 describe('Expense Actions - Happy Path', () => {
   let db: ReturnType<typeof getTestDb>;
   let accountId: number;
   let categoryId: number;
 
   // Dynamic imports after mocking
-  let createExpense: any;
-  let updateExpense: any;
-  let deleteExpense: any;
-  let getExpenses: any;
-  let markEntryPaid: any;
-  let markEntryPending: any;
-  let updateTransactionCategory: any;
+  let createExpense: ExpenseActions['createExpense'];
+  let updateExpense: ExpenseActions['updateExpense'];
+  let deleteExpense: ExpenseActions['deleteExpense'];
+  let getExpenses: ExpenseActions['getExpenses'];
+  let markEntryPaid: ExpenseActions['markEntryPaid'];
+  let markEntryPending: ExpenseActions['markEntryPending'];
+  let updateTransactionCategory: ExpenseActions['updateTransactionCategory'];
 
   beforeAll(async () => {
     db = await setupTestDb();

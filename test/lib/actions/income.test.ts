@@ -4,19 +4,21 @@ import { mockAuth } from '@/test/auth-utils';
 import * as schema from '@/lib/schema';
 import { testAccounts, testCategories, TEST_USER_ID } from '@/test/fixtures';
 
+type IncomeActions = typeof import('@/lib/actions/income');
+
 describe('Income Actions - Happy Path', () => {
   let db: ReturnType<typeof getTestDb>;
   let accountId: number;
   let categoryId: number;
 
   // Dynamic imports after mocking
-  let createIncome: any;
-  let updateIncome: any;
-  let deleteIncome: any;
-  let getIncome: any;
-  let markIncomeReceived: any;
-  let markIncomePending: any;
-  let updateIncomeCategory: any;
+  let createIncome: IncomeActions['createIncome'];
+  let updateIncome: IncomeActions['updateIncome'];
+  let deleteIncome: IncomeActions['deleteIncome'];
+  let getIncome: IncomeActions['getIncome'];
+  let markIncomeReceived: IncomeActions['markIncomeReceived'];
+  let markIncomePending: IncomeActions['markIncomePending'];
+  let updateIncomeCategory: IncomeActions['updateIncomeCategory'];
 
   beforeAll(async () => {
     db = await setupTestDb();

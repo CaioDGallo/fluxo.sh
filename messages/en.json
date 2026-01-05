@@ -54,6 +54,11 @@
     "invalidFaturaId": "Invalid bill ID",
     "transactionIdsRequired": "Transaction IDs array is required",
     "failedToParseCsv": "Failed to parse CSV file. Please check the file format and try again.",
+    "failedToBackfillFaturas": "Failed to backfill faturas",
+    "notAuthenticated": "Not authenticated",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordRequirementsNotMet": "Password must contain letters and numbers",
+    "tooManyAttempts": "Too many attempts. Try again in {{retryAfter}}s.",
     "unexpectedError": "An unexpected error occurred"
   },
   "navigation": {

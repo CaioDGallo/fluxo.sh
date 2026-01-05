@@ -54,6 +54,11 @@
     "invalidFaturaId": "ID de fatura inválido",
     "transactionIdsRequired": "Array de IDs de transação é obrigatório",
     "failedToParseCsv": "Falha ao processar arquivo CSV. Verifique o formato e tente novamente.",
+    "failedToBackfillFaturas": "Falha ao preencher faturas",
+    "notAuthenticated": "Não autenticado",
+    "passwordTooShort": "Senha deve ter no mínimo 8 caracteres",
+    "passwordRequirementsNotMet": "Senha deve conter letras e números",
+    "tooManyAttempts": "Muitas tentativas. Tente novamente em {{retryAfter}}s.",
     "unexpectedError": "Ocorreu um erro inesperado"
   },
   "navigation": {

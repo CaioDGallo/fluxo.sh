@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CategoryIcon } from '@/components/icon-picker';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreVerticalIcon } from '@hugeicons/core-free-icons';
+import { UploadCircle02Icon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -103,8 +103,9 @@ export function CategoryCard({ category }: CategoryCardProps) {
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-sm truncate">{category.name}</h3>
             {category.isImportDefault && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
-                {t('importDefault')}
+              <span className="text-xs p-1 md:px-2 md:py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 whitespace-nowrap">
+                <span className='hidden md:flex'>{t('importDefault')}</span>
+                <HugeiconsIcon icon={UploadCircle02Icon} strokeWidth={1} className='flex md:hidden' />
               </span>
             )}
           </div>

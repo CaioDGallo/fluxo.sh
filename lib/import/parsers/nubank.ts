@@ -75,20 +75,16 @@ export const nubankParser: ImportTemplate = {
         return;
       }
 
-      // Skip negative amounts (payments received)
-      if (amount < 0) {
-        skipped++;
-        return;
-      }
-
-      // Convert to cents
-      const amountCents = Math.round(amount * 100);
+      // Determine type: positive = expense (charge), negative = income (refund)
+      const isIncome = amount < 0;
+      const amountCents = Math.round(Math.abs(amount) * 100);
 
       rows.push({
         date: dateStr,
         description: title.trim(),
         amountCents,
         rowIndex: index + 1,
+        type: isIncome ? 'income' : 'expense',
       });
     });
 

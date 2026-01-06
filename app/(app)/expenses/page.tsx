@@ -5,7 +5,7 @@ import { getCategories } from '@/lib/actions/categories';
 import { ExpenseList, ExpenseListProvider } from '@/components/expense-list';
 import { ExpenseFilters } from '@/components/expense-filters';
 import { ExpenseFilterSummary } from '@/components/expense-filter-summary';
-import { ImportModal } from '@/components/import-expenses/import-modal';
+import { ImportModal } from '@/components/import/import-modal';
 import { AddExpenseButton } from '@/components/add-expense-button';
 import { Button } from '@/components/ui/button';
 import { HugeiconsIcon } from '@hugeicons/react';

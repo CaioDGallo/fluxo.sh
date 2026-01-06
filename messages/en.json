@@ -115,6 +115,7 @@
     "title": "Income",
     "addIncome": "Add Income",
     "editIncome": "Edit Income",
+    "import": "Import",
     "received": "Received",
     "pending": "Pending",
     "markAsReceived": "Mark as Received",
@@ -277,7 +278,7 @@
     "errorRevertingPayment": "Error reverting payment"
   },
   "import": {
-    "title": "Import Expenses",
+    "title": "Import",
     "selectFormat": "Select the CSV format to import",
     "templates": "Templates",
     "upload": "Upload",
@@ -285,11 +286,11 @@
     "back": "Back",
     "account": "Account",
     "category": "Category",
-    "importExpenses": "Import {count} Expense(s)",
-    "successMessage": "Successfully imported {count} expense(s)",
+    "importExpenses": "Import {count} Item(s)",
+    "successMessage": "Successfully imported {count} item(s)",
     "successMixed": "Imported {expenses} expense(s) and {income} income(s)",
     "skippedDuplicates": "{count} duplicate(s) skipped",
-    "errorMessage": "Failed to import expenses. Please try again.",
+    "errorMessage": "Failed to import. Please try again.",
     "errorParsing": "Failed to parse CSV file. Please check the file format and try again.",
     "noDefaultCategories": "Configure default import categories in Settings > Categories first"
   },

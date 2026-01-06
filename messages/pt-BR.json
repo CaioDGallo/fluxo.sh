@@ -115,6 +115,7 @@
     "title": "Receitas",
     "addIncome": "Adicionar Receita",
     "editIncome": "Editar Receita",
+    "import": "Importar",
     "received": "Recebido",
     "pending": "Pendente",
     "markAsReceived": "Marcar como Recebido",
@@ -277,7 +278,7 @@
     "errorRevertingPayment": "Erro ao reverter pagamento"
   },
   "import": {
-    "title": "Importar Despesas",
+    "title": "Importar",
     "selectFormat": "Selecione o formato do CSV para importar",
     "templates": "Modelos",
     "upload": "Upload",
@@ -285,11 +286,11 @@
     "back": "Voltar",
     "account": "Conta",
     "category": "Categoria",
-    "importExpenses": "Importar {count} Despesa(s)",
-    "successMessage": "Importado com sucesso {count} despesa(s)",
+    "importExpenses": "Importar {count} Item(s)",
+    "successMessage": "Importado com sucesso {count} item(s)",
     "successMixed": "Importado {expenses} despesa(s) e {income} receita(s)",
     "skippedDuplicates": "{count} duplicata(s) ignorada(s)",
-    "errorMessage": "Falha ao importar despesas. Tente novamente.",
+    "errorMessage": "Falha ao importar. Tente novamente.",
     "errorParsing": "Falha ao processar arquivo CSV. Verifique o formato e tente novamente.",
     "noDefaultCategories": "Configure as categorias padrão para importação em Configurações > Categorias primeiro"
   },

@@ -55,13 +55,11 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
     setIsImporting(true);
 
     try {
-      // Check if this is a mixed import parser (has both income and expense rows)
-      const hasMixedTypes =
-        parseResult.rows.some((r) => r.type === 'income') &&
-        parseResult.rows.some((r) => r.type === 'expense');
+      // Use importMixed if any row has type info (parsers that distinguish income/expense)
+      const hasTypeInfo = parseResult.rows.some((r) => r.type !== undefined);
 
-      if (hasMixedTypes || selectedTemplate === 'nubank-extrato') {
-        // Use importMixed for nubank-extrato or any parser with mixed types
+      if (hasTypeInfo) {
+        // Use importMixed for parsers with type information
         const result = await importMixed({
           rows: parseResult.rows,
           accountId: parseInt(accountId),
@@ -202,25 +200,17 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts
-                        .filter((account) =>
-                          selectedTemplate === 'nubank-extrato' ? account.type === 'checking' : true
-                        )
-                        .map((account) => (
-                          <SelectItem key={account.id} value={account.id.toString()}>
-                            {account.name}
-                          </SelectItem>
-                        ))}
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id.toString()}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
 
-                {/* Only show category selector for non-mixed imports */}
-                {selectedTemplate !== 'nubank-extrato' &&
-                  !(
-                    parseResult.rows.some((r) => r.type === 'income') &&
-                    parseResult.rows.some((r) => r.type === 'expense')
-                  ) && (
+                {/* Only show category selector when rows don't have type info */}
+                {!parseResult.rows.some((r) => r.type !== undefined) && (
                     <Field>
                       <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
                       <Select value={categoryId} onValueChange={setCategoryId}>

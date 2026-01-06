@@ -4,6 +4,8 @@ export const nubankParser: ImportTemplate = {
   id: 'nubank',
   name: 'Nubank Credit Card',
   description: 'CSV format from Nubank credit card exports (date, title, amount)',
+  nameKey: 'parsers.nubank.name',
+  descriptionKey: 'parsers.nubank.description',
 
   parse(content: string): ParseResult {
     const rows: ValidatedImportRow[] = [];
@@ -33,6 +35,7 @@ export const nubankParser: ImportTemplate = {
           rowIndex: index + 1,
           field: 'description',
           message: 'Invalid CSV format - expected 3 columns',
+          messageKey: 'parsers.nubank.errors.invalidCsvFormat',
           rawValue: line,
         });
         return;
@@ -47,6 +50,7 @@ export const nubankParser: ImportTemplate = {
           rowIndex: index + 1,
           field: 'date',
           message: 'Invalid date format - expected YYYY-MM-DD',
+          messageKey: 'parsers.nubank.errors.invalidDateFormat',
           rawValue: dateStr || '',
         });
         return;
@@ -58,6 +62,7 @@ export const nubankParser: ImportTemplate = {
           rowIndex: index + 1,
           field: 'description',
           message: 'Description is required',
+          messageKey: 'parsers.nubank.errors.descriptionRequired',
           rawValue: title || '',
         });
         return;
@@ -70,6 +75,7 @@ export const nubankParser: ImportTemplate = {
           rowIndex: index + 1,
           field: 'amount',
           message: 'Invalid amount',
+          messageKey: 'parsers.nubank.errors.invalidAmount',
           rawValue: amountStr || '',
         });
         return;

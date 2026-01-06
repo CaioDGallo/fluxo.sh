@@ -282,6 +282,9 @@
     "selectFormat": "Select the CSV format to import",
     "templates": "Templates",
     "upload": "Upload",
+    "filters": {
+      "uploadStep": "Upload {parser} CSV"
+    },
     "configure": "Configure",
     "back": "Back",
     "account": "Account",
@@ -402,5 +405,27 @@
     "invalidFileType": "Please select a CSV file",
     "failedToRead": "Failed to read file",
     "dragAndDropText": "Drag and drop CSV file here, or click to select"
+  },
+  "parsers": {
+    "nubank": {
+      "name": "Nubank Credit Card",
+      "description": "CSV format from Nubank credit card exports (date, title, amount)",
+      "errors": {
+        "invalidCsvFormat": "Invalid CSV format - expected 3 columns",
+        "invalidDateFormat": "Invalid date format - expected YYYY-MM-DD",
+        "descriptionRequired": "Description is required",
+        "invalidAmount": "Invalid amount"
+      }
+    },
+    "nubank-extrato": {
+      "name": "Nubank Extrato (Conta Corrente)",
+      "description": "Import checking account statement from Nubank (CSV)",
+      "errors": {
+        "invalidCsvFormat": "Invalid CSV format",
+        "invalidDateFormat": "Invalid date format",
+        "invalidIdentifierFormat": "Invalid identifier format (expected UUID)",
+        "invalidOrZeroAmount": "Invalid or zero amount"
+      }
+    }
   }
 }

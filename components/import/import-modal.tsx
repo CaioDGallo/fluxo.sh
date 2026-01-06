@@ -35,6 +35,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
   const t = useTranslations('import');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
+  const tParsers = useTranslations('parsers');
 
   const handleFileSelect = async (content: string) => {
     if (!selectedTemplate) return;
@@ -155,7 +156,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       }}
     >
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="right" className="w-screen! lg:max-w-3xl overflow-y-auto p-2">
+      <SheetContent side="right" className="w-screen! md:max-w-3xl! overflow-y-auto p-2">
         <SheetHeader>
           <SheetTitle>{t('title')}</SheetTitle>
         </SheetHeader>
@@ -175,8 +176,10 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
                     }}
                     className="w-full text-left p-4 border dark:border-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition"
                   >
-                    <h3 className="font-medium">{parser.name}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{parser.description}</p>
+                    <h3 className="font-medium">{parser.nameKey ? tParsers(parser.nameKey) : parser.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {parser.descriptionKey ? tParsers(parser.descriptionKey) : parser.description}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -195,7 +198,13 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
               </div>
 
               <div>
-                <h3 className="font-medium mb-2">{t('filters.uploadStep', { parser: parsers[selectedTemplate].name })}</h3>
+                <h3 className="font-medium mb-2">
+                  {t('filters.uploadStep', {
+                    parser: parsers[selectedTemplate].nameKey
+                      ? tParsers(parsers[selectedTemplate].nameKey!)
+                      : parsers[selectedTemplate].name,
+                  })}
+                </h3>
                 <FileDropzone onFileContent={handleFileSelect} />
               </div>
 
@@ -241,22 +250,22 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
 
                 {/* Only show category selector when rows don't have type info */}
                 {!parseResult.rows.some((r) => r.type !== undefined) && (
-                    <Field>
-                      <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
-                      <Select value={categoryId} onValueChange={setCategoryId}>
-                        <SelectTrigger id="category">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id.toString()}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  )}
+                  <Field>
+                    <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger id="category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id.toString()}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
               </FieldGroup>
 
               <div className="flex gap-2">

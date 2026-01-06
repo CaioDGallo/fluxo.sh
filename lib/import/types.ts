@@ -12,6 +12,7 @@ export type ImportRowError = {
   field: 'date' | 'description' | 'amount' | 'identifier';
   message: string;
   rawValue: string;
+  messageKey?: string;
 };
 
 export type ParseResult = {
@@ -24,6 +25,8 @@ export type ImportTemplate = {
   id: string;
   name: string;
   description: string;
+  nameKey?: string;
+  descriptionKey?: string;
   parse: (content: string) => ParseResult;
 };
 

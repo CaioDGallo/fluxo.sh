@@ -1,5 +1,6 @@
 import type { ParseResult, ImportRowWithSuggestion } from '@/lib/import/types';
 import { centsToDisplay, formatDate } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 type Props = {
   parseResult: ParseResult;
@@ -8,6 +9,7 @@ type Props = {
 
 export function ImportPreview({ parseResult, rowsWithSuggestions }: Props) {
   const { rows, errors, skipped } = parseResult;
+  const tParsers = useTranslations('parsers');
 
   const displayRows = rowsWithSuggestions && rowsWithSuggestions.length > 0 ? rowsWithSuggestions : rows;
   const hasSuggestions = rowsWithSuggestions && rowsWithSuggestions.length > 0;
@@ -145,7 +147,9 @@ export function ImportPreview({ parseResult, rowsWithSuggestions }: Props) {
                   <tr key={idx} className="border-t border-red-200 dark:border-red-900">
                     <td className="px-4 py-2 text-red-600 dark:text-red-400 whitespace-nowrap">Row {error.rowIndex}</td>
                     <td className="px-4 py-2 text-red-600 dark:text-red-400">{error.field}</td>
-                    <td className="px-4 py-2 text-red-800 dark:text-red-200">{error.message}</td>
+                    <td className="px-4 py-2 text-red-800 dark:text-red-200">
+                      {error.messageKey ? tParsers(error.messageKey) : error.message}
+                    </td>
                   </tr>
                 ))}
                 {errors.length > 20 && (

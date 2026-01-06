@@ -282,6 +282,9 @@
     "selectFormat": "Selecione o formato do CSV para importar",
     "templates": "Modelos",
     "upload": "Upload",
+    "filters": {
+      "uploadStep": "Fazer upload do CSV {parser}"
+    },
     "configure": "Configurar",
     "back": "Voltar",
     "account": "Conta",
@@ -402,5 +405,27 @@
     "invalidFileType": "Por favor selecione um arquivo CSV",
     "failedToRead": "Falha ao ler arquivo",
     "dragAndDropText": "Arraste e solte o arquivo CSV aqui, ou clique para selecionar"
+  },
+  "parsers": {
+    "nubank": {
+      "name": "Nubank Cartão de Crédito",
+      "description": "Formato CSV de exportações do cartão de crédito Nubank (data, título, valor)",
+      "errors": {
+        "invalidCsvFormat": "Formato CSV inválido - esperado 3 colunas",
+        "invalidDateFormat": "Formato de data inválido - esperado AAAA-MM-DD",
+        "descriptionRequired": "Descrição é obrigatória",
+        "invalidAmount": "Valor inválido"
+      }
+    },
+    "nubank-extrato": {
+      "name": "Nubank Extrato (Conta Corrente)",
+      "description": "Importar extrato da conta corrente Nubank (CSV)",
+      "errors": {
+        "invalidCsvFormat": "Formato CSV inválido",
+        "invalidDateFormat": "Formato de data inválido",
+        "invalidIdentifierFormat": "Formato de identificador inválido (esperado UUID)",
+        "invalidOrZeroAmount": "Valor inválido ou zero"
+      }
+    }
   }
 }

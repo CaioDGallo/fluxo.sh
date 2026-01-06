@@ -2,15 +2,97 @@
 
 import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories, income } from '@/lib/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import type { ValidatedImportRow } from '@/lib/import/types';
+import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { getDefaultImportCategories } from '@/lib/actions/categories';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
+
+type SuggestionsInput = {
+  expenseDescriptions: string[];
+  incomeDescriptions: string[];
+};
+
+type SuggestionsResult = {
+  expense: Record<string, CategorySuggestion>;
+  income: Record<string, CategorySuggestion>;
+};
+
+export async function getCategorySuggestions(
+  input: SuggestionsInput
+): Promise<SuggestionsResult> {
+  const { expenseDescriptions, incomeDescriptions } = input;
+  const userId = await getCurrentUserId();
+
+  const expenseMap: Record<string, CategorySuggestion> = {};
+  const incomeMap: Record<string, CategorySuggestion> = {};
+
+  if (expenseDescriptions.length > 0) {
+    const expenseHistory = await db
+      .select({
+        description: transactions.description,
+        categoryId: transactions.categoryId,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        createdAt: transactions.createdAt,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          inArray(transactions.description, expenseDescriptions)
+        )
+      )
+      .orderBy(desc(transactions.createdAt));
+
+    for (const record of expenseHistory) {
+      if (!expenseMap[record.description]) {
+        expenseMap[record.description] = {
+          id: record.categoryId,
+          name: record.categoryName,
+          color: record.categoryColor,
+        };
+      }
+    }
+  }
+
+  if (incomeDescriptions.length > 0) {
+    const incomeHistory = await db
+      .select({
+        description: income.description,
+        categoryId: income.categoryId,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        createdAt: income.createdAt,
+      })
+      .from(income)
+      .innerJoin(categories, eq(income.categoryId, categories.id))
+      .where(
+        and(
+          eq(income.userId, userId),
+          inArray(income.description, incomeDescriptions)
+        )
+      )
+      .orderBy(desc(income.createdAt));
+
+    for (const record of incomeHistory) {
+      if (!incomeMap[record.description]) {
+        incomeMap[record.description] = {
+          id: record.categoryId,
+          name: record.categoryName,
+          color: record.categoryColor,
+        };
+      }
+    }
+  }
+
+  return { expense: expenseMap, income: incomeMap };
+}
 
 type ImportExpenseData = {
   rows: ValidatedImportRow[];
@@ -138,6 +220,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
 type ImportMixedData = {
   rows: ValidatedImportRow[];
   accountId: number;
+  categoryOverrides?: Record<number, number>;
 };
 
 type ImportMixedResult =
@@ -153,7 +236,7 @@ type ImportMixedResult =
     };
 
 export async function importMixed(data: ImportMixedData): Promise<ImportMixedResult> {
-  const { rows, accountId } = data;
+  const { rows, accountId, categoryOverrides = {} } = data;
 
   if (rows.length === 0) {
     return { success: false, error: await t('errors.noValidRows') };
@@ -238,6 +321,8 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
     await db.transaction(async (tx) => {
       // Insert expenses
       for (const row of newExpenses) {
+        const categoryId = categoryOverrides[row.rowIndex] ?? expenseCategoryId;
+
         let faturaMonth: string;
         let dueDate: string;
 
@@ -258,7 +343,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
             description: row.description,
             totalAmount: row.amountCents,
             totalInstallments: 1,
-            categoryId: expenseCategoryId,
+            categoryId,
             externalId: row.externalId,
           })
           .returning();
@@ -278,11 +363,13 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
       // Insert income (marked as received)
       for (const row of newIncome) {
+        const categoryId = categoryOverrides[row.rowIndex] ?? incomeCategoryId;
+
         await tx.insert(income).values({
           userId,
           description: row.description,
           amount: row.amountCents,
-          categoryId: incomeCategoryId,
+          categoryId,
           accountId,
           receivedDate: row.date,
           receivedAt: new Date(), // Mark as received

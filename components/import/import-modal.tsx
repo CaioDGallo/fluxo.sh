@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { parserList, parsers, type ParserKey } from '@/lib/import/parsers';
-import type { ParseResult } from '@/lib/import/types';
+import type { ParseResult, ImportRowWithSuggestion } from '@/lib/import/types';
 import type { Account, Category } from '@/lib/schema';
-import { importExpenses, importMixed } from '@/lib/actions/import';
+import { importExpenses, importMixed, getCategorySuggestions } from '@/lib/actions/import';
 import { FileDropzone } from './file-dropzone';
 import { ImportPreview } from './import-preview';
 
@@ -27,6 +27,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
   const [step, setStep] = useState<Step>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<ParserKey | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [rowsWithSuggestions, setRowsWithSuggestions] = useState<ImportRowWithSuggestion[]>([]);
   const [accountId, setAccountId] = useState(accounts[0]?.id?.toString() || '');
   const [categoryId, setCategoryId] = useState(categories[0]?.id?.toString() || '');
   const [isImporting, setIsImporting] = useState(false);
@@ -35,13 +36,35 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
 
-  const handleFileSelect = (content: string) => {
+  const handleFileSelect = async (content: string) => {
     if (!selectedTemplate) return;
 
     try {
       const parser = parsers[selectedTemplate];
       const result = parser.parse(content);
       setParseResult(result);
+
+      if (result.rows.length > 0) {
+        const expenseDescriptions = result.rows.filter((r) => r.type === 'expense').map((r) => r.description);
+        const incomeDescriptions = result.rows.filter((r) => r.type === 'income').map((r) => r.description);
+
+        const suggestions = await getCategorySuggestions({ expenseDescriptions, incomeDescriptions });
+
+        const enrichedRows = result.rows.map((row) => {
+          if (row.type === 'expense') {
+            return { ...row, suggestedCategory: suggestions.expense[row.description] };
+          }
+          if (row.type === 'income') {
+            return { ...row, suggestedCategory: suggestions.income[row.description] };
+          }
+          return row;
+        });
+
+        setRowsWithSuggestions(enrichedRows);
+      } else {
+        setRowsWithSuggestions([]);
+      }
+
       setStep('configure');
     } catch (error) {
       console.error('Failed to parse CSV:', error);
@@ -59,10 +82,17 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       const hasTypeInfo = parseResult.rows.some((r) => r.type !== undefined);
 
       if (hasTypeInfo) {
-        // Use importMixed for parsers with type information
+        const categoryOverrides: Record<number, number> = {};
+        for (const row of rowsWithSuggestions) {
+          if (row.suggestedCategory) {
+            categoryOverrides[row.rowIndex] = row.suggestedCategory.id;
+          }
+        }
+
         const result = await importMixed({
           rows: parseResult.rows,
           accountId: parseInt(accountId),
+          categoryOverrides,
         });
 
         if (result.success) {
@@ -190,7 +220,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
                 <span className="font-medium text-gray-900 dark:text-gray-100">{t('configure')}</span>
               </div>
 
-              <ImportPreview parseResult={parseResult} />
+              <ImportPreview parseResult={parseResult} rowsWithSuggestions={rowsWithSuggestions} />
 
               <FieldGroup>
                 <Field>

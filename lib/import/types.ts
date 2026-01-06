@@ -26,3 +26,13 @@ export type ImportTemplate = {
   description: string;
   parse: (content: string) => ParseResult;
 };
+
+export type CategorySuggestion = {
+  id: number;
+  name: string;
+  color: string;
+};
+
+export type ImportRowWithSuggestion = ValidatedImportRow & {
+  suggestedCategory?: CategorySuggestion;
+};

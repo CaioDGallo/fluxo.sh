@@ -1,0 +1,190 @@
+'use server';
+
+import { db } from '@/lib/db';
+import { notificationJobs, events, tasks, userSettings } from '@/lib/schema';
+import { eq, and, lte } from 'drizzle-orm';
+
+interface ProcessNotificationJobResult {
+  processed: number;
+  failed: number;
+}
+
+type NotificationJob = typeof notificationJobs.$inferSelect;
+type EventItem = typeof events.$inferSelect;
+type TaskItem = typeof tasks.$inferSelect;
+
+export async function processPendingNotificationJobs(): Promise<ProcessNotificationJobResult> {
+  let processed = 0;
+  let failed = 0;
+  
+  const now = new Date();
+  
+  const pendingJobs = await db
+    .select({
+      job: notificationJobs,
+    })
+    .from(notificationJobs)
+    .where(and(
+      eq(notificationJobs.status, 'pending'),
+      lte(notificationJobs.scheduledAt, now)
+    ))
+    .limit(100);
+  
+  for (const { job } of pendingJobs) {
+    try {
+      let isValid = false;
+      let itemData: EventItem | TaskItem | null = null;
+      
+      if (job.itemType === 'event') {
+        [itemData] = await db
+          .select()
+          .from(events)
+          .where(eq(events.id, job.itemId))
+          .limit(1) as unknown as [EventItem];
+        isValid = itemData && itemData.status === 'scheduled';
+      } else if (job.itemType === 'task') {
+        [itemData] = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, job.itemId))
+          .limit(1) as unknown as [TaskItem];
+        isValid = itemData && (itemData.status === 'pending' || itemData.status === 'in_progress');
+      }
+      
+      if (!isValid) {
+        await db
+          .update(notificationJobs)
+          .set({ 
+            status: 'cancelled',
+            lastError: 'Item no longer valid',
+            updatedAt: new Date()
+          })
+          .where(eq(notificationJobs.id, job.id));
+        continue;
+      }
+      
+      const sendResult = await sendNotification(job, itemData);
+      
+      if (sendResult.success) {
+        await db
+          .update(notificationJobs)
+          .set({ 
+            status: 'sent',
+            sentAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(notificationJobs.id, job.id));
+        processed++;
+      } else {
+        failed++;
+        
+        if (job.attempts >= 3) {
+          await db
+            .update(notificationJobs)
+            .set({ 
+              status: 'failed',
+              lastError: sendResult.error,
+              updatedAt: new Date()
+            })
+            .where(eq(notificationJobs.id, job.id));
+        } else {
+          await db
+            .update(notificationJobs)
+            .set({ 
+              attempts: job.attempts + 1,
+              lastError: sendResult.error,
+              updatedAt: new Date()
+            })
+            .where(eq(notificationJobs.id, job.id));
+        }
+      }
+    } catch (error) {
+      console.error('[notification-jobs:process] Failed:', error);
+      failed++;
+      
+      await db
+        .update(notificationJobs)
+        .set({ 
+          attempts: job.attempts + 1,
+          lastError: error instanceof Error ? error.message : 'Unknown error',
+          updatedAt: new Date()
+        })
+        .where(eq(notificationJobs.id, job.id));
+    }
+  }
+  
+  return { processed, failed };
+}
+
+async function sendNotification(job: NotificationJob, itemData: EventItem | TaskItem | null): Promise<{ success: boolean; error?: string }> {
+  if (job.channel === 'email') {
+    return await sendEmailNotification(job, itemData);
+  }
+  
+  return { success: false, error: 'Unsupported channel' };
+}
+
+async function sendEmailNotification(job: NotificationJob, itemData: EventItem | TaskItem | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+    if (!RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY not configured');
+    }
+
+    if (!itemData) {
+      throw new Error('Item data not found');
+    }
+
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, itemData.userId))
+      .limit(1);
+
+    if (!settings?.notificationEmail) {
+      throw new Error('User notification email not configured');
+    }
+
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@northstar.app';
+    const toEmail = settings.notificationEmail;
+    
+    const subject = job.itemType === 'event' 
+      ? `Event Reminder: ${itemData?.title}`
+      : `Task Reminder: ${itemData?.title}`;
+    
+    let body = '';
+    if (job.itemType === 'event' && itemData && 'startAt' in itemData) {
+      const eventItem = itemData as EventItem;
+      body = `You have an upcoming event: ${eventItem.title}\n\nTime: ${new Date(eventItem.startAt).toLocaleString()}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app'}/calendar`;
+    } else if (itemData) {
+      const taskItem = itemData as TaskItem;
+      const dueDate = taskItem.dueAt ? new Date(taskItem.dueAt).toLocaleString() : 'N/A';
+      body = `You have a task due: ${taskItem.title}\n\nDue: ${dueDate}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app'}/calendar`;
+    }
+    
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: toEmail,
+        subject,
+        text: body,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send email');
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[notifications:email] Failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+  }
+}

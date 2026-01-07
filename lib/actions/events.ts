@@ -1,0 +1,108 @@
+'use server';
+
+import { cache } from 'react';
+import { db } from '@/lib/db';
+import { events, type NewEvent } from '@/lib/schema';
+import { eq, and, asc } from 'drizzle-orm';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { getCurrentUserId } from '@/lib/auth';
+import { t } from '@/lib/i18n/server-errors';
+import { scheduleNotificationJobs } from './notifications';
+
+type ActionResult = { success: true } | { success: false; error: string };
+
+export const getEvents = cache(async () => {
+  const userId = await getCurrentUserId();
+  return await db.select().from(events).where(eq(events.userId, userId)).orderBy(asc(events.startAt));
+});
+
+export async function getEventById(id: number) {
+  const userId = await getCurrentUserId();
+  const [event] = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.id, id), eq(events.userId, userId)))
+    .limit(1);
+  return event;
+}
+
+export async function createEvent(data: Omit<NewEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId();
+    const [event] = await db.insert(events).values({ ...data, userId }).returning();
+    await scheduleNotificationJobs('event', event.id, event.startAt);
+    revalidatePath('/calendar');
+    revalidateTag('events', 'default');
+    return { success: true };
+  } catch (error) {
+    console.error('[events:create] Failed:', error);
+    return { success: false, error: await t('errors.failedToCreate') };
+  }
+}
+
+export async function updateEvent(id: number, data: Partial<Omit<NewEvent, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId();
+    const [event] = await db
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.userId, userId)))
+      .limit(1);
+    
+    if (!event) {
+      return { success: false, error: await t('errors.notFound') };
+    }
+    
+    await db.update(events).set({ ...data, updatedAt: new Date() }).where(and(eq(events.id, id), eq(events.userId, userId)));
+    
+    if (data.startAt) {
+      await scheduleNotificationJobs('event', id, data.startAt);
+    }
+
+    revalidatePath('/calendar');
+    revalidateTag('events', 'default');
+    return { success: true };
+  } catch (error) {
+    console.error('[events:update] Failed:', error);
+    return { success: false, error: await t('errors.failedToUpdate') };
+  }
+}
+
+export async function deleteEvent(id: number): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId();
+    await db.delete(events).where(and(eq(events.id, id), eq(events.userId, userId)));
+    revalidatePath('/calendar');
+    revalidateTag('events', 'default');
+    return { success: true };
+  } catch (error) {
+    console.error('[events:delete] Failed:', error);
+    return { success: false, error: await t('errors.failedToDelete') };
+  }
+}
+
+export async function completeEvent(id: number): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId();
+    await db.update(events).set({ status: 'completed', updatedAt: new Date() }).where(and(eq(events.id, id), eq(events.userId, userId)));
+    revalidatePath('/calendar');
+    revalidateTag('events', 'default');
+    return { success: true };
+  } catch (error) {
+    console.error('[events:complete] Failed:', error);
+    return { success: false, error: await t('errors.failedToUpdate') };
+  }
+}
+
+export async function cancelEvent(id: number): Promise<ActionResult> {
+  try {
+    const userId = await getCurrentUserId();
+    await db.update(events).set({ status: 'cancelled', updatedAt: new Date() }).where(and(eq(events.id, id), eq(events.userId, userId)));
+    revalidatePath('/calendar');
+    revalidateTag('events', 'default');
+    return { success: true };
+  } catch (error) {
+    console.error('[events:cancel] Failed:', error);
+    return { success: false, error: await t('errors.failedToUpdate') };
+  }
+}

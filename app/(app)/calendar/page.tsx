@@ -96,11 +96,11 @@ export default function CalendarPage() {
   const tasksRef = useRef<Task[]>([]);
   const t = useTranslations('calendar');
   const tCommon = useTranslations('common');
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'system';
     return (localStorage.getItem('theme') as Theme | null) || 'system';
   });
-  const prefersDark = typeof window === 'undefined' ? 'false' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const prefersDark = typeof window === 'undefined' ? false : window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -290,7 +290,7 @@ export default function CalendarPage() {
     events: scheduleEvents,
     plugins: [eventsService],
     timezone: timeZone,
-    isDark: theme === 'dark' || theme === 'system' && prefersDark,
+    isDark: theme === 'dark' || (theme === 'system' && prefersDark),
     isResponsive: true,
     calendars: {
       events: {

@@ -116,23 +116,28 @@ export async function getNotificationsByItem(itemType: 'event' | 'task', itemId:
 }
 
 export async function scheduleNotificationJobs(itemType: 'event' | 'task', itemId: number, triggerDate: Date) {
-  const notificationConfigs = await getNotificationsByItem(itemType, itemId);
-  
-  for (const config of notificationConfigs) {
-    if (!config.enabled) continue;
-    
-    const scheduledAt = new Date(triggerDate.getTime() - config.offsetMinutes * 60000);
-    
-    await db.insert(notificationJobs).values({
-      itemType,
-      itemId,
-      notificationId: config.id,
-      channel: config.channel,
-      scheduledAt,
-      status: 'pending',
-      attempts: 0,
-    });
+  try {
+    const notificationConfigs = await getNotificationsByItem(itemType, itemId);
+
+    for (const config of notificationConfigs) {
+      if (!config.enabled) continue;
+
+      const scheduledAt = new Date(triggerDate.getTime() - config.offsetMinutes * 60000);
+
+      await db.insert(notificationJobs).values({
+        itemType,
+        itemId,
+        notificationId: config.id,
+        channel: config.channel,
+        scheduledAt,
+        status: 'pending',
+        attempts: 0,
+      });
+    }
+
+    revalidateTag('notification-jobs', 'max');
+  } catch (error) {
+    // Log error but don't propagate - notification scheduling failure shouldn't block item creation
+    console.error('[notifications:schedule] Failed to schedule notification jobs:', error, { itemType, itemId });
   }
-  
-  revalidateTag('notification-jobs', 'max');
 }

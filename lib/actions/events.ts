@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { db } from '@/lib/db';
-import { events, type NewEvent } from '@/lib/schema';
+import { events, recurrenceRules, notifications, notificationJobs, type NewEvent } from '@/lib/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
@@ -71,6 +71,23 @@ export async function updateEvent(id: number, data: Partial<Omit<NewEvent, 'id' 
 export async function deleteEvent(id: number): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
+
+    // Clean up orphaned data before deleting event
+    await db.delete(notificationJobs).where(and(
+      eq(notificationJobs.itemType, 'event'),
+      eq(notificationJobs.itemId, id)
+    ));
+
+    await db.delete(notifications).where(and(
+      eq(notifications.itemType, 'event'),
+      eq(notifications.itemId, id)
+    ));
+
+    await db.delete(recurrenceRules).where(and(
+      eq(recurrenceRules.itemType, 'event'),
+      eq(recurrenceRules.itemId, id)
+    ));
+
     await db.delete(events).where(and(eq(events.id, id), eq(events.userId, userId)));
     revalidatePath('/calendar');
     revalidateTag('events', 'default');

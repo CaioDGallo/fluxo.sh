@@ -2,7 +2,7 @@
 
 import { cache } from 'react';
 import { db } from '@/lib/db';
-import { tasks, type NewTask } from '@/lib/schema';
+import { tasks, recurrenceRules, notifications, notificationJobs, type NewTask } from '@/lib/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
@@ -71,6 +71,23 @@ export async function updateTask(id: number, data: Partial<Omit<NewTask, 'id' | 
 export async function deleteTask(id: number): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
+
+    // Clean up orphaned data before deleting task
+    await db.delete(notificationJobs).where(and(
+      eq(notificationJobs.itemType, 'task'),
+      eq(notificationJobs.itemId, id)
+    ));
+
+    await db.delete(notifications).where(and(
+      eq(notifications.itemType, 'task'),
+      eq(notifications.itemId, id)
+    ));
+
+    await db.delete(recurrenceRules).where(and(
+      eq(recurrenceRules.itemType, 'task'),
+      eq(recurrenceRules.itemId, id)
+    ));
+
     await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
     revalidatePath('/calendar');
     revalidateTag('tasks', 'default');

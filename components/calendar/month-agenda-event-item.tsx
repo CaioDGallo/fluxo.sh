@@ -166,13 +166,13 @@ export function MonthAgendaEventItem({
       className={cn(
         "group/event-item",
         "flex items-center gap-2",
-        "px-2 py-1.5",
+        "px-2 py-4",
         "bg-background hover:bg-muted/50",
         "border border-border",
         "border-l-[3px]",
         borderColor,
         "rounded-none",
-        "shadow-gray-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+        "shadow-gray-600 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
         "dark:shadow-gray-400",
         "transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -208,7 +208,7 @@ export function MonthAgendaEventItem({
       {/* Status badge */}
       <Badge
         variant={statusConfig.variant}
-        className="text-[10px] px-1.5 py-0 h-auto gap-1 shrink-0"
+        className="text-[10px] p-2 h-auto gap-1 shrink-0"
         aria-label={`Status: ${status}`}
       >
         <HugeiconsIcon icon={StatusIcon} className="size-2.5" />

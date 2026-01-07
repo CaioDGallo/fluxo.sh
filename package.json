@@ -27,6 +27,7 @@
     "@hugeicons/react": "^1.1.4",
     "@marsidev/react-turnstile": "^1.4.1",
     "@preact/signals": "^2.5.1",
+    "@radix-ui/react-context-menu": "^2.2.16",
     "@schedule-x/calendar": "^3.6.0",
     "@schedule-x/event-modal": "^3.6.0",
     "@schedule-x/events-service": "^3.6.0",

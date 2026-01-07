@@ -30,9 +30,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EventForm } from '@/components/event-form';
 import { TaskForm } from '@/components/task-form';
+import { MonthAgendaEventItem } from '@/components/calendar/month-agenda-event-item';
+import { EventDetailSheet } from '@/components/calendar/event-detail-sheet';
 import { useTranslations } from 'next-intl';
 import { Theme } from '@/components/theme-toggle';
-import { createEventModalPlugin } from '@schedule-x/event-modal';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Calendar03Icon,
@@ -43,8 +44,6 @@ import {
   Alert01Icon,
   CircleIcon,
 } from '@hugeicons/core-free-icons';
-
-const eventModal = createEventModalPlugin()
 
 function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -74,10 +73,6 @@ function resolveTimeZone(settings?: UserSettings | null): string {
 
 function toZonedDateTime(date: Date, timeZone: string) {
   return Temporal.Instant.from(date.toISOString()).toZonedDateTimeISO(timeZone);
-}
-
-const CustomNorthstarEventItem = ({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
-  return <div>{calendarEvent.title}</div>
 }
 
 export default function CalendarPage() {
@@ -120,6 +115,20 @@ export default function CalendarPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [detailSheetData, setDetailSheetData] = useState<{
+    id: number;
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    startAt: Date;
+    endAt: Date;
+    isAllDay?: boolean;
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    status: string;
+    type: 'event' | 'task';
+    durationMinutes?: number | null;
+  } | null>(null);
   const eventsRef = useRef<Event[]>([]);
   const tasksRef = useRef<Task[]>([]);
   const t = useTranslations('calendar');
@@ -185,16 +194,40 @@ export default function CalendarPage() {
     if (inferredCalendarId === 'events') {
       const event = eventsRef.current.find((item) => item.id === parsedId);
       if (!event) return;
-      setSelectedEvent(event);
-      setEditEventDialogOpen(true);
+      setDetailSheetData({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        startAt: event.startAt,
+        endAt: event.endAt,
+        isAllDay: event.isAllDay,
+        priority: event.priority,
+        status: event.status,
+        type: 'event',
+      });
+      setDetailSheetOpen(true);
       return;
     }
 
     if (inferredCalendarId === 'tasks') {
       const task = tasksRef.current.find((item) => item.id === parsedId);
       if (!task) return;
-      setSelectedTask(task);
-      setEditTaskDialogOpen(true);
+      setDetailSheetData({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        location: task.location,
+        startAt: task.startAt || task.dueAt,
+        endAt: task.durationMinutes
+          ? new Date(toDate(task.startAt || task.dueAt).getTime() + task.durationMinutes * 60 * 1000)
+          : task.dueAt,
+        priority: task.priority,
+        status: task.status,
+        type: 'task',
+        durationMinutes: task.durationMinutes,
+      });
+      setDetailSheetOpen(true);
     }
   }
 
@@ -255,6 +288,63 @@ export default function CalendarPage() {
     }
   }
 
+  // Handlers for detail sheet actions
+  const handleDetailSheetEdit = useCallback(() => {
+    if (!detailSheetData) return;
+
+    if (detailSheetData.type === 'event') {
+      const event = eventsRef.current.find((e) => e.id === detailSheetData.id);
+      if (!event) return;
+      setSelectedEvent(event);
+      setEditEventDialogOpen(true);
+    } else {
+      const task = tasksRef.current.find((t) => t.id === detailSheetData.id);
+      if (!task) return;
+      setSelectedTask(task);
+      setEditTaskDialogOpen(true);
+    }
+  }, [detailSheetData]);
+
+  const handleDetailSheetDelete = useCallback(() => {
+    if (!detailSheetData) return;
+
+    requestDelete({
+      type: detailSheetData.type,
+      id: detailSheetData.id,
+      title: detailSheetData.title,
+    });
+  }, [detailSheetData]);
+
+  // Handlers for custom event item context menu
+  const handleEventItemEdit = useCallback((id: number, type: 'event' | 'task') => {
+    handleCalendarEventClick({ id: `${type}-${id}`, calendarId: type === 'event' ? 'events' : 'tasks' });
+  }, []);
+
+  const handleEventItemDelete = useCallback((id: number, type: 'event' | 'task') => {
+    const item = type === 'event'
+      ? eventsRef.current.find((e) => e.id === id)
+      : tasksRef.current.find((t) => t.id === id);
+
+    if (!item) return;
+
+    requestDelete({
+      type,
+      id,
+      title: item.title,
+    });
+  }, []);
+
+  // Custom event item component for month agenda view
+  const CustomNorthstarEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
+    return (
+      <MonthAgendaEventItem
+        calendarEvent={calendarEvent}
+        onEdit={handleEventItemEdit}
+        onDelete={handleEventItemDelete}
+      />
+    );
+  }, [handleEventItemEdit, handleEventItemDelete]);
+
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       // Type filter
@@ -306,6 +396,11 @@ export default function CalendarPage() {
           calendarId: 'events',
           description: event.description || undefined,
           location: event.location || undefined,
+          priority: event.priority,
+          status: event.status,
+          itemType: 'event' as const,
+          itemId: event.id,
+          isAllDay: event.isAllDay,
         };
       }),
       ...filteredTasks.map((task) => {
@@ -330,6 +425,10 @@ export default function CalendarPage() {
           calendarId: 'tasks',
           description: task.description || undefined,
           location: task.location || undefined,
+          priority: task.priority,
+          status: task.status,
+          itemType: 'task' as const,
+          itemId: task.id,
         };
       }),
     ];
@@ -339,7 +438,7 @@ export default function CalendarPage() {
     theme: 'shadcn',
     views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
     events: scheduleEvents,
-    plugins: [eventsService, eventModal],
+    plugins: [eventsService],
     timezone: timeZone,
     isDark: theme === 'dark' || (theme === 'system' && prefersDark),
     isResponsive: true,
@@ -372,7 +471,7 @@ export default function CalendarPage() {
       },
     },
     callbacks: {
-      // onEventClick: (event) => handleCalendarEventClick(event),
+      onEventClick: (event) => handleCalendarEventClick(event),
     },
   });
 
@@ -489,12 +588,12 @@ export default function CalendarPage() {
       <div className="mb-4 space-y-3">
         {/* Type Filter */}
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground hidden md:inline min-w-[60px]">
+          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
             {t('type')}:
           </span>
-          <div className="flex gap-1 border border-border rounded-md p-1 bg-background">
+          <div className="flex gap-1 rounded-md bg-background">
             <Button
-              variant={filterType === 'event' ? 'default' : 'ghost'}
+              variant={filterType === 'event' ? 'hollow' : 'popout'}
               size="sm"
               onClick={() => setFilterType('event')}
               className="gap-1.5"
@@ -503,7 +602,7 @@ export default function CalendarPage() {
               <span className="hidden xs:inline">{t('events')}</span>
             </Button>
             <Button
-              variant={filterType === 'task' ? 'default' : 'ghost'}
+              variant={filterType === 'task' ? 'hollow' : 'popout'}
               size="sm"
               onClick={() => setFilterType('task')}
               className="gap-1.5"
@@ -516,12 +615,12 @@ export default function CalendarPage() {
 
         {/* Status Filter */}
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground hidden md:inline min-w-[60px]">
-            {t('status')}:
+          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
+            {t('statusLabel')}:
           </span>
           <div className="flex gap-2">
             <Button
-              variant={statusFilters.pending ? 'default' : 'outline'}
+              variant={statusFilters.pending ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => toggleStatus('pending')}
               aria-label={t('status.pending')}
@@ -531,7 +630,7 @@ export default function CalendarPage() {
               <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />
             </Button>
             <Button
-              variant={statusFilters.inProgress ? 'default' : 'outline'}
+              variant={statusFilters.inProgress ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => toggleStatus('inProgress')}
               disabled={filterType === 'event'}
@@ -543,7 +642,7 @@ export default function CalendarPage() {
               <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} />
             </Button>
             <Button
-              variant={statusFilters.completed ? 'default' : 'outline'}
+              variant={statusFilters.completed ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => toggleStatus('completed')}
               aria-label={t('status.completed')}
@@ -557,12 +656,12 @@ export default function CalendarPage() {
 
         {/* Priority Filter */}
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground hidden md:inline min-w-[60px]">
-            {t('priority')}:
+          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
+            {t('priorityLabel')}:
           </span>
           <div className="flex gap-2">
             <Button
-              variant={priorityFilters.low ? 'default' : 'outline'}
+              variant={priorityFilters.low ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => togglePriority('low')}
               aria-label={t('priority.low')}
@@ -573,7 +672,7 @@ export default function CalendarPage() {
               <HugeiconsIcon icon={CircleIcon} strokeWidth={2} />
             </Button>
             <Button
-              variant={priorityFilters.medium ? 'default' : 'outline'}
+              variant={priorityFilters.medium ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => togglePriority('medium')}
               aria-label={t('priority.medium')}
@@ -584,7 +683,7 @@ export default function CalendarPage() {
               <HugeiconsIcon icon={Flag01Icon} strokeWidth={2} />
             </Button>
             <Button
-              variant={priorityFilters.high ? 'default' : 'outline'}
+              variant={priorityFilters.high ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => togglePriority('high')}
               aria-label={t('priority.high')}
@@ -595,7 +694,7 @@ export default function CalendarPage() {
               <HugeiconsIcon icon={Flag01Icon} strokeWidth={2} />
             </Button>
             <Button
-              variant={priorityFilters.critical ? 'default' : 'outline'}
+              variant={priorityFilters.critical ? 'hollow' : 'popout'}
               size="icon-sm"
               onClick={() => togglePriority('critical')}
               aria-label={t('priority.critical')}
@@ -667,6 +766,15 @@ export default function CalendarPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Event Detail Sheet */}
+      <EventDetailSheet
+        open={detailSheetOpen}
+        onOpenChange={setDetailSheetOpen}
+        event={detailSheetData}
+        onEdit={handleDetailSheetEdit}
+        onDelete={handleDetailSheetDelete}
+      />
     </div>
   );
 }

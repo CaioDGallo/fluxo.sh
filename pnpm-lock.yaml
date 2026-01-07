@@ -23,6 +23,9 @@ importers:
       '@preact/signals':
         specifier: ^2.5.1
         version: 2.5.1(preact@10.28.2)
+      '@radix-ui/react-context-menu':
+        specifier: ^2.2.16
+        version: 2.2.16(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@schedule-x/calendar':
         specifier: ^3.6.0
         version: 3.6.0(@preact/signals@2.5.1(preact@10.28.2))(preact@10.28.2)(temporal-polyfill@0.3.0)

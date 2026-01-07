@@ -12,18 +12,28 @@ import { scheduleNotificationJobs } from './notifications';
 type ActionResult = { success: true } | { success: false; error: string };
 
 export const getEvents = cache(async () => {
-  const userId = await getCurrentUserId();
-  return await db.select().from(events).where(eq(events.userId, userId)).orderBy(asc(events.startAt));
+  try {
+    const userId = await getCurrentUserId();
+    return await db.select().from(events).where(eq(events.userId, userId)).orderBy(asc(events.startAt));
+  } catch (error) {
+    console.error('[events:get] Failed:', error);
+    return [];
+  }
 });
 
 export async function getEventById(id: number) {
-  const userId = await getCurrentUserId();
-  const [event] = await db
-    .select()
-    .from(events)
-    .where(and(eq(events.id, id), eq(events.userId, userId)))
-    .limit(1);
-  return event;
+  try {
+    const userId = await getCurrentUserId();
+    const [event] = await db
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.userId, userId)))
+      .limit(1);
+    return event;
+  } catch (error) {
+    console.error('[events:getById] Failed:', error);
+    return undefined;
+  }
 }
 
 export async function createEvent(data: Omit<NewEvent, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<ActionResult> {

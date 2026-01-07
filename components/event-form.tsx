@@ -47,13 +47,23 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
     setError(null);
 
     try {
+      // Parse dates using Date constructor for explicit local timezone handling
+      const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+
       const startDateTime = isAllDay
-        ? new Date(`${startDate}T00:00:00`)
-        : new Date(`${startDate}T${startTime}:00`);
-      
+        ? new Date(startYear, startMonth - 1, startDay, 0, 0, 0)
+        : (() => {
+            const [hours, minutes] = startTime.split(':').map(Number);
+            return new Date(startYear, startMonth - 1, startDay, hours, minutes, 0);
+          })();
+
       const endDateTime = isAllDay
-        ? new Date(`${endDate}T23:59:59`)
-        : new Date(`${endDate}T${endTime}:00`);
+        ? new Date(endYear, endMonth - 1, endDay, 23, 59, 59)
+        : (() => {
+            const [hours, minutes] = endTime.split(':').map(Number);
+            return new Date(endYear, endMonth - 1, endDay, hours, minutes, 0);
+          })();
 
       if (endDateTime < startDateTime) {
         setError(t('invalidDateTime'));

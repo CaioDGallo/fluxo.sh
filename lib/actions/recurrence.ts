@@ -130,13 +130,18 @@ export async function deleteRecurrenceRule(id: number): Promise<ActionResult> {
 }
 
 export async function getRecurrenceRuleByItem(itemType: 'event' | 'task', itemId: number) {
-  const [rule] = await db
-    .select()
-    .from(recurrenceRules)
-    .where(and(
-      eq(recurrenceRules.itemType, itemType),
-      eq(recurrenceRules.itemId, itemId)
-    ))
-    .limit(1);
-  return rule;
+  try {
+    const [rule] = await db
+      .select()
+      .from(recurrenceRules)
+      .where(and(
+        eq(recurrenceRules.itemType, itemType),
+        eq(recurrenceRules.itemId, itemId)
+      ))
+      .limit(1);
+    return rule;
+  } catch (error) {
+    console.error('[recurrence:getByItem] Failed:', error);
+    return undefined;
+  }
 }

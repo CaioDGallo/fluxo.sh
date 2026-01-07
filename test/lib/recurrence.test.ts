@@ -41,6 +41,7 @@ describe('Recurrence Logic', () => {
         startDate,
         endDate,
         baseStartAt,
+        'event',
         baseEndAt
       );
 
@@ -59,6 +60,7 @@ describe('Recurrence Logic', () => {
         startDate,
         endDate,
         baseStartAt,
+        'event',
         baseEndAt
       );
 
@@ -75,7 +77,8 @@ describe('Recurrence Logic', () => {
         'FREQ=WEEKLY;COUNT=3',
         startDate,
         endDate,
-        baseStartAt
+        baseStartAt,
+        'event'
       );
 
       expect(occurrences).toHaveLength(3);
@@ -90,7 +93,8 @@ describe('Recurrence Logic', () => {
         'FREQ=DAILY;UNTIL=20250110T000000Z',
         startDate,
         endDate,
-        baseStartAt
+        baseStartAt,
+        'event'
       );
 
       expect(occurrences.length).toBeGreaterThan(0);

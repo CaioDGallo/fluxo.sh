@@ -48,14 +48,24 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
     setError(null);
 
     try {
-      const dueDateTime = new Date(`${dueDate}T${dueTime}:00`);
+      // Parse dates using Date constructor for explicit local timezone handling
+      const [year, month, day] = dueDate.split('-').map(Number);
+      const [dueHours, dueMinutes] = dueTime.split(':').map(Number);
+      const dueDateTime = new Date(year, month - 1, day, dueHours, dueMinutes, 0);
+
+      const startAtDateTime = hasTime
+        ? (() => {
+            const [hours, minutes] = startTime.split(':').map(Number);
+            return new Date(year, month - 1, day, hours, minutes, 0);
+          })()
+        : null;
 
       const data = {
         title,
         description: description || null,
         location: location || null,
         dueAt: dueDateTime,
-        startAt: hasTime ? new Date(`${dueDate}T${startTime}:00`) : null,
+        startAt: startAtDateTime,
         durationMinutes: hasTime ? duration : null,
         priority,
         status,
@@ -172,7 +182,12 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
                 type="number"
                 id="duration"
                 value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value);
+                  if (!isNaN(parsed) && parsed >= 15) {
+                    setDuration(parsed);
+                  }
+                }}
                 min={15}
                 step={15}
                 required

@@ -12,18 +12,28 @@ import { scheduleNotificationJobs } from './notifications';
 type ActionResult = { success: true } | { success: false; error: string };
 
 export const getTasks = cache(async () => {
-  const userId = await getCurrentUserId();
-  return await db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(asc(tasks.dueAt));
+  try {
+    const userId = await getCurrentUserId();
+    return await db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(asc(tasks.dueAt));
+  } catch (error) {
+    console.error('[tasks:get] Failed:', error);
+    return [];
+  }
 });
 
 export async function getTaskById(id: number) {
-  const userId = await getCurrentUserId();
-  const [task] = await db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-    .limit(1);
-  return task;
+  try {
+    const userId = await getCurrentUserId();
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      .limit(1);
+    return task;
+  } catch (error) {
+    console.error('[tasks:getById] Failed:', error);
+    return undefined;
+  }
 }
 
 export async function createTask(data: Omit<NewTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<ActionResult> {

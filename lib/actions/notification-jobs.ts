@@ -34,21 +34,23 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
     try {
       let isValid = false;
       let itemData: EventItem | TaskItem | null = null;
-      
+
       if (job.itemType === 'event') {
-        [itemData] = await db
+        const result = await db
           .select()
           .from(events)
           .where(eq(events.id, job.itemId))
-          .limit(1) as unknown as [EventItem];
-        isValid = itemData && itemData.status === 'scheduled';
+          .limit(1);
+        itemData = result[0] || null;
+        isValid = itemData !== null && itemData.status === 'scheduled';
       } else if (job.itemType === 'task') {
-        [itemData] = await db
+        const result = await db
           .select()
           .from(tasks)
           .where(eq(tasks.id, job.itemId))
-          .limit(1) as unknown as [TaskItem];
-        isValid = itemData && (itemData.status === 'pending' || itemData.status === 'in_progress');
+          .limit(1);
+        itemData = result[0] || null;
+        isValid = itemData !== null && (itemData.status === 'pending' || itemData.status === 'in_progress');
       }
       
       if (!isValid) {

@@ -22,6 +22,7 @@ export function expandOccurrences(
   startDate: Date,
   endDate: Date,
   baseStartAt: Date,
+  itemType: 'event' | 'task',
   baseEndAt?: Date,
   baseDueAt?: Date,
   durationMinutes?: number
@@ -47,7 +48,7 @@ export function expandOccurrences(
     
     return {
       id: index,
-      itemType: 'event',
+      itemType,
       itemId: index,
       startAt,
       endAt,

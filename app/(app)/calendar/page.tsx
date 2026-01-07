@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -88,19 +87,32 @@ export default function CalendarPage() {
       description: event.description || undefined,
       location: event.location || undefined,
     })),
-    ...filteredTasks.map((task) => ({
-      id: `task-${task.id}`,
-      title: task.title,
-      start: Temporal.ZonedDateTime.from(
-        task.dueAt.toISOString().replace('Z', '+00:00[UTC]')
-      ),
-      end: Temporal.ZonedDateTime.from(
-        task.dueAt.toISOString().replace('Z', '+00:00[UTC]')
-      ),
-      calendarId: 'tasks',
-      description: task.description || undefined,
-      location: task.location || undefined,
-    })),
+    ...filteredTasks.map((task) => {
+      let startDate: Date;
+      let endDate: Date;
+
+      if (task.startAt && task.durationMinutes) {
+        startDate = task.startAt;
+        endDate = new Date(task.startAt.getTime() + task.durationMinutes * 60 * 1000);
+      } else {
+        startDate = task.dueAt;
+        endDate = task.dueAt;
+      }
+
+      return {
+        id: `task-${task.id}`,
+        title: task.title,
+        start: Temporal.ZonedDateTime.from(
+          startDate.toISOString().replace('Z', '+00:00[UTC]')
+        ),
+        end: Temporal.ZonedDateTime.from(
+          endDate.toISOString().replace('Z', '+00:00[UTC]')
+        ),
+        calendarId: 'tasks',
+        description: task.description || undefined,
+        location: task.location || undefined,
+      };
+    }),
   ];
 
   const calendar = useNextCalendarApp({

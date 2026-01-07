@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScheduleXCalendar, useNextCalendarApp } from '@schedule-x/react';
 import {
   createViewDay,
@@ -37,6 +37,15 @@ import { EventForm } from '@/components/event-form';
 import { TaskForm } from '@/components/task-form';
 import { useTranslations } from 'next-intl';
 
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
+}
+
+function toOptionalDate(value?: Date | string | null): Date | null {
+  if (!value) return null;
+  return toDate(value);
+}
+
 export default function CalendarPage() {
   const eventsService = useState(() => createEventsServicePlugin())[0];
   const [events, setEvents] = useState<Event[]>([]);
@@ -59,22 +68,39 @@ export default function CalendarPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const eventsRef = useRef<Event[]>([]);
+  const tasksRef = useRef<Task[]>([]);
   const t = useTranslations('calendar');
   const tCommon = useTranslations('common');
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     const [eventsData, tasksData] = await Promise.all([getEvents(), getTasks()]);
-    setEvents(eventsData);
-    setTasks(tasksData);
+    const normalizedEvents = eventsData.map((event) => ({
+      ...event,
+      startAt: toDate(event.startAt),
+      endAt: toDate(event.endAt),
+      createdAt: toOptionalDate(event.createdAt),
+      updatedAt: toOptionalDate(event.updatedAt),
+    }));
+    const normalizedTasks = tasksData.map((task) => ({
+      ...task,
+      dueAt: toDate(task.dueAt),
+      startAt: toOptionalDate(task.startAt),
+      completedAt: toOptionalDate(task.completedAt),
+      createdAt: toOptionalDate(task.createdAt),
+      updatedAt: toOptionalDate(task.updatedAt),
+    }));
+    eventsRef.current = normalizedEvents;
+    tasksRef.current = normalizedTasks;
+    setEvents(normalizedEvents);
+    setTasks(normalizedTasks);
     setIsLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      await loadData();
-    })();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   function parseCalendarId(id: string | number) {
     if (typeof id === 'number') return id;
@@ -85,17 +111,25 @@ export default function CalendarPage() {
   function handleCalendarEventClick(calendarEvent: { id: string | number; calendarId?: string }) {
     const parsedId = parseCalendarId(calendarEvent.id);
     if (parsedId === null) return;
+    const inferredCalendarId = (() => {
+      if (calendarEvent.calendarId) return calendarEvent.calendarId;
+      if (typeof calendarEvent.id === 'string') {
+        if (calendarEvent.id.startsWith('event-')) return 'events';
+        if (calendarEvent.id.startsWith('task-')) return 'tasks';
+      }
+      return undefined;
+    })();
 
-    if (calendarEvent.calendarId === 'events') {
-      const event = events.find((item) => item.id === parsedId);
+    if (inferredCalendarId === 'events') {
+      const event = eventsRef.current.find((item) => item.id === parsedId);
       if (!event) return;
       setSelectedEvent(event);
       setEditEventDialogOpen(true);
       return;
     }
 
-    if (calendarEvent.calendarId === 'tasks') {
-      const task = tasks.find((item) => item.id === parsedId);
+    if (inferredCalendarId === 'tasks') {
+      const task = tasksRef.current.find((item) => item.id === parsedId);
       if (!task) return;
       setSelectedTask(task);
       setEditTaskDialogOpen(true);
@@ -174,8 +208,6 @@ export default function CalendarPage() {
   });
 
   const scheduleEvents = useMemo(() => {
-    const toDate = (value: Date | string) => (value instanceof Date ? value : new Date(value));
-
     return [
       ...filteredEvents.map((event) => {
         const startAt = toDate(event.startAt);

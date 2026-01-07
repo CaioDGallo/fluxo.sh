@@ -57,6 +57,13 @@
       "when": 1767731071139,
       "tag": "0007_tearful_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1767786934816,
+      "tag": "0008_bent_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

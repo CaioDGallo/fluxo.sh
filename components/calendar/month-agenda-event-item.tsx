@@ -78,10 +78,11 @@ function getStatusConfig(status: string, itemType: string) {
 
 // Helper: Format time from Temporal.ZonedDateTime
 function formatTime(zdt: unknown): string {
-  if (!zdt || !zdt.toLocaleString) return ''
+  if (!zdt || typeof zdt !== 'object' || !('toLocaleString' in zdt)) return ''
 
   try {
-    return zdt.toLocaleString(undefined, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (zdt as any).toLocaleString(undefined, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,

@@ -282,6 +282,7 @@ export default function CalendarPage() {
     views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
     events: scheduleEvents,
     plugins: [eventsService],
+    timezone: timeZone,
     calendars: {
       events: {
         colorName: 'events',

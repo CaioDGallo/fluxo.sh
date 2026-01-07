@@ -1,9 +1,9 @@
-import 'dotenv/config';
-import { db } from '../lib/db';
-import { accounts, categories, budgets, transactions, entries, income, faturas } from '../lib/schema';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { exec } from 'child_process';
+import 'dotenv/config';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { promisify } from 'util';
+import { db } from '../lib/db';
+import { accounts, budgets, categories, entries, events, faturas, income, tasks, transactions } from '../lib/schema';
 
 const execAsync = promisify(exec);
 
@@ -28,6 +28,8 @@ async function reset() {
     await db.delete(budgets);
     await db.delete(categories);
     await db.delete(accounts);
+    await db.delete(tasks);
+    await db.delete(events);
     console.log('  ✓ Tables truncated\n');
 
     // Step 2: Run migrations

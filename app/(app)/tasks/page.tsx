@@ -325,7 +325,7 @@ export default function TasksPage() {
 
   const calendar = useNextCalendarApp({
     theme: 'shadcn',
-    views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
+    views: [createViewMonthAgenda(), createViewDay(), createViewWeek(), createViewMonthGrid()],
     events: scheduleEvents,
     plugins: [eventsService],
     timezone: timeZone,
@@ -374,7 +374,7 @@ export default function TasksPage() {
           </AlertDialog>
 
           <AlertDialog open={editTaskDialogOpen} onOpenChange={handleEditTaskOpenChange}>
-            <AlertDialogContent>
+            <AlertDialogContent closeOnBackdropClick>
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('editTask')}</AlertDialogTitle>
               </AlertDialogHeader>

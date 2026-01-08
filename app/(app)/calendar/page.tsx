@@ -310,7 +310,7 @@ export default function CalendarPage() {
 
   const calendar = useNextCalendarApp({
     theme: 'shadcn',
-    views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
+    views: [createViewMonthAgenda(), createViewDay(), createViewWeek(), createViewMonthGrid()],
     events: scheduleEvents,
     plugins: [eventsService],
     timezone: timeZone,
@@ -359,7 +359,7 @@ export default function CalendarPage() {
           </AlertDialog>
 
           <AlertDialog open={editEventDialogOpen} onOpenChange={handleEditEventOpenChange}>
-            <AlertDialogContent>
+            <AlertDialogContent closeOnBackdropClick>
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('editEvent')}</AlertDialogTitle>
               </AlertDialogHeader>

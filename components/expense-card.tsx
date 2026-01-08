@@ -15,6 +15,7 @@ import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { ConvertToFaturaDialog } from '@/components/convert-to-fatura-dialog';
 import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
 import type { Category, Account } from '@/lib/schema';
+import type { UnpaidFatura } from '@/lib/actions/faturas';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -36,15 +37,6 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreVerticalIcon, Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
-
-type UnpaidFatura = {
-  id: number;
-  accountId: number;
-  accountName: string;
-  yearMonth: string;
-  totalAmount: number;
-  dueDate: string;
-};
 
 type ExpenseCardBaseProps = {
   entry: {

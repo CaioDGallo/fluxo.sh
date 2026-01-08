@@ -4,6 +4,7 @@ import { createContext, useContext, useOptimistic, useCallback, startTransition 
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Account, Category } from '@/lib/schema';
+import type { UnpaidFatura } from '@/lib/actions/faturas';
 import {
   createExpense as serverCreateExpense,
   deleteExpense as serverDeleteExpense,
@@ -100,6 +101,7 @@ type ExpenseContextValue = {
   expenses: OptimisticExpenseEntry[];
   accounts: Account[];
   categories: Category[];
+  unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFilters;
 
   // Optimistic actions
@@ -129,6 +131,7 @@ type ExpenseListProviderProps = {
   initialExpenses: ExpenseEntry[];
   accounts: Account[];
   categories: Category[];
+  unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFilters;
 };
 
@@ -186,6 +189,7 @@ export function ExpenseListProvider({
   initialExpenses,
   accounts,
   categories,
+  unpaidFaturas,
   filters,
 }: ExpenseListProviderProps) {
   const router = useRouter();
@@ -287,6 +291,7 @@ export function ExpenseListProvider({
     expenses: optimisticExpenses,
     accounts,
     categories,
+    unpaidFaturas,
     filters,
     addExpense,
     togglePaid,

@@ -13,7 +13,7 @@ export { ExpenseListProvider };
 
 export function ExpenseList() {
   const context = useExpenseContext();
-  const { expenses, accounts, categories, filters } = context;
+  const { expenses, accounts, categories, unpaidFaturas, filters } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
@@ -134,6 +134,7 @@ export function ExpenseList() {
                   isSelected={selection.isSelected(expense.id)}
                   onLongPress={() => selection.enterSelectionMode(expense.id)}
                   onToggleSelection={() => selection.toggleSelection(expense.id)}
+                  unpaidFaturas={unpaidFaturas}
                 />
               ) : (
                 <ExpenseCard
@@ -144,6 +145,7 @@ export function ExpenseList() {
                   isOptimistic={expense._optimistic}
                   selectionMode={false}
                   onLongPress={() => selection.enterSelectionMode(expense.id)}
+                  unpaidFaturas={unpaidFaturas}
                 />
               )
             )}

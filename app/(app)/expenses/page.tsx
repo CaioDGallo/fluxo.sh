@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { getExpenses, type ExpenseFilters as ExpenseFiltersType } from '@/lib/actions/expenses';
 import { getAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
+import { getUnpaidFaturas } from '@/lib/actions/faturas';
 import { ExpenseList, ExpenseListProvider } from '@/components/expense-list';
 import { ExpenseFilters } from '@/components/expense-filters';
 import { ExpenseFilterSummary } from '@/components/expense-filter-summary';
@@ -33,10 +34,11 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
     status: params.status || 'all',
   };
 
-  const [expenses, accounts, categories] = await Promise.all([
+  const [expenses, accounts, categories, unpaidFaturas] = await Promise.all([
     getExpenses(filters),
     getAccounts(),
     getCategories('expense'),
+    getUnpaidFaturas(),
   ]);
 
   return (
@@ -69,6 +71,7 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
         accounts={accounts}
         categories={categories}
         filters={filters}
+        unpaidFaturas={unpaidFaturas}
       >
         <ExpenseFilterSummary />
         <ExpenseList />

@@ -6,10 +6,19 @@ import { getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, transactions, transfers, type Fatura } from '@/lib/schema';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
 import { syncAccountBalance } from '@/lib/actions/accounts';
+
+export type UnpaidFatura = {
+  id: number;
+  accountId: number;
+  accountName: string;
+  yearMonth: string;
+  totalAmount: number;
+  dueDate: string;
+};
 
 /**
  * Ensures a fatura exists for a given account and month.
@@ -113,7 +122,7 @@ export const getFaturasByMonth = cache(async (yearMonth: string) => {
 /**
  * Gets all unpaid faturas across all credit card accounts.
  */
-export const getUnpaidFaturas = cache(async () => {
+export const getUnpaidFaturas = cache(async (): Promise<UnpaidFatura[]> => {
   const userId = await getCurrentUserId();
   return await db
     .select({
@@ -128,7 +137,7 @@ export const getUnpaidFaturas = cache(async () => {
     .innerJoin(accounts, eq(faturas.accountId, accounts.id))
     .where(and(
       eq(faturas.userId, userId),
-      sql`${faturas.paidAt} IS NULL`
+      isNull(faturas.paidAt)
     ))
     .orderBy(desc(faturas.yearMonth), accounts.name);
 });

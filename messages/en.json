@@ -14,6 +14,8 @@
     "paying": "Paying...",
     "reverting": "Reverting...",
     "updating": "Updating...",
+    "convert": "Convert",
+    "converting": "Converting...",
     "yes": "Yes",
     "no": "No",
     "actionCannotBeUndone": "This action cannot be undone."
@@ -50,6 +52,8 @@
     "failedToUpdateCategory": "Failed to update category. Please try again.",
     "cannotDeleteCategoryWithTransactions": "Cannot delete category with existing transactions",
     "cannotDeleteCategoryWithIncome": "Cannot delete category with existing income entries",
+    "invalidConversion": "This expense cannot be converted to a fatura payment",
+    "amountMismatch": "Expense amount must match fatura total",
     "budgetMustBeNonNegative": "Budget amount must be a non-negative integer (cents)",
     "monthlyBudgetMustBeNonNegative": "Monthly budget must be a non-negative integer (cents)",
     "noValidRows": "No valid rows to import",
@@ -121,7 +125,12 @@
     "noExpenses": "No expenses this month yet",
     "viewAll": "View all",
     "selected": "selected",
-    "changeCategory": "Change Category"
+    "changeCategory": "Change Category",
+    "convertToFaturaPayment": "Convert to fatura payment",
+    "convertToFaturaDescription": "Select the fatura this expense paid",
+    "faturaSelectionLabel": "Target fatura",
+    "selectFatura": "Select a fatura...",
+    "convertSuccess": "Expense converted to fatura payment"
   },
   "income": {
     "title": "Income",

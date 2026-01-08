@@ -111,6 +111,29 @@ export const getFaturasByMonth = cache(async (yearMonth: string) => {
 });
 
 /**
+ * Gets all unpaid faturas across all credit card accounts.
+ */
+export const getUnpaidFaturas = cache(async () => {
+  const userId = await getCurrentUserId();
+  return await db
+    .select({
+      id: faturas.id,
+      accountId: faturas.accountId,
+      accountName: accounts.name,
+      yearMonth: faturas.yearMonth,
+      totalAmount: faturas.totalAmount,
+      dueDate: faturas.dueDate,
+    })
+    .from(faturas)
+    .innerJoin(accounts, eq(faturas.accountId, accounts.id))
+    .where(and(
+      eq(faturas.userId, userId),
+      sql`${faturas.paidAt} IS NULL`
+    ))
+    .orderBy(desc(faturas.yearMonth), accounts.name);
+});
+
+/**
  * Gets fatura details including all entries.
  */
 export const getFaturaWithEntries = cache(async (faturaId: number) => {
@@ -343,6 +366,148 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
     throw error instanceof Error ? error : new Error(await t('errors.failedToMarkPending'));
+  }
+}
+
+/**
+ * Converts an expense (from checking/savings/cash) into a fatura payment.
+ * Deletes the expense and creates a fatura_payment transfer.
+ */
+export async function convertExpenseToFaturaPayment(entryId: number, faturaId: number): Promise<void> {
+  if (!Number.isInteger(entryId) || entryId <= 0) {
+    throw new Error(await t('errors.invalidTransactionId'));
+  }
+  if (!Number.isInteger(faturaId) || faturaId <= 0) {
+    throw new Error(await t('errors.invalidFaturaId'));
+  }
+
+  try {
+    const userId = await getCurrentUserId();
+
+    await db.transaction(async (tx) => {
+      // 1. Load entry + transaction, validate ownership
+      const entry = await tx
+        .select({
+          entryId: entries.id,
+          entryAmount: entries.amount,
+          purchaseDate: entries.purchaseDate,
+          transactionId: entries.transactionId,
+          accountId: entries.accountId,
+        })
+        .from(entries)
+        .where(and(eq(entries.userId, userId), eq(entries.id, entryId)))
+        .limit(1);
+
+      if (!entry[0]) {
+        throw new Error(await t('errors.invalidTransactionId'));
+      }
+
+      const transaction = await tx
+        .select({
+          id: transactions.id,
+          totalInstallments: transactions.totalInstallments,
+        })
+        .from(transactions)
+        .where(and(eq(transactions.userId, userId), eq(transactions.id, entry[0].transactionId)))
+        .limit(1);
+
+      if (!transaction[0]) {
+        throw new Error(await t('errors.invalidTransactionId'));
+      }
+
+      // 2. Validate: accountType !== credit_card, totalInstallments === 1
+      const sourceAccount = await tx
+        .select({ type: accounts.type })
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.id, entry[0].accountId)))
+        .limit(1);
+
+      if (!sourceAccount[0]) {
+        throw new Error(await t('errors.accountNotFound'));
+      }
+
+      if (sourceAccount[0].type === 'credit_card') {
+        throw new Error(await t('errors.invalidConversion'));
+      }
+
+      if (transaction[0].totalInstallments !== 1) {
+        throw new Error(await t('errors.invalidConversion'));
+      }
+
+      // 3. Load fatura, validate unpaid + amount matches entry.amount
+      const fatura = await tx
+        .select()
+        .from(faturas)
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
+        .limit(1);
+
+      if (!fatura[0]) {
+        throw new Error(await t('errors.faturaNotFound'));
+      }
+
+      if (fatura[0].paidAt) {
+        throw new Error(await t('errors.faturaAlreadyPaid'));
+      }
+
+      if (fatura[0].totalAmount !== entry[0].entryAmount) {
+        throw new Error(await t('errors.amountMismatch'));
+      }
+
+      // 4. Create fatura_payment transfer
+      const paymentDate = entry[0].purchaseDate;
+      const paymentTimestamp = new Date(paymentDate);
+
+      await tx.insert(transfers).values({
+        userId,
+        fromAccountId: entry[0].accountId,
+        toAccountId: fatura[0].accountId,
+        amount: entry[0].entryAmount,
+        date: paymentDate,
+        type: 'fatura_payment',
+        faturaId: faturaId,
+        description: `Fatura ${fatura[0].yearMonth}`,
+      });
+
+      // 5. Mark fatura paid
+      await tx
+        .update(faturas)
+        .set({
+          paidAt: paymentTimestamp,
+          paidFromAccountId: entry[0].accountId,
+        })
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+
+      // 6. Mark all fatura entries as paid
+      await tx
+        .update(entries)
+        .set({ paidAt: paymentTimestamp })
+        .where(
+          and(
+            eq(entries.userId, userId),
+            eq(entries.accountId, fatura[0].accountId),
+            eq(entries.faturaMonth, fatura[0].yearMonth)
+          )
+        );
+
+      // 7. Delete expense transaction + entries (cascade handles entries)
+      await tx
+        .delete(transactions)
+        .where(and(eq(transactions.userId, userId), eq(transactions.id, entry[0].transactionId)));
+
+      // 8. Sync both account balances
+      await syncAccountBalance(entry[0].accountId, tx, userId);
+      await syncAccountBalance(fatura[0].accountId, tx, userId);
+    });
+
+    // 9. Revalidate paths
+    revalidatePath('/faturas');
+    revalidatePath('/expenses');
+    revalidatePath('/dashboard');
+    revalidatePath('/transfers');
+    revalidatePath('/settings/accounts');
+  } catch (error) {
+    console.error('Failed to convert expense to fatura payment:', { entryId, faturaId, error });
+    throw error instanceof Error ? error : new Error(await t('errors.failedToUpdate'));
   }
 }
 

@@ -12,6 +12,7 @@ import { markEntryPaid, markEntryPending, deleteExpense, updateTransactionCatego
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
+import { ConvertToFaturaDialog } from '@/components/convert-to-fatura-dialog';
 import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
 import type { Category, Account } from '@/lib/schema';
 import { toast } from 'sonner';
@@ -36,6 +37,15 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreVerticalIcon, Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 
+type UnpaidFatura = {
+  id: number;
+  accountId: number;
+  accountName: string;
+  yearMonth: string;
+  totalAmount: number;
+  dueDate: string;
+};
+
 type ExpenseCardBaseProps = {
   entry: {
     id: number;
@@ -58,6 +68,7 @@ type ExpenseCardBaseProps = {
   };
   categories: Category[];
   accounts: Account[];
+  unpaidFaturas?: UnpaidFatura[];
   isOptimistic?: boolean;
 };
 
@@ -76,13 +87,17 @@ type ExpenseCardProps =
   });
 
 export function ExpenseCard(props: ExpenseCardProps) {
-  const { entry, categories, accounts, isOptimistic = false } = props;
+  const { entry, categories, accounts, unpaidFaturas = [], isOptimistic = false } = props;
   const isPaid = !!entry.paidAt;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const context = useExpenseContextOptional();
+
+  // Check if expense can be converted to fatura payment
+  const canConvertToFatura = entry.accountType !== 'credit_card' && entry.totalInstallments === 1 && unpaidFaturas.length > 0;
 
   const t = useTranslations('expenses');
   const tCommon = useTranslations('common');
@@ -266,6 +281,11 @@ export function ExpenseCard(props: ExpenseCardProps) {
                   {t('markAsPaid')}
                 </DropdownMenuItem>
               )}
+              {canConvertToFatura && (
+                <DropdownMenuItem onClick={() => setConvertDialogOpen(true)}>
+                  {t('convertToFaturaPayment')}
+                </DropdownMenuItem>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -315,6 +335,25 @@ export function ExpenseCard(props: ExpenseCardProps) {
         open={editOpen}
         onOpenChange={setEditOpen}
       />
+
+      {canConvertToFatura && (
+        <ConvertToFaturaDialog
+          entry={{
+            id: entry.id,
+            amount: entry.amount,
+            description: entry.description,
+            purchaseDate: entry.purchaseDate,
+          }}
+          unpaidFaturas={unpaidFaturas}
+          open={convertDialogOpen}
+          onOpenChange={setConvertDialogOpen}
+          onSuccess={() => {
+            if (context) {
+              context.removeExpense(entry.transactionId);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

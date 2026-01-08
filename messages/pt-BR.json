@@ -14,6 +14,8 @@
     "paying": "Pagando...",
     "reverting": "Revertendo...",
     "updating": "Atualizando...",
+    "convert": "Converter",
+    "converting": "Convertendo...",
     "yes": "Sim",
     "no": "Não",
     "actionCannotBeUndone": "Esta ação não pode ser desfeita."
@@ -50,6 +52,8 @@
     "failedToUpdateCategory": "Falha ao atualizar categoria. Tente novamente.",
     "cannotDeleteCategoryWithTransactions": "Não é possível excluir categoria com transações existentes",
     "cannotDeleteCategoryWithIncome": "Não é possível excluir categoria com receitas existentes",
+    "invalidConversion": "Este gasto não pode ser convertido em pagamento de fatura",
+    "amountMismatch": "Valor do gasto deve ser igual ao total da fatura",
     "budgetMustBeNonNegative": "Orçamento deve ser um inteiro não-negativo (centavos)",
     "monthlyBudgetMustBeNonNegative": "Orçamento mensal deve ser um inteiro não-negativo (centavos)",
     "noValidRows": "Nenhuma linha válida para importar",
@@ -121,7 +125,12 @@
     "noExpenses": "Nenhuma despesa este mês ainda",
     "viewAll": "Ver todas",
     "selected": "selecionados",
-    "changeCategory": "Alterar Categoria"
+    "changeCategory": "Alterar Categoria",
+    "convertToFaturaPayment": "Converter em pagamento de fatura",
+    "convertToFaturaDescription": "Selecione a fatura que este gasto pagou",
+    "faturaSelectionLabel": "Fatura destino",
+    "selectFatura": "Selecione uma fatura...",
+    "convertSuccess": "Gasto convertido em pagamento de fatura"
   },
   "income": {
     "title": "Receitas",

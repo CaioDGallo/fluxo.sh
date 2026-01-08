@@ -23,7 +23,7 @@ export function AddTransferButton({ accounts }: AddTransferButtonProps) {
       onOpenChange={setOpen}
       onSuccess={() => setOpen(false)}
       trigger={
-        <Button variant="hollow" size="sm">
+        <Button className='w-auto' variant="hollow" size="sm">
           <HugeiconsIcon icon={Add01Icon} className="mr-2 size-4" />
           {t('addTransfer')}
         </Button>

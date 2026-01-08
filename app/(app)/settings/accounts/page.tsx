@@ -23,11 +23,11 @@ export default async function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center flex-col md:flex-row space-y-4 md:space-y-0 justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
         <div className="flex items-center gap-2">
           <form action={reconcileCurrentUserBalances}>
-            <Button variant="outline">{t('recalculateBalances')}</Button>
+            <Button variant="popout">{t('recalculateBalances')}</Button>
           </form>
           <AlertDialog>
             <AlertDialogTrigger asChild>

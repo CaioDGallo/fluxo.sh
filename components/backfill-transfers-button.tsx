@@ -49,7 +49,7 @@ export function BackfillTransfersButton({ className }: BackfillTransfersButtonPr
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className={className}>
+        <Button variant="hollow" size="sm" className={className}>
           {t('backfillButton')}
         </Button>
       </AlertDialogTrigger>
@@ -67,7 +67,7 @@ export function BackfillTransfersButton({ className }: BackfillTransfersButtonPr
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isRunning}>{tCommon('cancel')}</AlertDialogCancel>
-          <Button onClick={handleBackfill} disabled={isRunning}>
+          <Button variant='popout' onClick={handleBackfill} disabled={isRunning}>
             {isRunning ? tCommon('loading') : t('backfillConfirm')}
           </Button>
         </AlertDialogFooter>

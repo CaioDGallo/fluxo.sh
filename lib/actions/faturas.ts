@@ -5,10 +5,11 @@ import { db } from '@/lib/db';
 import { getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { accounts, categories, entries, faturas, transactions, type Fatura } from '@/lib/schema';
+import { accounts, categories, entries, faturas, transactions, transfers, type Fatura } from '@/lib/schema';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
+import { syncAccountBalance } from '@/lib/actions/accounts';
 
 /**
  * Ensures a fatura exists for a given account and month.
@@ -168,57 +169,84 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
 
   try {
     const userId = await getCurrentUserId();
+    const now = new Date();
+    const paymentDate = now.toISOString().split('T')[0];
 
-    // 1. Get fatura details
-    const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
+    await db.transaction(async (tx) => {
+      // 1. Get fatura details
+      const fatura = await tx
+        .select()
+        .from(faturas)
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
+        .limit(1);
 
-    if (!fatura[0]) {
-      throw new Error(await t('errors.faturaNotFound'));
-    }
+      if (!fatura[0]) {
+        throw new Error(await t('errors.faturaNotFound'));
+      }
 
-    if (fatura[0].paidAt) {
-      throw new Error(await t('errors.faturaAlreadyPaid'));
-    }
+      if (fatura[0].paidAt) {
+        throw new Error(await t('errors.faturaAlreadyPaid'));
+      }
 
-    // 2. Verify source account exists and is not a credit card
-    const sourceAccount = await db
-      .select()
-      .from(accounts)
-      .where(and(eq(accounts.userId, userId), eq(accounts.id, fromAccountId)))
-      .limit(1);
+      // 2. Verify source account exists and is not a credit card
+      const sourceAccount = await tx
+        .select()
+        .from(accounts)
+        .where(and(eq(accounts.userId, userId), eq(accounts.id, fromAccountId)))
+        .limit(1);
 
-    if (!sourceAccount[0]) {
-      throw new Error(await t('errors.accountNotFound'));
-    }
+      if (!sourceAccount[0]) {
+        throw new Error(await t('errors.accountNotFound'));
+      }
 
-    if (sourceAccount[0].type === 'credit_card') {
-      throw new Error(await t('errors.cannotPayFromCreditCard'));
-    }
+      if (sourceAccount[0].type === 'credit_card') {
+        throw new Error(await t('errors.cannotPayFromCreditCard'));
+      }
 
-    // 3. Mark fatura as paid
-    await db
-      .update(faturas)
-      .set({
-        paidAt: new Date(),
-        paidFromAccountId: fromAccountId,
-      })
-      .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+      // 3. Create transfer record
+      await tx
+        .insert(transfers)
+        .values({
+          userId,
+          fromAccountId,
+          toAccountId: fatura[0].accountId,
+          amount: fatura[0].totalAmount,
+          date: paymentDate,
+          type: 'fatura_payment',
+          faturaId: faturaId,
+          description: `Fatura ${fatura[0].yearMonth}`,
+        });
 
-    // 4. Mark all entries in this fatura as paid
-    await db
-      .update(entries)
-      .set({ paidAt: new Date() })
-      .where(
-        and(
-          eq(entries.userId, userId),
-          eq(entries.accountId, fatura[0].accountId),
-          eq(entries.faturaMonth, fatura[0].yearMonth)
-        )
-      );
+      // 4. Mark fatura as paid
+      await tx
+        .update(faturas)
+        .set({
+          paidAt: now,
+          paidFromAccountId: fromAccountId,
+        })
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+
+      // 5. Mark all entries in this fatura as paid
+      await tx
+        .update(entries)
+        .set({ paidAt: now })
+        .where(
+          and(
+            eq(entries.userId, userId),
+            eq(entries.accountId, fatura[0].accountId),
+            eq(entries.faturaMonth, fatura[0].yearMonth)
+          )
+        );
+
+      await syncAccountBalance(fromAccountId, tx, userId);
+      await syncAccountBalance(fatura[0].accountId, tx, userId);
+    });
 
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/transfers');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to pay fatura:', { faturaId, fromAccountId, error });
     throw error instanceof Error ? error : new Error(await t('errors.failedToPay'));
@@ -235,38 +263,83 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
 
   try {
     const userId = await getCurrentUserId();
+    const now = new Date();
+    const reversalDate = now.toISOString().split('T')[0];
 
-    // Get fatura details
-    const fatura = await db.select().from(faturas).where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId))).limit(1);
+    await db.transaction(async (tx) => {
+      // Get fatura details
+      const fatura = await tx
+        .select()
+        .from(faturas)
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
+        .limit(1);
 
-    if (!fatura[0]) {
-      throw new Error(await t('errors.faturaNotFound'));
-    }
+      if (!fatura[0]) {
+        throw new Error(await t('errors.faturaNotFound'));
+      }
 
-    // Mark fatura as unpaid
-    await db
-      .update(faturas)
-      .set({
-        paidAt: null,
-        paidFromAccountId: null,
-      })
-      .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+      const wasPaid = !!fatura[0].paidAt;
 
-    // Mark all entries in this fatura as unpaid
-    await db
-      .update(entries)
-      .set({ paidAt: null })
-      .where(
-        and(
-          eq(entries.userId, userId),
-          eq(entries.accountId, fatura[0].accountId),
-          eq(entries.faturaMonth, fatura[0].yearMonth)
-        )
-      );
+      const [paymentTransfer] = await tx
+        .select()
+        .from(transfers)
+        .where(and(
+          eq(transfers.userId, userId),
+          eq(transfers.faturaId, faturaId),
+          eq(transfers.type, 'fatura_payment')
+        ))
+        .orderBy(desc(transfers.createdAt))
+        .limit(1);
+
+      // Mark fatura as unpaid
+      await tx
+        .update(faturas)
+        .set({
+          paidAt: null,
+          paidFromAccountId: null,
+        })
+        .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+
+      // Mark all entries in this fatura as unpaid
+      await tx
+        .update(entries)
+        .set({ paidAt: null })
+        .where(
+          and(
+            eq(entries.userId, userId),
+            eq(entries.accountId, fatura[0].accountId),
+            eq(entries.faturaMonth, fatura[0].yearMonth)
+          )
+        );
+
+      if (wasPaid && paymentTransfer?.fromAccountId && paymentTransfer?.toAccountId) {
+        await tx.insert(transfers).values({
+          userId,
+          fromAccountId: paymentTransfer.toAccountId,
+          toAccountId: paymentTransfer.fromAccountId,
+          amount: paymentTransfer.amount,
+          date: reversalDate,
+          type: 'internal_transfer',
+          faturaId,
+          description: `Reversal: ${paymentTransfer.description ?? 'Fatura payment'}`,
+        });
+      }
+
+      const affectedAccounts = new Set<number>();
+      if (fatura[0].paidFromAccountId) {
+        affectedAccounts.add(fatura[0].paidFromAccountId);
+      }
+      affectedAccounts.add(fatura[0].accountId);
+      for (const accountId of affectedAccounts) {
+        await syncAccountBalance(accountId, tx, userId);
+      }
+    });
 
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
+    revalidatePath('/transfers');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
     throw error instanceof Error ? error : new Error(await t('errors.failedToMarkPending'));

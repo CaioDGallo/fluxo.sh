@@ -26,6 +26,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
+import { formatCurrency } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 type AccountCardProps = {
@@ -42,6 +43,7 @@ export function AccountCard({ account }: AccountCardProps) {
   const tAccountTypes = useTranslations('accountTypes');
 
   const config = accountTypeConfig[account.type];
+  const balanceLabel = account.currentBalance < 0 ? 'text-red-600' : 'text-green-600';
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -73,6 +75,14 @@ export function AccountCard({ account }: AccountCardProps) {
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-sm truncate">{account.name}</h3>
           <p className="text-xs text-gray-500">{tAccountTypes(account.type)}</p>
+        </div>
+
+        {/* Balance */}
+        <div className="text-right">
+          <p className={`text-sm font-semibold ${balanceLabel}`}>
+            {formatCurrency(account.currentBalance)}
+          </p>
+          <p className="text-xs text-gray-500">{t('currentBalance')}</p>
         </div>
 
         {/* Actions dropdown */}

@@ -453,6 +453,38 @@ describe('Fatura Actions', () => {
       expect(updatedEntries).toHaveLength(1);
       expect(updatedEntries[0].paidAt).not.toBeNull();
     });
+
+    it('creates a transfer and updates account balances', async () => {
+      const { account, fatura, amount } = await seedFaturaWithEntry();
+      const checking = await seedAccount(testAccounts.checking);
+
+      await payFatura(fatura.id, checking.id);
+
+      const [transfer] = await db
+        .select()
+        .from(schema.transfers)
+        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.faturaId, fatura.id)));
+
+      expect(transfer).toMatchObject({
+        fromAccountId: checking.id,
+        toAccountId: account.id,
+        amount,
+        type: 'fatura_payment',
+      });
+
+      const [updatedChecking] = await db
+        .select()
+        .from(schema.accounts)
+        .where(and(eq(schema.accounts.userId, TEST_USER_ID), eq(schema.accounts.id, checking.id)));
+
+      const [updatedCard] = await db
+        .select()
+        .from(schema.accounts)
+        .where(and(eq(schema.accounts.userId, TEST_USER_ID), eq(schema.accounts.id, account.id)));
+
+      expect(updatedChecking.currentBalance).toBe(-amount);
+      expect(updatedCard.currentBalance).toBe(0);
+    });
   });
 
   describe('markFaturaUnpaid', () => {

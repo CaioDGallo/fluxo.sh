@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   ArrowUp01Icon,
+  ArrowLeftRightIcon,
   CreditCardIcon,
   Invoice03Icon,
   SparklesIcon,
@@ -26,6 +27,7 @@ const moreItems = [
   { key: 'tasks', href: '/tasks', icon: Tick02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
   { key: 'income', href: '/income', icon: ArrowUp01Icon },
+  { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },

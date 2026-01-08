@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { getAccounts } from '@/lib/actions/accounts';
+import { getAccountsWithBalances } from '@/lib/actions/accounts';
 import { AccountForm } from '@/components/account-form';
 import { AccountCard } from '@/components/account-card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
 
 export default async function AccountsPage() {
   const t = await getTranslations('accounts');
-  const accounts = await getAccounts();
+  const accounts = await getAccountsWithBalances();
 
   // Group accounts by type
   const creditCardAccounts = accounts.filter(acc => acc.type === 'credit_card');

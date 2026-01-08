@@ -7,6 +7,9 @@ export const accountTypeEnum = pgEnum('account_type', ['credit_card', 'checking'
 // Enum for category types
 export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
 
+// Enum for transfer types
+export const transferTypeEnum = pgEnum('transfer_type', ['fatura_payment', 'internal_transfer', 'deposit', 'withdrawal']);
+
 // Enums for events and tasks
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical']);
 export const eventStatusEnum = pgEnum('event_status', ['scheduled', 'cancelled', 'completed']);
@@ -22,6 +25,8 @@ export const accounts = pgTable('accounts', {
   name: text('name').notNull(),
   type: accountTypeEnum('type').notNull(),
   currency: text('currency').default('BRL'),
+  currentBalance: integer('current_balance').notNull().default(0), // cents
+  lastBalanceUpdate: timestamp('last_balance_update').defaultNow(),
   // Credit card billing cycle config (1-28, null for non-CC accounts)
   closingDay: integer('closing_day'),
   paymentDueDay: integer('payment_due_day'),
@@ -126,6 +131,20 @@ export const faturas = pgTable(
     uniqueAccountMonth: unique().on(table.accountId, table.yearMonth),
   })
 );
+
+// Transfers table (account-to-account movements, including fatura payments)
+export const transfers = pgTable('transfers', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  fromAccountId: integer('from_account_id').references(() => accounts.id),
+  toAccountId: integer('to_account_id').references(() => accounts.id),
+  amount: integer('amount').notNull(), // cents
+  date: date('date').notNull(),
+  type: transferTypeEnum('type').notNull(),
+  faturaId: integer('fatura_id').references(() => faturas.id),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 // Income table
 export const income = pgTable('income', {
@@ -268,6 +287,9 @@ export type NewIncome = typeof income.$inferInsert;
 export type Fatura = typeof faturas.$inferSelect;
 export type NewFatura = typeof faturas.$inferInsert;
 
+export type Transfer = typeof transfers.$inferSelect;
+export type NewTransfer = typeof transfers.$inferInsert;
+
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 
@@ -316,6 +338,8 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const accountsRelations = relations(accounts, ({ many }) => ({
   entries: many(entries),
   income: many(income),
+  transfersFrom: many(transfers, { relationName: 'transfersFrom' }),
+  transfersTo: many(transfers, { relationName: 'transfersTo' }),
 }));
 
 export const incomeRelations = relations(income, ({ one }) => ({
@@ -337,6 +361,23 @@ export const faturasRelations = relations(faturas, ({ one }) => ({
   paidFromAccount: one(accounts, {
     fields: [faturas.paidFromAccountId],
     references: [accounts.id],
+  }),
+}));
+
+export const transfersRelations = relations(transfers, ({ one }) => ({
+  fromAccount: one(accounts, {
+    fields: [transfers.fromAccountId],
+    references: [accounts.id],
+    relationName: 'transfersFrom',
+  }),
+  toAccount: one(accounts, {
+    fields: [transfers.toAccountId],
+    references: [accounts.id],
+    relationName: 'transfersTo',
+  }),
+  fatura: one(faturas, {
+    fields: [transfers.faturaId],
+    references: [faturas.id],
   }),
 }));
 

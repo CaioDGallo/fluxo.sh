@@ -7,6 +7,7 @@ import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
+import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
@@ -121,9 +122,12 @@ export async function createExpense(data: CreateExpenseData) {
       }
     }
 
+    await syncAccountBalance(data.accountId);
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to create expense:', { data, error });
     throw new Error(await handleDbError(error, 'errors.failedToCreate'));
@@ -263,9 +267,19 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       }
     }
 
+    const affectedAccountIds = new Set<number>();
+    for (const entry of oldEntries) {
+      affectedAccountIds.add(entry.accountId);
+    }
+    affectedAccountIds.add(data.accountId);
+    for (const accountId of affectedAccountIds) {
+      await syncAccountBalance(accountId);
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to update expense:', { transactionId, data, error });
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
@@ -287,11 +301,13 @@ export async function deleteExpense(transactionId: number) {
       .where(and(eq(entries.userId, userId), eq(entries.transactionId, transactionId)));
 
     const affectedFaturas = new Map<number, Set<string>>();
+    const affectedAccountIds = new Set<number>();
     for (const entry of oldEntries) {
       if (!affectedFaturas.has(entry.accountId)) {
         affectedFaturas.set(entry.accountId, new Set());
       }
       affectedFaturas.get(entry.accountId)!.add(entry.faturaMonth);
+      affectedAccountIds.add(entry.accountId);
     }
 
     // CASCADE will delete entries automatically
@@ -304,9 +320,14 @@ export async function deleteExpense(transactionId: number) {
       }
     }
 
+    for (const accountId of affectedAccountIds) {
+      await syncAccountBalance(accountId);
+    }
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to delete expense:', { transactionId, error });
     throw new Error(await handleDbError(error, 'errors.failedToDelete'));

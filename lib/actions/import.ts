@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
+import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getDefaultImportCategories } from '@/lib/actions/categories';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
@@ -207,9 +208,12 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
       }
     }
 
+    await syncAccountBalance(accountId);
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
 
     return { success: true, imported: rows.length };
   } catch (error) {
@@ -387,10 +391,13 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
       }
     }
 
+    await syncAccountBalance(accountId);
+
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
     revalidatePath('/income');
+    revalidatePath('/settings/accounts');
 
     return {
       success: true,

@@ -14,6 +14,7 @@ import {
   CreditCardIcon,
   CalendarIcon,
   Tick02Icon,
+  ArrowLeftRightIcon,
 } from '@hugeicons/core-free-icons';
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const navItems = [
   { key: 'dashboard', href: '/dashboard', icon: Home01Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
   { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
+  { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'calendar', href: '/calendar', icon: CalendarIcon },
   { key: 'tasks', href: '/tasks', icon: Tick02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },

@@ -9,6 +9,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
+import { syncAccountBalance } from '@/lib/actions/accounts';
 
 export type CreateIncomeData = {
   description: string;
@@ -50,6 +51,7 @@ export async function createIncome(data: CreateIncomeData) {
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to create income:', error);
     throw new Error(await handleDbError(error, 'errors.failedToCreate'));
@@ -80,6 +82,16 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
   try {
     const userId = await getCurrentUserId();
 
+    const [existing] = await db
+      .select({ id: income.id, accountId: income.accountId, receivedAt: income.receivedAt })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
     await db
       .update(income)
       .set({
@@ -91,8 +103,14 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
       })
       .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
+    await syncAccountBalance(existing.accountId);
+    if (existing.accountId !== data.accountId) {
+      await syncAccountBalance(data.accountId);
+    }
+
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to update income:', error);
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
@@ -107,10 +125,23 @@ export async function deleteIncome(incomeId: number) {
   try {
     const userId = await getCurrentUserId();
 
+    const [existing] = await db
+      .select({ id: income.id, accountId: income.accountId })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
     await db.delete(income).where(and(eq(income.userId, userId), eq(income.id, incomeId)));
+
+    await syncAccountBalance(existing.accountId);
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to delete income:', error);
     throw new Error(await handleDbError(error, 'errors.failedToDelete'));
@@ -188,13 +219,26 @@ export async function markIncomeReceived(incomeId: number) {
   try {
     const userId = await getCurrentUserId();
 
+    const [record] = await db
+      .select({ id: income.id, accountId: income.accountId })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!record) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
     await db
       .update(income)
       .set({ receivedAt: new Date() })
       .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
+    await syncAccountBalance(record.accountId);
+
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to mark income as received:', error);
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
@@ -209,13 +253,26 @@ export async function markIncomePending(incomeId: number) {
   try {
     const userId = await getCurrentUserId();
 
+    const [record] = await db
+      .select({ id: income.id, accountId: income.accountId })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!record) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
     await db
       .update(income)
       .set({ receivedAt: null })
       .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
+    await syncAccountBalance(record.accountId);
+
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to mark income as pending:', error);
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));

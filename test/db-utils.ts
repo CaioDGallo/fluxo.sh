@@ -38,8 +38,10 @@ export async function clearAllTables() {
   await db.delete(schema.notificationJobs);
   await db.delete(schema.notifications);
   await db.delete(schema.recurrenceRules);
+  await db.delete(schema.transfers);
   await db.delete(schema.income);
   await db.delete(schema.entries);
+  await db.delete(schema.faturas);
   await db.delete(schema.transactions);
   await db.delete(schema.budgets);
   await db.delete(schema.monthlyBudgets);

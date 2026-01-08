@@ -82,6 +82,7 @@
     "dashboard": "Dashboard",
     "budgets": "Budgets",
     "expenses": "Expenses",
+    "transfers": "Transfers",
     "income": "Income",
     "faturas": "Bills",
     "more": "More",
@@ -134,6 +135,17 @@
     "deleteConfirmationTitle": "Delete income?",
     "deleteConfirmation": "This will delete \"{description}\". This action cannot be undone.",
     "viewDetails": "View Details"
+  },
+  "transfers": {
+    "title": "Transfers",
+    "noTransfers": "No transfers yet",
+    "external": "External",
+    "types": {
+      "fatura_payment": "Bill payment",
+      "internal_transfer": "Transfer",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -210,6 +222,7 @@
     "checkingAccounts": "Checking Accounts",
     "savingsAccounts": "Savings Accounts",
     "cash": "Cash",
+    "currentBalance": "Balance",
     "noAccountsYet": "No accounts yet. Add your first account above."
   },
   "categories": {

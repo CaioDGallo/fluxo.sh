@@ -82,6 +82,7 @@
     "dashboard": "Início",
     "budgets": "Orçamentos",
     "expenses": "Despesas",
+    "transfers": "Transferências",
     "income": "Receitas",
     "faturas": "Faturas",
     "more": "Mais",
@@ -134,6 +135,17 @@
     "deleteConfirmationTitle": "Excluir receita?",
     "deleteConfirmation": "Isso excluirá \"{description}\". Esta ação não pode ser desfeita.",
     "viewDetails": "Ver Detalhes"
+  },
+  "transfers": {
+    "title": "Transferências",
+    "noTransfers": "Nenhuma transferência ainda",
+    "external": "Externo",
+    "types": {
+      "fatura_payment": "Pagamento de fatura",
+      "internal_transfer": "Transferência",
+      "deposit": "Depósito",
+      "withdrawal": "Saque"
+    }
   },
   "settings": {
     "title": "Configurações",
@@ -210,6 +222,7 @@
     "checkingAccounts": "Contas Correntes",
     "savingsAccounts": "Contas Poupança",
     "cash": "Dinheiro",
+    "currentBalance": "Saldo",
     "noAccountsYet": "Nenhuma conta ainda. Adicione sua primeira conta acima."
   },
   "categories": {

@@ -74,7 +74,8 @@
     "relatedRecordNotFound": "Related record not found or access denied",
     "requiredFieldMissing": "Required field is missing",
     "invalidDataConstraint": "Data violates a constraint requirement",
-    "databaseConnectionFailed": "Database connection failed. Please try again later."
+    "databaseConnectionFailed": "Database connection failed. Please try again later.",
+    "invalidCreditLimit": "Credit limit must be a non-negative integer (cents)"
   },
   "navigation": {
     "northstar": "Northstar",
@@ -239,6 +240,8 @@
     "savingsAccounts": "Savings Accounts",
     "cash": "Cash",
     "currentBalance": "Balance",
+    "currentDebt": "Current Debt",
+    "availableCredit": "Available Credit",
     "noAccountsYet": "No accounts yet. Add your first account above."
   },
   "categories": {
@@ -443,6 +446,8 @@
     "type": "Type",
     "closingDay": "Closing Day (1-28)",
     "paymentDueDay": "Payment Due Day (1-28)",
+    "creditLimit": "Credit Limit (optional)",
+    "creditLimitPlaceholder": "5000.00",
     "selectDay": "Select day",
     "save": "Save",
     "cancel": "Cancel",

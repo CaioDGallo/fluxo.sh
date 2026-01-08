@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Button } from '@/components/ui/button';
 import { AlertDialogCancel, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { useTranslations } from 'next-intl';
+import { centsToDisplay, displayToCents } from '@/lib/utils';
 
 type AccountFormProps = {
   account?: Account;
@@ -21,6 +22,9 @@ export function AccountForm({ account }: AccountFormProps) {
   );
   const [closingDay, setClosingDay] = useState<number | null>(account?.closingDay ?? null);
   const [paymentDueDay, setPaymentDueDay] = useState<number | null>(account?.paymentDueDay ?? null);
+  const [creditLimit, setCreditLimit] = useState(
+    account?.creditLimit ? centsToDisplay(account.creditLimit) : ''
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const t = useTranslations('accountForm');
   const tAccountTypes = useTranslations('accountTypes');
@@ -32,7 +36,11 @@ export function AccountForm({ account }: AccountFormProps) {
       const data = {
         name,
         type,
-        ...(type === 'credit_card' && { closingDay, paymentDueDay }),
+        ...(type === 'credit_card' && {
+          closingDay,
+          paymentDueDay,
+          creditLimit: creditLimit ? displayToCents(creditLimit) : null,
+        }),
       };
 
       if (account) {
@@ -119,6 +127,17 @@ export function AccountForm({ account }: AccountFormProps) {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="creditLimit">{t('creditLimit')}</FieldLabel>
+              <Input
+                type="text"
+                id="creditLimit"
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(e.target.value)}
+                placeholder={t('creditLimitPlaceholder')}
+              />
             </Field>
           </>
         )}

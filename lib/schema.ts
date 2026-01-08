@@ -30,6 +30,7 @@ export const accounts = pgTable('accounts', {
   // Credit card billing cycle config (1-28, null for non-CC accounts)
   closingDay: integer('closing_day'),
   paymentDueDay: integer('payment_due_day'),
+  creditLimit: integer('credit_limit'), // nullable, cents - only for credit cards
   createdAt: timestamp('created_at').defaultNow(),
 });
 

@@ -43,7 +43,18 @@ export function AccountCard({ account }: AccountCardProps) {
   const tAccountTypes = useTranslations('accountTypes');
 
   const config = accountTypeConfig[account.type];
+  const isCreditCard = account.type === 'credit_card';
+
+  // For credit cards, display debt and available credit
+  const debt = isCreditCard ? Math.abs(account.currentBalance) : 0;
+  const availableCredit = isCreditCard && account.creditLimit
+    ? account.creditLimit - debt
+    : null;
+
   const balanceLabel = account.currentBalance < 0 ? 'text-red-600' : 'text-green-600';
+  const availableCreditLabel = availableCredit !== null && availableCredit < 0
+    ? 'text-red-600'
+    : 'text-green-600';
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -77,13 +88,34 @@ export function AccountCard({ account }: AccountCardProps) {
           <p className="text-xs text-gray-500">{tAccountTypes(account.type)}</p>
         </div>
 
-        {/* Balance */}
-        <div className="text-right">
-          <p className={`text-sm font-semibold ${balanceLabel}`}>
-            {formatCurrency(account.currentBalance)}
-          </p>
-          <p className="text-xs text-gray-500">{t('currentBalance')}</p>
-        </div>
+        {/* Balance / Debt display */}
+        {isCreditCard ? (
+          <div className="text-right space-y-1">
+            {/* Current Debt */}
+            <div>
+              <p className="text-sm font-semibold text-red-600">
+                {formatCurrency(debt)}
+              </p>
+              <p className="text-xs text-gray-500">{t('currentDebt')}</p>
+            </div>
+            {/* Available Credit (if limit is set) */}
+            {availableCredit !== null && (
+              <div>
+                <p className={`text-sm font-semibold ${availableCreditLabel}`}>
+                  {formatCurrency(availableCredit)}
+                </p>
+                <p className="text-xs text-gray-500">{t('availableCredit')}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-right">
+            <p className={`text-sm font-semibold ${balanceLabel}`}>
+              {formatCurrency(account.currentBalance)}
+            </p>
+            <p className="text-xs text-gray-500">{t('currentBalance')}</p>
+          </div>
+        )}
 
         {/* Actions dropdown */}
         <DropdownMenu>

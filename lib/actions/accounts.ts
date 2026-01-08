@@ -34,6 +34,15 @@ async function validateBillingDay(day: unknown, errorKey: string) {
   }
 }
 
+async function validateCreditLimit(limit: unknown) {
+  if (limit === null || limit === undefined) {
+    return;
+  }
+  if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 0) {
+    throw new Error(await t('errors.invalidCreditLimit'));
+  }
+}
+
 export const getAccounts = cache(async () => {
   const userId = await getCurrentUserId();
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
@@ -195,6 +204,7 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
   await validateAccountType(data.type);
   await validateBillingDay(data.closingDay, 'errors.invalidClosingDay');
   await validateBillingDay(data.paymentDueDay, 'errors.invalidPaymentDueDay');
+  await validateCreditLimit(data.creditLimit);
 
   try {
     const userId = await getCurrentUserId();
@@ -224,6 +234,9 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
   }
   if (updates.paymentDueDay !== undefined) {
     await validateBillingDay(updates.paymentDueDay, 'errors.invalidPaymentDueDay');
+  }
+  if (updates.creditLimit !== undefined) {
+    await validateCreditLimit(updates.creditLimit);
   }
 
   try {

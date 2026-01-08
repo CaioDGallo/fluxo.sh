@@ -74,7 +74,8 @@
     "relatedRecordNotFound": "Registro relacionado não encontrado ou acesso negado",
     "requiredFieldMissing": "Campo obrigatório está faltando",
     "invalidDataConstraint": "Os dados violam um requisito de restrição",
-    "databaseConnectionFailed": "Falha na conexão com o banco de dados. Tente novamente mais tarde."
+    "databaseConnectionFailed": "Falha na conexão com o banco de dados. Tente novamente mais tarde.",
+    "invalidCreditLimit": "Limite de crédito deve ser um inteiro não-negativo (centavos)"
   },
   "navigation": {
     "northstar": "Northstar",
@@ -239,6 +240,8 @@
     "savingsAccounts": "Contas Poupança",
     "cash": "Dinheiro",
     "currentBalance": "Saldo",
+    "currentDebt": "Dívida Atual",
+    "availableCredit": "Crédito Disponível",
     "noAccountsYet": "Nenhuma conta ainda. Adicione sua primeira conta acima."
   },
   "categories": {
@@ -443,6 +446,8 @@
     "type": "Tipo",
     "closingDay": "Dia do Fechamento (1-28)",
     "paymentDueDay": "Dia do Vencimento (1-28)",
+    "creditLimit": "Limite de Crédito (opcional)",
+    "creditLimitPlaceholder": "5000,00",
     "selectDay": "Selecione o dia",
     "save": "Salvar",
     "cancel": "Cancelar",

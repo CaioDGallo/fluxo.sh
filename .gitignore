@@ -13,6 +13,7 @@ local.db
 
 # testing
 /coverage
+/test/lib/actions/events-status.test.ts
 
 # next.js
 /.next/

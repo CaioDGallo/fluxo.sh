@@ -2,11 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/notifications",
-      "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/cron/balance-reconciliation",
-      "schedule": "0 4 * * *"
+      "schedule": "0 4,11 * * *"
     }
   ]
 }

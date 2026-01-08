@@ -7,6 +7,8 @@ import { eq, and } from 'drizzle-orm';
 
 type TaskActions = typeof import('@/lib/actions/tasks');
 
+const OTHER_USER_ID = 'other-user-id';
+
 describe('Task Actions - Delete Task', () => {
   let db: ReturnType<typeof getTestDb>;
 
@@ -239,6 +241,73 @@ describe('Task Actions - Delete Task', () => {
           and(eq(schema.recurrenceRules.itemType, 'task'), eq(schema.recurrenceRules.itemId, otherTask.id))
         );
       expect(otherTaskRules).toHaveLength(1);
+    });
+
+    it('does not delete tasks or related data owned by another user', async () => {
+      const [otherTask] = await db
+        .insert(schema.tasks)
+        .values(createTestTask({ userId: OTHER_USER_ID, title: 'Other User Task' }))
+        .returning();
+
+      const [notification] = await db
+        .insert(schema.notifications)
+        .values({
+          itemType: 'task',
+          itemId: otherTask.id,
+          offsetMinutes: 30,
+          channel: 'email',
+          enabled: true,
+        })
+        .returning();
+
+      await db.insert(schema.notificationJobs).values({
+        itemType: 'task',
+        itemId: otherTask.id,
+        notificationId: notification.id,
+        channel: 'email',
+        scheduledAt: new Date('2026-02-03T09:30:00Z'),
+        status: 'pending',
+      });
+
+      await db.insert(schema.recurrenceRules).values({
+        itemType: 'task',
+        itemId: otherTask.id,
+        rrule: 'FREQ=DAILY;COUNT=2',
+      });
+
+      const result = await deleteTask(otherTask.id);
+
+      expect(result.success).toBe(false);
+
+      const remainingTasks = await db
+        .select()
+        .from(schema.tasks)
+        .where(eq(schema.tasks.id, otherTask.id));
+      expect(remainingTasks).toHaveLength(1);
+
+      const remainingNotifications = await db
+        .select()
+        .from(schema.notifications)
+        .where(
+          and(eq(schema.notifications.itemType, 'task'), eq(schema.notifications.itemId, otherTask.id))
+        );
+      expect(remainingNotifications).toHaveLength(1);
+
+      const remainingJobs = await db
+        .select()
+        .from(schema.notificationJobs)
+        .where(
+          and(eq(schema.notificationJobs.itemType, 'task'), eq(schema.notificationJobs.itemId, otherTask.id))
+        );
+      expect(remainingJobs).toHaveLength(1);
+
+      const remainingRules = await db
+        .select()
+        .from(schema.recurrenceRules)
+        .where(
+          and(eq(schema.recurrenceRules.itemType, 'task'), eq(schema.recurrenceRules.itemId, otherTask.id))
+        );
+      expect(remainingRules).toHaveLength(1);
     });
 
     it('revalidates calendar and tasks paths', async () => {

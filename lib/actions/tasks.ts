@@ -112,6 +112,16 @@ export async function deleteTask(id: number): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
 
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      .limit(1);
+
+    if (!task) {
+      return { success: false, error: await t('errors.notFound') };
+    }
+
     // Clean up orphaned data before deleting task
     await db.delete(notificationJobs).where(and(
       eq(notificationJobs.itemType, 'task'),

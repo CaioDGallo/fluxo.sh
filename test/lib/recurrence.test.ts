@@ -102,6 +102,44 @@ describe('Recurrence Logic', () => {
     });
   });
 
+  describe('frequency coverage', () => {
+    const baseStartAt = new Date('2025-01-01T00:00:00Z');
+    const rangeStart = new Date('2025-01-01T00:00:00Z');
+    const rangeEnd = new Date('2027-01-01T00:00:00Z');
+
+    it.each([
+      ['DAILY', 3],
+      ['WEEKLY', 3],
+      ['MONTHLY', 3],
+      ['YEARLY', 3],
+    ])('expands %s with COUNT', (frequency, count) => {
+      const occurrences = getAllOccurrencesBetween(
+        `FREQ=${frequency};COUNT=${count}`,
+        rangeStart,
+        rangeEnd,
+        baseStartAt
+      );
+      expect(occurrences).toHaveLength(count);
+    });
+
+    it.each([
+      ['DAILY', '20250105T000000Z'],
+      ['WEEKLY', '20250115T000000Z'],
+      ['MONTHLY', '20250301T000000Z'],
+      ['YEARLY', '20260101T000000Z'],
+    ])('respects UNTIL for %s', (frequency, until) => {
+      const occurrences = getAllOccurrencesBetween(
+        `FREQ=${frequency};UNTIL=${until}`,
+        rangeStart,
+        rangeEnd,
+        baseStartAt
+      );
+      expect(occurrences.length).toBeGreaterThan(0);
+      const last = occurrences[occurrences.length - 1]!;
+      expect(last.getTime()).toBeLessThanOrEqual(new Date(until).getTime());
+    });
+  });
+
   describe('getNextOccurrence', () => {
     it('returns next occurrence after given date', () => {
       const fromDate = new Date('2025-01-01T00:00:00Z');

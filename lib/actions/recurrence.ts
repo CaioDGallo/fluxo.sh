@@ -132,6 +132,7 @@ export async function deleteRecurrenceRule(id: number): Promise<ActionResult> {
 
 export async function getRecurrenceRuleByItem(itemType: 'event' | 'task', itemId: number) {
   try {
+    const userId = await getCurrentUserId();
     const [rule] = await db
       .select()
       .from(recurrenceRules)
@@ -140,6 +141,31 @@ export async function getRecurrenceRuleByItem(itemType: 'event' | 'task', itemId
         eq(recurrenceRules.itemId, itemId)
       ))
       .limit(1);
+
+    if (!rule) {
+      return undefined;
+    }
+
+    if (itemType === 'event') {
+      const [event] = await db
+        .select()
+        .from(events)
+        .where(and(eq(events.id, itemId), eq(events.userId, userId)))
+        .limit(1);
+      if (!event) {
+        return undefined;
+      }
+    } else {
+      const [task] = await db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.id, itemId), eq(tasks.userId, userId)))
+        .limit(1);
+      if (!task) {
+        return undefined;
+      }
+    }
+
     return rule;
   } catch (error) {
     console.error('[recurrence:getByItem] Failed:', error);

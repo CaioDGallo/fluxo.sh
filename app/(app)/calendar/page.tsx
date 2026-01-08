@@ -14,8 +14,9 @@ import 'temporal-polyfill/global';
 import '@schedule-x/theme-shadcn/dist/index.css';
 import { deleteEvent, getEventsWithRecurrence } from '@/lib/actions/events';
 import { getUserSettings } from '@/lib/actions/user-settings';
-import { type Event, type UserSettings } from '@/lib/schema';
+import { type Event } from '@/lib/schema';
 import { parseRRule } from '@/lib/recurrence';
+import { getBrowserTimeZone, resolveTimeZone, toZonedDateTime } from '@/lib/timezone-utils';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -49,27 +50,6 @@ function toDate(value: Date | string): Date {
 function toOptionalDate(value?: Date | string | null): Date | null {
   if (!value) return null;
   return toDate(value);
-}
-
-function getBrowserTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-}
-
-function resolveTimeZone(settings?: UserSettings | null): string {
-  const browserTimeZone = getBrowserTimeZone();
-  if (!settings?.timezone) return browserTimeZone;
-  if (settings.timezone === 'UTC' && browserTimeZone !== 'UTC') {
-    return browserTimeZone;
-  }
-  return settings.timezone;
-}
-
-function toZonedDateTime(date: Date, timeZone: string) {
-  return Temporal.Instant.from(date.toISOString()).toZonedDateTimeISO(timeZone);
 }
 
 type EventWithRecurrence = Event & { recurrenceRule?: string | null };

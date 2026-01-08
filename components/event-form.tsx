@@ -26,6 +26,11 @@ function formatDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseDateInputToEndOfDay(dateValue: string): Date {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59);
+}
+
 export function EventForm({ event, onSuccess }: EventFormProps) {
   const [title, setTitle] = useState(event?.title || '');
   const [description, setDescription] = useState(event?.description || '');
@@ -170,7 +175,7 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
           repeat,
           1,
           endType === 'after' ? endCount : undefined,
-          endType === 'on' ? new Date(endDate_) : undefined
+          endType === 'on' ? parseDateInputToEndOfDay(endDate_) : undefined
         );
 
         if (existingRecurrenceId) {

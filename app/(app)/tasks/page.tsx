@@ -31,6 +31,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { TaskForm } from '@/components/task-form';
+import { QuickAddTask } from '@/components/quick-add-task';
 import { MonthAgendaEventItem } from '@/components/calendar/month-agenda-event-item';
 import { EventDetailSheet } from '@/components/calendar/event-detail-sheet';
 import { useTranslations } from 'next-intl';
@@ -314,7 +315,8 @@ export default function TasksPage() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-6 flex-col md:flex-row space-y-4 md:space-y-0">
         <h1 className="text-2xl font-bold">{tNav('tasks')}</h1>
-        <div className="flex gap-2 w-full justify-start">
+        <div className="flex gap-2 w-full justify-start items-center">
+          <QuickAddTask onSuccess={loadData} />
           <AlertDialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="hollow">{t('addTask')}</Button>

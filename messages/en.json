@@ -567,6 +567,9 @@
     "savedSuccessfully": "Settings saved successfully!",
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
+  "quickAdd": {
+    "placeholder": "e.g., Dentist tomorrow at 9 for 30m p1"
+  },
   "recurrence": {
     "repeat": "Repeat",
     "never": "Never",

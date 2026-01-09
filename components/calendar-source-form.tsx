@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 
 type CalendarSourceFormProps = {
   source?: CalendarSource;
+  onSuccess?: () => void;
 };
 
 const PRESET_COLORS = [
@@ -24,7 +25,7 @@ const PRESET_COLORS = [
   '#f97316', // orange
 ];
 
-export function CalendarSourceForm({ source }: CalendarSourceFormProps) {
+export function CalendarSourceForm({ source, onSuccess }: CalendarSourceFormProps) {
   const [name, setName] = useState(source?.name || '');
   const [url, setUrl] = useState(source?.url || '');
   const [color, setColor] = useState(source?.color || PRESET_COLORS[0]);
@@ -77,10 +78,12 @@ export function CalendarSourceForm({ source }: CalendarSourceFormProps) {
     try {
       const data = { name, url, color };
 
-      if (source) {
-        await updateCalendarSource(source.id, data);
-      } else {
-        await createCalendarSource(data);
+      const result = source
+        ? await updateCalendarSource(source.id, data)
+        : await createCalendarSource(data);
+
+      if (result.success) {
+        onSuccess?.();
       }
     } finally {
       setIsSubmitting(false);
@@ -130,7 +133,7 @@ export function CalendarSourceForm({ source }: CalendarSourceFormProps) {
           )}
         </Field>
 
-        <Field>
+        <Field className='pb-6'>
           <FieldLabel>{t('color')}</FieldLabel>
           <div className="flex gap-2">
             {PRESET_COLORS.map((presetColor) => (

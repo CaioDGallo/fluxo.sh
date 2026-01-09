@@ -169,7 +169,7 @@ export function CalendarSourceCard({ source }: CalendarSourceCardProps) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t('editCalendar')}</AlertDialogTitle>
                 </AlertDialogHeader>
-                <CalendarSourceForm source={source} />
+                <CalendarSourceForm source={source} onSuccess={() => setEditOpen(false)} />
               </AlertDialogContent>
             </AlertDialog>
 

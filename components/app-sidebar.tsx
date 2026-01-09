@@ -13,6 +13,7 @@ import {
   SparklesIcon,
   CreditCardIcon,
   CalendarIcon,
+  Calendar03Icon,
   Tick02Icon,
   ArrowLeftRightIcon,
 } from '@hugeicons/core-free-icons';
@@ -55,6 +56,7 @@ const settingsItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
+  { key: 'calendars', href: '/settings/calendars', icon: Calendar03Icon },
 ];
 
 export function AppSidebar() {

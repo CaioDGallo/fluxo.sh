@@ -1,5 +1,9 @@
-import { getTranslations } from 'next-intl/server';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { getCalendarSources } from '@/lib/actions/calendar-sources';
+import type { CalendarSource } from '@/lib/schema';
 import { CalendarSourceForm } from '@/components/calendar-source-form';
 import { CalendarSourceCard } from '@/components/calendar-source-card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +15,22 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-export default async function CalendarsPage() {
-  const t = await getTranslations('calendarSources');
-  const sources = await getCalendarSources();
+export default function CalendarsPage() {
+  const [addOpen, setAddOpen] = useState(false);
+  const [sources, setSources] = useState<CalendarSource[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const t = useTranslations('calendarSources');
+
+  useEffect(() => {
+    loadSources();
+  }, []);
+
+  async function loadSources() {
+    setIsLoading(true);
+    const data = await getCalendarSources();
+    setSources(data);
+    setIsLoading(false);
+  }
 
   return (
     <div>
@@ -22,7 +39,7 @@ export default async function CalendarsPage() {
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t('description')}</p>
         </div>
-        <AlertDialog>
+        <AlertDialog open={addOpen} onOpenChange={setAddOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="hollow">{t('addCalendar')}</Button>
           </AlertDialogTrigger>
@@ -30,13 +47,15 @@ export default async function CalendarsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('addCalendar')}</AlertDialogTitle>
             </AlertDialogHeader>
-            <CalendarSourceForm />
+            <CalendarSourceForm onSuccess={() => setAddOpen(false)} />
           </AlertDialogContent>
         </AlertDialog>
       </div>
 
       <div className="space-y-3">
-        {sources.length > 0 ? (
+        {isLoading ? (
+          <p className="text-sm text-gray-500">Loading...</p>
+        ) : sources.length > 0 ? (
           sources.map((source) => (
             <CalendarSourceCard key={source.id} source={source} />
           ))

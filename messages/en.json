@@ -94,6 +94,7 @@
     "settings": "Settings",
     "accounts": "Accounts",
     "categories": "Categories",
+    "calendars": "Calendars",
     "calendar": "Calendar",
     "tasks": "Tasks",
     "expandSidebar": "Expand sidebar"
@@ -632,7 +633,7 @@
     "color": "Color",
     "test": "Test",
     "testing": "Testing...",
-    "testSuccess": "Found {{count}} events in \"{{name}}\"",
+    "testSuccess": "Found {count} events in \"{name}\"",
     "testFailed": "Failed to fetch or parse calendar"
   }
 }

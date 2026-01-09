@@ -27,7 +27,7 @@ export default async function AccountsPage() {
         <h1 className="text-2xl font-bold">{t('title')}</h1>
         <div className="flex items-center gap-2">
           <form action={reconcileCurrentUserBalances}>
-            <Button variant="popout">{t('recalculateBalances')}</Button>
+            <Button variant="popout" className='hover:text-gray-900'>{t('recalculateBalances')}</Button>
           </form>
           <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -15,6 +15,7 @@ import {
   SparklesIcon,
   Tick02Icon,
   Wallet01Icon,
+  Calendar03Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
@@ -31,6 +32,7 @@ const moreItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
+  { key: 'calendars', href: '/settings/calendars', icon: Calendar03Icon },
 ];
 
 type MoreSheetProps = {

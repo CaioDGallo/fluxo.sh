@@ -94,6 +94,7 @@
     "settings": "Configurações",
     "accounts": "Contas",
     "categories": "Categorias",
+    "calendars": "Calendários",
     "calendar": "Calendário",
     "tasks": "Tarefas",
     "expandSidebar": "Expandir barra lateral"
@@ -632,7 +633,7 @@
     "color": "Cor",
     "test": "Testar",
     "testing": "Testando...",
-    "testSuccess": "Encontrados {{count}} eventos em \"{{name}}\"",
+    "testSuccess": "Encontrados {count} eventos em \"{name}\"",
     "testFailed": "Falha ao buscar ou analisar calendário"
   }
 }

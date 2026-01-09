@@ -182,6 +182,8 @@
     "categoriesDescription": "Manage expense categories",
     "budgets": "Budgets",
     "budgetsDescription": "Set monthly budgets per category",
+    "calendars": "Calendars",
+    "calendarsDescription": "Sync external calendars (Google, Outlook, Apple)",
     "language": "Language",
     "languageDescription": "Choose application language",
     "expenseCategories": "Expense Categories",
@@ -604,5 +606,33 @@
         "invalidOrZeroAmount": "Invalid or zero amount"
       }
     }
+  },
+  "calendarSources": {
+    "title": "Calendar Subscriptions",
+    "description": "Sync events from external calendars",
+    "addCalendar": "Add Calendar",
+    "editCalendar": "Edit Calendar",
+    "deleteCalendar": "Delete Calendar",
+    "deleteWarning": "All synced events from this calendar will be removed.",
+    "noCalendarsYet": "No calendars yet. Add your first calendar subscription.",
+    "lastSynced": "Last synced",
+    "syncFailed": "Sync failed",
+    "enable": "Enable",
+    "disable": "Disable",
+    "status": {
+      "active": "Active",
+      "error": "Error",
+      "disabled": "Disabled"
+    }
+  },
+  "calendarSourceForm": {
+    "name": "Name",
+    "namePlaceholder": "Work Calendar",
+    "url": "Calendar URL (iCal)",
+    "color": "Color",
+    "test": "Test",
+    "testing": "Testing...",
+    "testSuccess": "Found {{count}} events in \"{{name}}\"",
+    "testFailed": "Failed to fetch or parse calendar"
   }
 }

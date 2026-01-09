@@ -1,4 +1,4 @@
-import type { NewAccount, NewCategory, NewTransaction, NewEntry, NewIncome, NewEvent, NewTask } from '@/lib/schema';
+import type { NewAccount, NewCategory, NewTransaction, NewEntry, NewIncome, NewEvent, NewTask, NewCalendarSource } from '@/lib/schema';
 
 export const TEST_USER_ID = 'test-user-fixtures-id';
 
@@ -122,6 +122,34 @@ export function createTestTask(overrides: Partial<NewTask> = {}): NewTask {
     userId: TEST_USER_ID,
     title: 'Test Task',
     dueAt,
+    ...overrides,
+  };
+}
+
+export const testCalendarSources = {
+  google: {
+    userId: TEST_USER_ID,
+    name: 'Google Calendar',
+    url: 'https://calendar.google.com/calendar/ical/example/basic.ics',
+    color: '#3b82f6',
+    status: 'active' as const,
+  },
+  outlook: {
+    userId: TEST_USER_ID,
+    name: 'Outlook Calendar',
+    url: 'https://outlook.office365.com/owa/calendar/example/calendar.ics',
+    color: '#10b981',
+    status: 'active' as const,
+  },
+} satisfies Record<string, NewCalendarSource>;
+
+export function createTestCalendarSource(overrides: Partial<NewCalendarSource> = {}): NewCalendarSource {
+  return {
+    userId: TEST_USER_ID,
+    name: 'Test Calendar',
+    url: 'https://example.com/calendar.ics',
+    color: '#3b82f6',
+    status: 'active' as const,
     ...overrides,
   };
 }

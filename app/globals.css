@@ -128,3 +128,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* schedule-x calendar classes override */
+.sx__calendar {
+  border-radius: 0 !important;
+}
+
+.sx__month-agenda-events__empty {
+  padding-bottom: 2rem;
+  padding-top: 1rem;
+}

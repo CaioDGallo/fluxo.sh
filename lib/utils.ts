@@ -126,3 +126,23 @@ export function formatDateWithLocale(
   const dateObj = typeof date === 'string' ? parseLocalDate(date) : date;
   return dateObj.toLocaleDateString(locale, options);
 }
+
+/**
+ * Format date as relative time (e.g., "2 hours ago", "just now")
+ * @example formatRelativeTime(new Date(Date.now() - 60000)) → "1 minute ago"
+ */
+export function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+  return date.toLocaleDateString();
+}

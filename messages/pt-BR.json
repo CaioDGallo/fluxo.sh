@@ -182,6 +182,8 @@
     "categoriesDescription": "Gerenciar categorias de despesas",
     "budgets": "Orçamentos",
     "budgetsDescription": "Definir orçamentos mensais por categoria",
+    "calendars": "Calendários",
+    "calendarsDescription": "Sincronizar calendários externos (Google, Outlook, Apple)",
     "language": "Idioma",
     "languageDescription": "Escolha o idioma do aplicativo",
     "expenseCategories": "Categorias de Despesa",
@@ -604,5 +606,33 @@
         "invalidOrZeroAmount": "Valor inválido ou zero"
       }
     }
+  },
+  "calendarSources": {
+    "title": "Assinaturas de Calendário",
+    "description": "Sincronizar eventos de calendários externos",
+    "addCalendar": "Adicionar Calendário",
+    "editCalendar": "Editar Calendário",
+    "deleteCalendar": "Excluir Calendário",
+    "deleteWarning": "Todos os eventos sincronizados deste calendário serão removidos.",
+    "noCalendarsYet": "Nenhum calendário ainda. Adicione sua primeira assinatura de calendário.",
+    "lastSynced": "Última sincronização",
+    "syncFailed": "Falha na sincronização",
+    "enable": "Ativar",
+    "disable": "Desativar",
+    "status": {
+      "active": "Ativo",
+      "error": "Erro",
+      "disabled": "Desativado"
+    }
+  },
+  "calendarSourceForm": {
+    "name": "Nome",
+    "namePlaceholder": "Calendário do Trabalho",
+    "url": "URL do Calendário (iCal)",
+    "color": "Cor",
+    "test": "Testar",
+    "testing": "Testando...",
+    "testSuccess": "Encontrados {{count}} eventos em \"{{name}}\"",
+    "testFailed": "Falha ao buscar ou analisar calendário"
   }
 }

@@ -16,9 +16,12 @@ const SYNC_WINDOW_MONTHS = 6;
 const MAX_OCCURRENCES = 100;
 
 /**
- * Sync a single calendar source
+ * Internal sync function that accepts userId parameter (no session required)
  */
-export async function syncCalendarSource(calendarSourceId: number): Promise<SyncResult> {
+async function syncCalendarSourceInternal(
+  calendarSourceId: number,
+  userId: string
+): Promise<SyncResult> {
   const syncedAt = new Date();
   const errors: SyncError[] = [];
   let created = 0;
@@ -26,8 +29,6 @@ export async function syncCalendarSource(calendarSourceId: number): Promise<Sync
   let cancelled = 0;
 
   try {
-    const userId = await getCurrentUserId();
-
     // Get calendar source
     const [source] = await db
       .select()
@@ -213,7 +214,15 @@ export async function syncCalendarSource(calendarSourceId: number): Promise<Sync
 }
 
 /**
- * Sync all active calendar sources for current user
+ * Sync a single calendar source (session-based)
+ */
+export async function syncCalendarSource(calendarSourceId: number): Promise<SyncResult> {
+  const userId = await getCurrentUserId();
+  return syncCalendarSourceInternal(calendarSourceId, userId);
+}
+
+/**
+ * Sync all active calendar sources for current user (session-based)
  */
 export async function syncAllCalendars(): Promise<SyncResult[]> {
   try {
@@ -230,7 +239,7 @@ export async function syncAllCalendars(): Promise<SyncResult[]> {
     const results: SyncResult[] = [];
 
     for (const source of sources) {
-      const result = await syncCalendarSource(source.id);
+      const result = await syncCalendarSourceInternal(source.id, userId);
       results.push(result);
     }
 
@@ -238,6 +247,53 @@ export async function syncAllCalendars(): Promise<SyncResult[]> {
   } catch (error) {
     logError(ErrorIds.CALENDAR_SYNC_UPSERT_FAILED, 'Failed to sync all calendars', error);
     return [];
+  }
+}
+
+/**
+ * Sync all active calendar sources for ALL users (cron-compatible, no session required)
+ */
+export async function syncAllUsersCalendars(): Promise<{
+  success: boolean;
+  usersProcessed: number;
+  sourcesProcessed: number;
+  results: SyncResult[];
+}> {
+  try {
+    const sources = await db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.status, 'active'));
+
+    const results: SyncResult[] = [];
+    const userIds = new Set<string>();
+
+    for (const source of sources) {
+      userIds.add(source.userId);
+      const result = await syncCalendarSourceInternal(source.id, source.userId);
+      results.push(result);
+    }
+
+    logEvent('calendar_sync_all_users', {
+      usersProcessed: userIds.size,
+      sourcesProcessed: sources.length,
+      successCount: results.filter(r => r.success).length,
+    });
+
+    return {
+      success: true,
+      usersProcessed: userIds.size,
+      sourcesProcessed: sources.length,
+      results,
+    };
+  } catch (error) {
+    logError(ErrorIds.CALENDAR_SYNC_UPSERT_FAILED, 'Failed to sync all users calendars', error);
+    return {
+      success: false,
+      usersProcessed: 0,
+      sourcesProcessed: 0,
+      results: [],
+    };
   }
 }
 

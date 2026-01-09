@@ -47,6 +47,7 @@ export async function clearAllTables() {
   await db.delete(schema.monthlyBudgets);
   await db.delete(schema.tasks);
   await db.delete(schema.events);
+  await db.delete(schema.calendarSources);
   await db.delete(schema.categories);
   await db.delete(schema.accounts);
 }

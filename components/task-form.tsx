@@ -49,7 +49,7 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'critical'>(
     task?.priority || 'medium'
   );
-  const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed' | 'cancelled'>(
+  const [status, setStatus] = useState<'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue'>(
     task?.status || 'pending'
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -325,7 +325,7 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
           <FieldLabel htmlFor="status">{t('status')}</FieldLabel>
           <Select
             value={status}
-            onValueChange={(v: 'pending' | 'in_progress' | 'completed' | 'cancelled') => setStatus(v)}
+            onValueChange={(v: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue') => setStatus(v)}
           >
             <SelectTrigger id="status">
               <SelectValue />
@@ -336,6 +336,7 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
                 <SelectItem value="in_progress">{t('statusInProgress')}</SelectItem>
                 <SelectItem value="completed">{t('statusCompleted')}</SelectItem>
                 <SelectItem value="cancelled">{t('statusCancelled')}</SelectItem>
+                <SelectItem value="overdue">{t('statusOverdue')}</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

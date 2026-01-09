@@ -549,6 +549,7 @@
     "statusInProgress": "In Progress",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled",
+    "statusOverdue": "Overdue",
     "invalidDateTime": "Start time must be before due time"
   },
   "preferences": {

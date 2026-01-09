@@ -68,7 +68,7 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
           .limit(1);
         itemData = result[0] || null;
         userId = itemData?.userId || null;
-        isValid = itemData !== null && (itemData.status === 'pending' || itemData.status === 'in_progress');
+        isValid = itemData !== null && (itemData.status === 'pending' || itemData.status === 'in_progress' || itemData.status === 'overdue');
       }
 
       if (!isValid || !userId) {

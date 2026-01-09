@@ -13,7 +13,7 @@ export const transferTypeEnum = pgEnum('transfer_type', ['fatura_payment', 'inte
 // Enums for events and tasks
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical']);
 export const eventStatusEnum = pgEnum('event_status', ['scheduled', 'cancelled', 'completed']);
-export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', 'completed', 'cancelled']);
+export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', 'completed', 'cancelled', 'overdue']);
 export const itemTypeEnum = pgEnum('item_type', ['event', 'task']);
 export const notificationChannelEnum = pgEnum('notification_channel', ['email']);
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);

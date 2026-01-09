@@ -549,6 +549,7 @@
     "statusInProgress": "Em Progresso",
     "statusCompleted": "Concluído",
     "statusCancelled": "Cancelado",
+    "statusOverdue": "Atrasado",
     "invalidDateTime": "O horário de início deve ser antes do vencimento"
   },
   "preferences": {

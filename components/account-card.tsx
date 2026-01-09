@@ -135,7 +135,7 @@ export function AccountCard({ account }: AccountCardProps) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
                 </AlertDialogHeader>
-                <AccountForm account={account} />
+                <AccountForm account={account} onSuccess={() => setEditOpen(false)} />
               </AlertDialogContent>
             </AlertDialog>
 

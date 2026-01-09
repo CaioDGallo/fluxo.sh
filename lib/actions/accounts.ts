@@ -9,6 +9,10 @@ import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 
+type ActionResult<T = void> =
+  | { success: true; data?: T }
+  | { success: false; error: string };
+
 const ACCOUNT_TYPES = new Set(['credit_card', 'checking', 'savings', 'cash']);
 
 async function validateAccountName(name: unknown) {
@@ -199,54 +203,56 @@ export async function getAccountsByUser(userId: string) {
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
 }
 
-export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'createdAt'>) {
-  const name = await validateAccountName(data.name);
-  await validateAccountType(data.type);
-  await validateBillingDay(data.closingDay, 'errors.invalidClosingDay');
-  await validateBillingDay(data.paymentDueDay, 'errors.invalidPaymentDueDay');
-  await validateCreditLimit(data.creditLimit);
-
+export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {
   try {
+    const name = await validateAccountName(data.name);
+    await validateAccountType(data.type);
+    await validateBillingDay(data.closingDay, 'errors.invalidClosingDay');
+    await validateBillingDay(data.paymentDueDay, 'errors.invalidPaymentDueDay');
+    await validateCreditLimit(data.creditLimit);
+
     const userId = await getCurrentUserId();
     await db.insert(accounts).values({ ...data, name, userId });
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');
+    return { success: true };
   } catch (error) {
     console.error('[accounts:create] Failed:', error);
-    throw new Error(await handleDbError(error, 'errors.failedToCreate'));
+    return { success: false, error: await handleDbError(error, 'errors.failedToCreate') };
   }
 }
 
-export async function updateAccount(id: number, data: Partial<Omit<NewAccount, 'id' | 'userId' | 'createdAt'>>) {
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new Error(await t('errors.invalidAccountId'));
-  }
-
-  const updates = { ...data };
-  if (updates.name !== undefined) {
-    updates.name = await validateAccountName(updates.name);
-  }
-  if (updates.type !== undefined) {
-    await validateAccountType(updates.type);
-  }
-  if (updates.closingDay !== undefined) {
-    await validateBillingDay(updates.closingDay, 'errors.invalidClosingDay');
-  }
-  if (updates.paymentDueDay !== undefined) {
-    await validateBillingDay(updates.paymentDueDay, 'errors.invalidPaymentDueDay');
-  }
-  if (updates.creditLimit !== undefined) {
-    await validateCreditLimit(updates.creditLimit);
-  }
-
+export async function updateAccount(id: number, data: Partial<Omit<NewAccount, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
   try {
+    if (!Number.isInteger(id) || id <= 0) {
+      return { success: false, error: await t('errors.invalidAccountId') };
+    }
+
+    const updates = { ...data };
+    if (updates.name !== undefined) {
+      updates.name = await validateAccountName(updates.name);
+    }
+    if (updates.type !== undefined) {
+      await validateAccountType(updates.type);
+    }
+    if (updates.closingDay !== undefined) {
+      await validateBillingDay(updates.closingDay, 'errors.invalidClosingDay');
+    }
+    if (updates.paymentDueDay !== undefined) {
+      await validateBillingDay(updates.paymentDueDay, 'errors.invalidPaymentDueDay');
+    }
+    if (updates.creditLimit !== undefined) {
+      await validateCreditLimit(updates.creditLimit);
+    }
+
     const userId = await getCurrentUserId();
     await db.update(accounts).set(updates).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');
+    return { success: true };
   } catch (error) {
     console.error('[accounts:update] Failed:', error);
-    throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
+    return { success: false, error: await handleDbError(error, 'errors.failedToUpdate') };
   }
 }
 

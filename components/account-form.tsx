@@ -13,9 +13,10 @@ import { centsToDisplay, displayToCents } from '@/lib/utils';
 
 type AccountFormProps = {
   account?: Account;
+  onSuccess?: () => void;
 };
 
-export function AccountForm({ account }: AccountFormProps) {
+export function AccountForm({ account, onSuccess }: AccountFormProps) {
   const [name, setName] = useState(account?.name || '');
   const [type, setType] = useState<'credit_card' | 'checking' | 'savings' | 'cash'>(
     account?.type || 'checking'
@@ -43,10 +44,12 @@ export function AccountForm({ account }: AccountFormProps) {
         }),
       };
 
-      if (account) {
-        await updateAccount(account.id, data);
-      } else {
-        await createAccount(data);
+      const result = account
+        ? await updateAccount(account.id, data)
+        : await createAccount(data);
+
+      if (result.success) {
+        onSuccess?.();
       }
     } finally {
       setIsSubmitting(false);

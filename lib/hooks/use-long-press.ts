@@ -4,6 +4,7 @@ type UseLongPressOptions = {
   onLongPress: () => void;
   onTap?: () => void;
   threshold?: number; // milliseconds, default 500
+  moveThreshold?: number; // pixels to cancel, default 10
   disabled?: boolean;
 };
 
@@ -11,15 +12,28 @@ export function useLongPress({
   onLongPress,
   onTap,
   threshold = 500,
+  moveThreshold = 10,
   disabled = false,
 }: UseLongPressOptions) {
   const timerRef = useRef<number | undefined>(undefined);
   const isLongPressRef = useRef(false);
+  const startPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const isCancelledRef = useRef(false);
 
-  const start = useCallback(() => {
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (disabled) return;
 
     isLongPressRef.current = false;
+    isCancelledRef.current = false;
+    startPositionRef.current = { x: e.clientX, y: e.clientY };
+
     timerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       onLongPress();
@@ -31,35 +45,45 @@ export function useLongPress({
     }, threshold) as unknown as number;
   }, [onLongPress, threshold, disabled]);
 
-  const cancel = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-  }, []);
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!startPositionRef.current || isCancelledRef.current) return;
 
-  const end = useCallback(() => {
+    const dx = Math.abs(e.clientX - startPositionRef.current.x);
+    const dy = Math.abs(e.clientY - startPositionRef.current.y);
+
+    if (dx > moveThreshold || dy > moveThreshold) {
+      cancel();
+      isCancelledRef.current = true;
+      startPositionRef.current = null;
+    }
+  }, [cancel, moveThreshold]);
+
+  const handlePointerUp = useCallback(() => {
     cancel();
-    // If not long press and not disabled, treat as tap
-    if (!disabled && !isLongPressRef.current && onTap) {
+    startPositionRef.current = null;
+
+    // Only fire tap if: not disabled, not long press, not cancelled by movement
+    if (!disabled && !isLongPressRef.current && !isCancelledRef.current && onTap) {
       onTap();
     }
   }, [cancel, onTap, disabled]);
 
+  const handlePointerCancel = useCallback(() => {
+    cancel();
+    startPositionRef.current = null;
+    isCancelledRef.current = true;
+  }, [cancel]);
+
   // Cleanup timer on unmount
   useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+    return () => cancel();
+  }, [cancel]);
 
   return {
-    onMouseDown: start,
-    onMouseUp: end,
-    onMouseLeave: cancel,
-    onTouchStart: start,
-    onTouchEnd: end,
-    onTouchCancel: cancel,
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerCancel,
+    onPointerLeave: handlePointerCancel,
   };
 }

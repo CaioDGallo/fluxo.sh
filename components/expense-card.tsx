@@ -163,6 +163,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
           {/* Category icon - clickable */}
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               if (props.selectionMode) {
@@ -253,7 +254,12 @@ export function ExpenseCard(props: ExpenseCardProps) {
           {/* Actions dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
                 <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} size={16} />
               </Button>
             </DropdownMenuTrigger>

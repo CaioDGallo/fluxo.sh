@@ -30,6 +30,7 @@ describe('Fatura Actions', () => {
   let getFaturaWithEntries: FaturaActions['getFaturaWithEntries'];
   let payFatura: FaturaActions['payFatura'];
   let markFaturaUnpaid: FaturaActions['markFaturaUnpaid'];
+  let convertExpenseToFaturaPayment: FaturaActions['convertExpenseToFaturaPayment'];
 
   let createExpense: ExpenseActions['createExpense'];
   let updateExpense: ExpenseActions['updateExpense'];
@@ -94,6 +95,38 @@ describe('Fatura Actions', () => {
     return { account, category, transaction, fatura, faturaMonth, amount };
   };
 
+  const seedExpenseFromChecking = async (amount: number, purchaseDate: string = '2025-01-10') => {
+    const checking = await seedAccount(testAccounts.checking);
+    const category = await seedCategory();
+
+    const [transaction] = await db
+      .insert(schema.transactions)
+      .values({
+        userId: TEST_USER_ID,
+        description: 'Test Expense',
+        totalAmount: amount,
+        totalInstallments: 1,
+        categoryId: category.id,
+      })
+      .returning();
+
+    const [entry] = await db
+      .insert(schema.entries)
+      .values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: checking.id,
+        amount,
+        purchaseDate,
+        faturaMonth: purchaseDate.slice(0, 7), // Extract YYYY-MM
+        dueDate: purchaseDate,
+        installmentNumber: 1,
+      })
+      .returning();
+
+    return { entry, transaction, checking, category, amount };
+  };
+
   beforeAll(async () => {
     db = await setupTestDb();
 
@@ -114,6 +147,7 @@ describe('Fatura Actions', () => {
     getFaturaWithEntries = faturaActions.getFaturaWithEntries;
     payFatura = faturaActions.payFatura;
     markFaturaUnpaid = faturaActions.markFaturaUnpaid;
+    convertExpenseToFaturaPayment = faturaActions.convertExpenseToFaturaPayment;
 
     const expenseActions = await import('@/lib/actions/expenses');
     createExpense = expenseActions.createExpense;
@@ -616,6 +650,214 @@ describe('Fatura Actions', () => {
         .where(and(eq(schema.faturas.userId, TEST_USER_ID), eq(schema.faturas.accountId, account.id)));
 
       expect(fatura.totalAmount).toBe(0);
+    });
+  });
+
+  describe('convertExpenseToFaturaPayment', () => {
+    it('validates entryId', async () => {
+      await expect(convertExpenseToFaturaPayment(0, 1)).rejects.toThrow('Invalid transaction ID');
+      await expect(convertExpenseToFaturaPayment(-1, 1)).rejects.toThrow('Invalid transaction ID');
+    });
+
+    it('validates faturaId', async () => {
+      await expect(convertExpenseToFaturaPayment(1, 0)).rejects.toThrow('Invalid bill ID');
+      await expect(convertExpenseToFaturaPayment(1, -1)).rejects.toThrow('Invalid bill ID');
+    });
+
+    it('throws when entry not found', async () => {
+      const { fatura } = await seedFaturaWithEntry();
+      await expect(convertExpenseToFaturaPayment(999, fatura.id)).rejects.toThrow('Invalid transaction ID');
+    });
+
+    it('throws when fatura not found', async () => {
+      const { entry } = await seedExpenseFromChecking(10000);
+      await expect(convertExpenseToFaturaPayment(entry.id, 999)).rejects.toThrow('Bill not found');
+    });
+
+    it('prevents conversion from credit card accounts', async () => {
+      const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const creditCard = await seedAccount(testAccounts.creditCardWithBilling);
+      const category = await seedCategory();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'CC Expense',
+          totalAmount: amount,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      const [entry] = await db
+        .insert(schema.entries)
+        .values({
+          userId: TEST_USER_ID,
+          transactionId: transaction.id,
+          accountId: creditCard.id,
+          amount,
+          purchaseDate: '2025-01-10',
+          faturaMonth: '2025-01',
+          dueDate: '2025-01-10',
+          installmentNumber: 1,
+        })
+        .returning();
+
+      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
+        'This expense cannot be converted to a fatura payment'
+      );
+    });
+
+    it('prevents conversion for installment transactions', async () => {
+      const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const checking = await seedAccount(testAccounts.checking);
+      const category = await seedCategory();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Installment Expense',
+          totalAmount: amount,
+          totalInstallments: 3, // Multiple installments
+          categoryId: category.id,
+        })
+        .returning();
+
+      const [entry] = await db
+        .insert(schema.entries)
+        .values({
+          userId: TEST_USER_ID,
+          transactionId: transaction.id,
+          accountId: checking.id,
+          amount: Math.floor(amount / 3),
+          purchaseDate: '2025-01-10',
+          faturaMonth: '2025-01',
+          dueDate: '2025-01-10',
+          installmentNumber: 1,
+        })
+        .returning();
+
+      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
+        'This expense cannot be converted to a fatura payment'
+      );
+    });
+
+    it('prevents conversion for already paid fatura', async () => {
+      const checking = await seedAccount(testAccounts.checking);
+      const { fatura, amount } = await seedFaturaWithEntry({
+        amount: 10000,
+        faturaPaidAt: new Date('2025-01-20T00:00:00Z'),
+        paidFromAccountId: checking.id,
+      });
+      const { entry } = await seedExpenseFromChecking(amount);
+
+      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow('Bill already paid');
+    });
+
+    it('prevents conversion when amounts do not match', async () => {
+      const { fatura } = await seedFaturaWithEntry({ amount: 10000 });
+      const { entry } = await seedExpenseFromChecking(5000); // Different amount
+
+      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
+        'Expense amount must match fatura total'
+      );
+    });
+
+    it('marks fatura and entries as paid', async () => {
+      const { account, fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const { entry, checking } = await seedExpenseFromChecking(amount);
+
+      await convertExpenseToFaturaPayment(entry.id, fatura.id);
+
+      // Verify fatura is paid
+      const [updatedFatura] = await db
+        .select()
+        .from(schema.faturas)
+        .where(and(eq(schema.faturas.userId, TEST_USER_ID), eq(schema.faturas.id, fatura.id)));
+
+      expect(updatedFatura.paidAt).not.toBeNull();
+      expect(updatedFatura.paidFromAccountId).toBe(checking.id);
+
+      // KEY: Verify entries are paid
+      const updatedEntries = await db
+        .select()
+        .from(schema.entries)
+        .where(
+          and(
+            eq(schema.entries.userId, TEST_USER_ID),
+            eq(schema.entries.accountId, account.id),
+            eq(schema.entries.faturaMonth, fatura.yearMonth)
+          )
+        );
+
+      expect(updatedEntries).toHaveLength(1);
+      expect(updatedEntries.every((e) => e.paidAt !== null)).toBe(true);
+    });
+
+    it('creates fatura_payment transfer', async () => {
+      const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const { entry, checking } = await seedExpenseFromChecking(amount);
+
+      await convertExpenseToFaturaPayment(entry.id, fatura.id);
+
+      const [transfer] = await db
+        .select()
+        .from(schema.transfers)
+        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.faturaId, fatura.id)));
+
+      expect(transfer).toMatchObject({
+        fromAccountId: checking.id,
+        toAccountId: fatura.accountId,
+        amount,
+        type: 'fatura_payment',
+      });
+    });
+
+    it('deletes original expense', async () => {
+      const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const { entry, transaction } = await seedExpenseFromChecking(amount);
+
+      await convertExpenseToFaturaPayment(entry.id, fatura.id);
+
+      // Verify transaction deleted
+      const deletedTransaction = await db
+        .select()
+        .from(schema.transactions)
+        .where(and(eq(schema.transactions.userId, TEST_USER_ID), eq(schema.transactions.id, transaction.id)));
+
+      expect(deletedTransaction).toHaveLength(0);
+
+      // Verify source entry deleted (cascade)
+      const deletedEntry = await db
+        .select()
+        .from(schema.entries)
+        .where(and(eq(schema.entries.userId, TEST_USER_ID), eq(schema.entries.id, entry.id)));
+
+      expect(deletedEntry).toHaveLength(0);
+    });
+
+    it('updates account balances', async () => {
+      const { account, fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
+      const { entry, checking } = await seedExpenseFromChecking(amount);
+
+      await convertExpenseToFaturaPayment(entry.id, fatura.id);
+
+      const [updatedChecking] = await db
+        .select()
+        .from(schema.accounts)
+        .where(and(eq(schema.accounts.userId, TEST_USER_ID), eq(schema.accounts.id, checking.id)));
+
+      const [updatedCard] = await db
+        .select()
+        .from(schema.accounts)
+        .where(and(eq(schema.accounts.userId, TEST_USER_ID), eq(schema.accounts.id, account.id)));
+
+      // Checking balance should be negative (money out)
+      expect(updatedChecking.currentBalance).toBe(-amount);
+      // Credit card balance should be 0 (paid off)
+      expect(updatedCard.currentBalance).toBe(0);
     });
   });
 });

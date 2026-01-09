@@ -464,10 +464,10 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="mb-4 gap-4 flex flex-row md:flex-col">
+      <div className="mb-4 gap-4 flex flex-col md:flex-row space-x-0 md:space-x-4">
         {/* Status Filter */}
         <div className="flex items-center gap-3">
-          <span className="text-sm hidden font-medium text-muted-foreground md:inline min-w-[60px]">
+          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
             {t('statusLabel')}:
           </span>
           <div className="flex gap-2">
@@ -496,11 +496,9 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className='border border-gray-300 ml-1 flex md:hidden' />
-
         {/* Priority Filter */}
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground hidden md:inline min-w-[60px]">
+          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
             {t('priorityLabel')}:
           </span>
           <div className="flex gap-2">

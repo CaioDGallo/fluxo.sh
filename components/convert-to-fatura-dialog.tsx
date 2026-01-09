@@ -103,24 +103,29 @@ export function ConvertToFaturaDialog({
         </AlertDialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-600">{entry.description}</p>
+          <div className="min-w-0">
+            <p className="text-sm text-gray-600 truncate">{entry.description}</p>
             <p className="text-2xl font-bold mt-2">{formatCurrency(entry.amount)}</p>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-gray-600 mb-2">{t('convertToFaturaDescription')}</p>
             <label className="text-sm font-medium mb-2 block">
               {t('faturaSelectionLabel')}
             </label>
             <Select value={selectedFaturaId} onValueChange={setSelectedFaturaId}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder={t('selectFatura')} />
               </SelectTrigger>
               <SelectContent>
                 {unpaidFaturas.map((fatura) => (
                   <SelectItem key={fatura.id} value={String(fatura.id)}>
-                    {fatura.accountName} - {fatura.yearMonth} - {formatCurrency(fatura.totalAmount)}
+                    <div className="flex flex-col items-start gap-0.5 py-0.5">
+                      <span className="font-medium">{fatura.accountName}</span>
+                      <span className="text-xs text-gray-500">
+                        {fatura.yearMonth} · {formatCurrency(fatura.totalAmount)}
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

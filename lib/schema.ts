@@ -17,6 +17,7 @@ export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', '
 export const itemTypeEnum = pgEnum('item_type', ['event', 'task']);
 export const notificationChannelEnum = pgEnum('notification_channel', ['email']);
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);
+export const calendarSourceStatusEnum = pgEnum('calendar_source_status', ['active', 'error', 'disabled']);
 
 // Accounts table
 export const accounts = pgTable('accounts', {
@@ -165,6 +166,23 @@ export const income = pgTable('income', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Calendar sources table (external iCal subscriptions)
+export const calendarSources = pgTable('calendar_sources', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  status: calendarSourceStatusEnum('status').notNull().default('active'),
+  color: text('color').default('#3b82f6'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  syncToken: text('sync_token'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  uniqueUserUrl: unique().on(table.userId, table.url),
+}));
+
 // Events table
 export const events = pgTable('events', {
   id: serial('id').primaryKey(),
@@ -177,6 +195,9 @@ export const events = pgTable('events', {
   isAllDay: boolean('is_all_day').notNull().default(false),
   priority: priorityEnum('priority').notNull().default('medium'),
   status: eventStatusEnum('status').notNull().default('scheduled'),
+  externalId: text('external_id'),
+  calendarSourceId: integer('calendar_source_id').references(() => calendarSources.id, { onDelete: 'cascade' }),
+  externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => ({
@@ -285,6 +306,9 @@ export type NewEntry = typeof entries.$inferInsert;
 export type Income = typeof income.$inferSelect;
 export type NewIncome = typeof income.$inferInsert;
 
+export type CalendarSource = typeof calendarSources.$inferSelect;
+export type NewCalendarSource = typeof calendarSources.$inferInsert;
+
 export type Fatura = typeof faturas.$inferSelect;
 export type NewFatura = typeof faturas.$inferInsert;
 
@@ -382,10 +406,18 @@ export const transfersRelations = relations(transfers, ({ one }) => ({
   }),
 }));
 
-export const eventsRelations = relations(events, ({ many }) => ({
+export const calendarSourcesRelations = relations(calendarSources, ({ many }) => ({
+  events: many(events),
+}));
+
+export const eventsRelations = relations(events, ({ many, one }) => ({
   recurrenceRules: many(recurrenceRules),
   notifications: many(notifications),
   notificationJobs: many(notificationJobs),
+  calendarSource: one(calendarSources, {
+    fields: [events.calendarSourceId],
+    references: [calendarSources.id],
+  }),
 }));
 
 export const tasksRelations = relations(tasks, ({ many }) => ({

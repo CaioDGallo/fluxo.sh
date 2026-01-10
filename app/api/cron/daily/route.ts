@@ -7,11 +7,16 @@ import { syncAllUsersCalendars } from '@/lib/actions/calendar-sync';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  console.log('[cron:daily] Invoked');
+
   const authHeader = request.headers.get('authorization');
 
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    console.error('[cron:daily] Auth failed - check CRON_SECRET env var');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  console.log('[cron:daily] Auth passed, running jobs...');
 
   const url = new URL(request.url);
   const jobOverride = url.searchParams.get('job');
@@ -29,6 +34,8 @@ export async function GET(request: Request) {
       runStatusUpdates ? updatePastItemStatuses() : Promise.resolve(null),
       runCalendarSync ? syncAllUsersCalendars() : Promise.resolve(null),
     ]);
+
+    console.log('[cron:daily] All jobs completed');
 
     return NextResponse.json({
       success: true,

@@ -216,7 +216,9 @@
     "copiedBudgets": "Copiados {copied} orçamentos",
     "copiedWithMonthlyBudgetPartial": "Copiados {copied} orçamentos + orçamento mensal ({skipped} já existiam)",
     "copiedBudgetsPartial": "Copiados {copied} orçamentos ({skipped} já existiam)",
-    "failedToCopy": "Falha ao copiar orçamentos. Tente novamente."
+    "failedToCopy": "Falha ao copiar orçamentos. Tente novamente.",
+    "expensesWithoutBudget": "Despesas sem orçamento",
+    "addBudget": "Definir orçamento"
   },
   "form": {
     "amount": "Valor",

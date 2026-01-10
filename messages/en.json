@@ -216,7 +216,9 @@
     "copiedBudgets": "Copied {copied} budgets",
     "copiedWithMonthlyBudgetPartial": "Copied {copied} budgets + monthly budget ({skipped} already existed)",
     "copiedBudgetsPartial": "Copied {copied} budgets ({skipped} already existed)",
-    "failedToCopy": "Failed to copy budgets. Please try again."
+    "failedToCopy": "Failed to copy budgets. Please try again.",
+    "expensesWithoutBudget": "Expenses without budget",
+    "addBudget": "Add budget"
   },
   "form": {
     "amount": "Amount",

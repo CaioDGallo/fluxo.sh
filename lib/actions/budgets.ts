@@ -147,10 +147,20 @@ export type BudgetWithSpending = {
   budget: number;
 };
 
+export type UnbudgetedSpending = {
+  categoryId: number;
+  categoryName: string;
+  categoryColor: string;
+  categoryIcon: string | null;
+  spent: number;
+};
+
 export type BudgetsPageData = {
   totalSpent: number;
   totalBudget: number;
   budgets: BudgetWithSpending[];
+  unbudgeted: UnbudgetedSpending[];
+  totalUnbudgetedSpent: number;
 };
 
 export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<BudgetsPageData> => {
@@ -214,14 +224,49 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       };
     });
 
-    // 4. Calculate totals
+    // 4. Find unbudgeted spending
+    const budgetedCategoryIds = new Set(monthBudgets.map((b) => b.categoryId));
+    const unbudgetedSpending = spending.filter((s) => !budgetedCategoryIds.has(s.categoryId));
+
+    // Get category details for unbudgeted categories
+    const categoryDetails = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        color: categories.color,
+        icon: categories.icon,
+      })
+      .from(categories)
+      .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')));
+
+    const categoryMap = new Map(categoryDetails.map((c) => [c.id, c]));
+
+    const unbudgeted: UnbudgetedSpending[] = unbudgetedSpending
+      .map((s) => {
+        const cat = categoryMap.get(s.categoryId);
+        if (!cat) return null;
+        return {
+          categoryId: s.categoryId,
+          categoryName: cat.name,
+          categoryColor: cat.color,
+          categoryIcon: cat.icon,
+          spent: s.spent,
+        };
+      })
+      .filter((item): item is UnbudgetedSpending => item !== null)
+      .sort((a, b) => b.spent - a.spent);
+
+    // 5. Calculate totals
     const totalBudget = budgetsWithSpending.reduce((sum, cat) => sum + cat.budget, 0);
     const totalSpent = budgetsWithSpending.reduce((sum, cat) => sum + cat.spent, 0);
+    const totalUnbudgetedSpent = unbudgeted.reduce((sum, cat) => sum + cat.spent, 0);
 
     return {
       totalSpent,
       totalBudget,
       budgets: budgetsWithSpending,
+      unbudgeted,
+      totalUnbudgetedSpent,
     };
   } catch (error) {
     console.error('Failed to get budgets with spending:', error);

@@ -4,6 +4,7 @@ import { getCurrentYearMonth } from '@/lib/utils';
 import { MonthPicker } from '@/components/month-picker';
 import { SummaryCard } from '@/components/summary-card';
 import { BudgetProgress } from '@/components/budget-progress';
+import { UnbudgetedSpending } from '@/components/unbudgeted-spending';
 import { CopyBudgetsButton } from '@/components/copy-budgets-button';
 import Link from 'next/link';
 
@@ -73,6 +74,27 @@ export default async function BudgetsPage({ searchParams }: PageProps) {
               ))}
             </div>
           </div>
+
+          {/* Unbudgeted Spending Section */}
+          {data.unbudgeted.length > 0 && (
+            <div>
+              <h2 className="mb-4 text-lg font-semibold text-gray-600">
+                {t('expensesWithoutBudget')}
+              </h2>
+              <div className="space-y-4">
+                {data.unbudgeted.map((item) => (
+                  <UnbudgetedSpending
+                    key={item.categoryId}
+                    categoryName={item.categoryName}
+                    categoryColor={item.categoryColor}
+                    categoryIcon={item.categoryIcon}
+                    spent={item.spent}
+                    yearMonth={yearMonth}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

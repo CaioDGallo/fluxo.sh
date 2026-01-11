@@ -445,6 +445,9 @@
     "english": "English"
   },
   "filters": {
+    "category": "Category",
+    "account": "Account",
+    "status": "Status",
     "allCategories": "All Categories",
     "allAccounts": "All Accounts",
     "allStatus": "All",

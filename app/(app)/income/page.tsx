@@ -3,7 +3,7 @@ import { getIncome, type IncomeFilters as IncomeFiltersType } from '@/lib/action
 import { getAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
 import { IncomeList, IncomeListProvider } from '@/components/income-list';
-import { IncomeFilters } from '@/components/income-filters';
+import { IncomeFiltersWrapper } from '@/components/income-filters-wrapper';
 import { IncomeFilterSummary } from '@/components/income-filter-summary';
 import { ImportModal } from '@/components/import/import-modal';
 import { AddIncomeButton } from '@/components/add-income-button';
@@ -64,7 +64,7 @@ export default async function IncomePage({ searchParams }: PageProps) {
         categories={categories}
         filters={filters}
       >
-        <IncomeFilters
+        <IncomeFiltersWrapper
           accounts={accounts}
           categories={categories}
           currentMonth={currentMonth}

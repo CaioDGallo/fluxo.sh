@@ -4,7 +4,7 @@ import { getAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
 import { getUnpaidFaturas } from '@/lib/actions/faturas';
 import { ExpenseList, ExpenseListProvider } from '@/components/expense-list';
-import { ExpenseFilters } from '@/components/expense-filters';
+import { ExpenseFiltersWrapper } from '@/components/expense-filters-wrapper';
 import { ExpenseFilterSummary } from '@/components/expense-filter-summary';
 import { ImportModal } from '@/components/import/import-modal';
 import { AddExpenseButton } from '@/components/add-expense-button';
@@ -67,7 +67,7 @@ export default async function ExpensesPage({ searchParams }: PageProps) {
         filters={filters}
         unpaidFaturas={unpaidFaturas}
       >
-        <ExpenseFilters
+        <ExpenseFiltersWrapper
           accounts={accounts}
           categories={categories}
           currentMonth={currentMonth}

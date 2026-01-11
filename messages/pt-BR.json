@@ -445,6 +445,9 @@
     "english": "English"
   },
   "filters": {
+    "category": "Categoria",
+    "account": "Conta",
+    "status": "Status",
     "allCategories": "Todas as Categorias",
     "allAccounts": "Todas as Contas",
     "allStatus": "Todos",

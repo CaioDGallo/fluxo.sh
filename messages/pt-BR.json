@@ -79,7 +79,8 @@
     "requiredFieldMissing": "Campo obrigatório está faltando",
     "invalidDataConstraint": "Os dados violam um requisito de restrição",
     "databaseConnectionFailed": "Falha na conexão com o banco de dados. Tente novamente mais tarde.",
-    "invalidCreditLimit": "Limite de crédito deve ser um inteiro não-negativo (centavos)"
+    "invalidCreditLimit": "Limite de crédito deve ser um inteiro não-negativo (centavos)",
+    "invalidTimeFormat": "Formato de hora inválido (esperado HH:MM)"
   },
   "navigation": {
     "northstar": "Northstar",

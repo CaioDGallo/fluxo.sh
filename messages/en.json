@@ -79,7 +79,8 @@
     "requiredFieldMissing": "Required field is missing",
     "invalidDataConstraint": "Data violates a constraint requirement",
     "databaseConnectionFailed": "Database connection failed. Please try again later.",
-    "invalidCreditLimit": "Credit limit must be a non-negative integer (cents)"
+    "invalidCreditLimit": "Credit limit must be a non-negative integer (cents)",
+    "invalidTimeFormat": "Invalid time format (expected HH:MM)"
   },
   "navigation": {
     "northstar": "Northstar",

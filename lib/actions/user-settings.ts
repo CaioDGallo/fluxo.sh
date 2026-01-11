@@ -63,6 +63,12 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
+function isValidTimeFormat(time: string): boolean {
+  // Validate HH:MM format (24-hour)
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  return timeRegex.test(time);
+}
+
 export async function updateUserSettings(data: Partial<Omit<NewUserSettings, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
@@ -89,6 +95,11 @@ export async function updateUserSettings(data: Partial<Omit<NewUserSettings, 'id
       if (data.defaultTaskOffsetMinutes < 0 || data.defaultTaskOffsetMinutes > 10080) {
         return { success: false, error: await t('errors.invalidOffsetMinutes') };
       }
+    }
+
+    // Validate daily digest time format (HH:MM)
+    if (data.dailyDigestTime !== undefined && data.dailyDigestTime !== null && !isValidTimeFormat(data.dailyDigestTime)) {
+      return { success: false, error: await t('errors.invalidTimeFormat') };
     }
 
     await db

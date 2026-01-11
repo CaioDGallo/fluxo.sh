@@ -13,19 +13,19 @@ export { IncomeListProvider };
 
 export function IncomeList() {
   const context = useIncomeContext();
-  const { income, accounts, categories, filters } = context;
+  const { filteredIncome, accounts, categories, filters, searchQuery } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   // Group by date (same logic as original page)
-  const groupedByDate = income.reduce(
+  const groupedByDate = filteredIncome.reduce(
     (acc, inc) => {
       const date = inc.receivedDate;
       if (!acc[date]) acc[date] = [];
       acc[date].push(inc);
       return acc;
     },
-    {} as Record<string, typeof income>
+    {} as Record<string, typeof filteredIncome>
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
@@ -63,7 +63,16 @@ export function IncomeList() {
     }
   };
 
-  if (income.length === 0) {
+  if (filteredIncome.length === 0) {
+    // Show different message when searching vs no data
+    if (searchQuery.trim()) {
+      return (
+        <div className="py-12 text-center">
+          <p className="text-gray-500">No income found matching &ldquo;{searchQuery}&rdquo;</p>
+          <p className="mt-2 text-sm text-gray-400">Try a different search term</p>
+        </div>
+      );
+    }
     return (
       <div className="py-12 text-center">
         <p className="text-gray-500">No income found for this period.</p>

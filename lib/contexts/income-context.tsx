@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useOptimistic, useCallback, startTransition } from 'react';
+import { createContext, useContext, useOptimistic, useCallback, startTransition, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Account, Category } from '@/lib/schema';
@@ -12,6 +12,7 @@ import {
   bulkUpdateIncomeCategories as serverBulkUpdateIncomeCategories,
   type IncomeFilters,
 } from '@/lib/actions/income';
+import { centsToDisplay } from '@/lib/utils';
 
 // Income entry shape (from getIncome return type)
 export type IncomeEntry = {
@@ -92,9 +93,14 @@ function incomeReducer(
 // Context value type
 type IncomeContextValue = {
   income: OptimisticIncomeEntry[];
+  filteredIncome: OptimisticIncomeEntry[];
   accounts: Account[];
   categories: Category[];
   filters: IncomeFilters;
+
+  // Search
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 
   // Optimistic actions
   addIncome: (data: CreateIncomeInput) => void;
@@ -155,6 +161,20 @@ export function IncomeListProvider({
 }: IncomeListProviderProps) {
   const router = useRouter();
   const [optimisticIncome, dispatch] = useOptimistic(initialIncome, incomeReducer);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter income based on search query
+  const filteredIncome = useMemo(() => {
+    if (!searchQuery.trim()) return optimisticIncome;
+
+    const query = searchQuery.toLowerCase();
+    return optimisticIncome.filter((income) => {
+      const description = income.description?.toLowerCase() || '';
+      const amount = centsToDisplay(income.amount);
+
+      return description.includes(query) || amount.includes(query);
+    });
+  }, [optimisticIncome, searchQuery]);
 
   // Add income (create)
   const addIncome = useCallback(
@@ -249,9 +269,12 @@ export function IncomeListProvider({
 
   const value: IncomeContextValue = {
     income: optimisticIncome,
+    filteredIncome,
     accounts,
     categories,
     filters,
+    searchQuery,
+    setSearchQuery,
     addIncome,
     toggleReceived,
     removeIncome,

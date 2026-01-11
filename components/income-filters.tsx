@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,8 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, ArrowRight01Icon, SearchIcon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { addMonths } from '@/lib/utils';
+import { useIncomeContext } from '@/lib/contexts/income-context';
 import type { Account, Category } from '@/lib/schema';
 
 type IncomeFiltersProps = {
@@ -31,6 +34,30 @@ export function IncomeFilters({
   const locale = useLocale();
   const t = useTranslations('filters');
   const tIncome = useTranslations('income');
+  const { setSearchQuery } = useIncomeContext();
+
+  const [isSearching, setIsSearching] = useState(false);
+  const [localSearchValue, setLocalSearchValue] = useState('');
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearchValue);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [localSearchValue, setSearchQuery]);
+
+  // Clear search when month changes
+  const prevMonthRef = useRef(currentMonth);
+  useEffect(() => {
+    if (prevMonthRef.current !== currentMonth) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalSearchValue('');
+      setIsSearching(false);
+      prevMonthRef.current = currentMonth;
+    }
+  }, [currentMonth]);
 
   function navigateMonth(direction: -1 | 1) {
     const newMonth = addMonths(currentMonth, direction);
@@ -49,6 +76,15 @@ export function IncomeFilters({
     router.push(`/income?${params.toString()}`);
   }
 
+  function handleSearchOpen() {
+    setIsSearching(true);
+  }
+
+  function handleSearchClose() {
+    setIsSearching(false);
+    setLocalSearchValue('');
+  }
+
   const [year, month] = currentMonth.split('-');
   const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString(
     locale,
@@ -57,19 +93,42 @@ export function IncomeFilters({
 
   return (
     <div className="mb-6 space-y-4">
-      {/* Month picker */}
+      {/* Month picker or Search */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button onClick={() => navigateMonth(-1)} variant="hollow" size="icon">
-            <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-          </Button>
-          <span className="min-w-48 text-center text-lg font-medium capitalize">
-            {monthName}
-          </span>
-          <Button onClick={() => navigateMonth(1)} variant="hollow" size="icon">
-            <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-          </Button>
-        </div>
+        {isSearching ? (
+          // Search mode
+          <div className="flex w-full items-center gap-2">
+            <Button onClick={handleSearchClose} variant="hollow" size="icon">
+              <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+            </Button>
+            <Input
+              type="text"
+              placeholder={tIncome('searchPlaceholder')}
+              value={localSearchValue}
+              onChange={(e) => setLocalSearchValue(e.target.value)}
+              className="flex-1"
+              autoFocus
+            />
+          </div>
+        ) : (
+          // Month picker mode
+          <>
+            <div className="flex items-center gap-3">
+              <Button onClick={() => navigateMonth(-1)} variant="hollow" size="icon">
+                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+              </Button>
+              <span className="min-w-48 text-center text-lg font-medium capitalize">
+                {monthName}
+              </span>
+              <Button onClick={() => navigateMonth(1)} variant="hollow" size="icon">
+                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+              </Button>
+            </div>
+            <Button onClick={handleSearchOpen} variant="hollow" size="icon">
+              <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Filter selects */}

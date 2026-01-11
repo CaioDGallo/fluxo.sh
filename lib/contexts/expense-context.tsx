@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useOptimistic, useCallback, startTransition } from 'react';
+import { createContext, useContext, useOptimistic, useCallback, startTransition, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { Account, Category } from '@/lib/schema';
@@ -13,6 +13,7 @@ import {
   bulkUpdateTransactionCategories as serverBulkUpdateTransactionCategories,
   type ExpenseFilters,
 } from '@/lib/actions/expenses';
+import { centsToDisplay } from '@/lib/utils';
 
 // Expense entry shape (from getExpenses return type)
 export type ExpenseEntry = {
@@ -99,10 +100,15 @@ function expenseReducer(
 // Context value type
 type ExpenseContextValue = {
   expenses: OptimisticExpenseEntry[];
+  filteredExpenses: OptimisticExpenseEntry[];
   accounts: Account[];
   categories: Category[];
   unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFilters;
+
+  // Search
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 
   // Optimistic actions
   addExpense: (data: CreateExpenseInput) => void;
@@ -194,6 +200,20 @@ export function ExpenseListProvider({
 }: ExpenseListProviderProps) {
   const router = useRouter();
   const [optimisticExpenses, dispatch] = useOptimistic(initialExpenses, expenseReducer);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter expenses based on search query
+  const filteredExpenses = useMemo(() => {
+    if (!searchQuery.trim()) return optimisticExpenses;
+
+    const query = searchQuery.toLowerCase();
+    return optimisticExpenses.filter((expense) => {
+      const description = expense.description?.toLowerCase() || '';
+      const amount = centsToDisplay(expense.amount);
+
+      return description.includes(query) || amount.includes(query);
+    });
+  }, [optimisticExpenses, searchQuery]);
 
   // Add expense (create)
   const addExpense = useCallback(
@@ -289,10 +309,13 @@ export function ExpenseListProvider({
 
   const value: ExpenseContextValue = {
     expenses: optimisticExpenses,
+    filteredExpenses,
     accounts,
     categories,
     unpaidFaturas,
     filters,
+    searchQuery,
+    setSearchQuery,
     addExpense,
     togglePaid,
     removeExpense,

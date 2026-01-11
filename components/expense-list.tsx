@@ -13,19 +13,19 @@ export { ExpenseListProvider };
 
 export function ExpenseList() {
   const context = useExpenseContext();
-  const { expenses, accounts, categories, unpaidFaturas, filters } = context;
+  const { expenses, filteredExpenses, accounts, categories, unpaidFaturas, filters, searchQuery } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   // Group by date (same logic as original page)
-  const groupedByDate = expenses.reduce(
+  const groupedByDate = filteredExpenses.reduce(
     (acc, expense) => {
       const date = expense.purchaseDate;
       if (!acc[date]) acc[date] = [];
       acc[date].push(expense);
       return acc;
     },
-    {} as Record<string, typeof expenses>
+    {} as Record<string, typeof filteredExpenses>
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
@@ -100,7 +100,16 @@ export function ExpenseList() {
     }
   };
 
-  if (expenses.length === 0) {
+  if (filteredExpenses.length === 0) {
+    // Show different message when searching vs no data
+    if (searchQuery.trim()) {
+      return (
+        <div className="py-12 text-center">
+          <p className="text-gray-500">No expenses found matching &ldquo;{searchQuery}&rdquo;</p>
+          <p className="mt-2 text-sm text-gray-400">Try a different search term</p>
+        </div>
+      );
+    }
     return (
       <div className="py-12 text-center">
         <p className="text-gray-500">No expenses found for this period.</p>

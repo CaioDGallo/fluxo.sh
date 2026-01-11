@@ -4,6 +4,10 @@ import { Temporal } from 'temporal-polyfill';
 import { db } from '@/lib/db';
 import { events, tasks, userSettings } from '@/lib/schema';
 import { eq, and, gte, lte, or } from 'drizzle-orm';
+import { logError } from '@/lib/logger';
+import { ErrorIds } from '@/constants/errorIds';
+
+const EMAIL_SEND_TIMEOUT_MS = 30000; // 30 seconds
 
 type Event = typeof events.$inferSelect;
 type Task = typeof tasks.$inferSelect;
@@ -427,6 +431,9 @@ async function sendDailyDigestEmail(
   const htmlBody = generateEmailHtml(settings, todayEvents, todayTasks, dateStr);
   const textBody = generatePlainTextEmail(settings, todayEvents, todayTasks, dateStr);
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), EMAIL_SEND_TIMEOUT_MS);
+
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -441,17 +448,34 @@ async function sendDailyDigestEmail(
         html: htmlBody,
         text: textBody,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json();
-      return { success: false, error: errorData.message || 'Failed to send email' };
+      const errorMessage = errorData.message || 'Failed to send email';
+      logError(ErrorIds.DAILY_DIGEST_SEND_FAILED, 'Failed to send daily digest email', undefined, {
+        userId: settings.userId,
+        toEmail,
+        statusCode: response.status,
+        responseError: errorMessage,
+      });
+      return { success: false, error: errorMessage };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('[daily-digest:send] Failed:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    clearTimeout(timeoutId);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    logError(ErrorIds.DAILY_DIGEST_SEND_FAILED, isTimeout ? 'Daily digest email send timed out' : 'Failed to send daily digest email', error, {
+      userId: settings.userId,
+      toEmail,
+      isTimeout,
+    });
+    return { success: false, error: isTimeout ? 'Request timed out' : errorMessage };
   }
 }
 
@@ -473,6 +497,31 @@ function getStartAndEndOfDay(date: Date, timeZone: string): { start: Date; end: 
   };
 }
 
+/**
+ * Check if the current hour in the user's timezone matches their configured digest time.
+ * @param dailyDigestTime - The user's configured digest time in HH:MM format
+ * @param timeZone - The user's timezone
+ * @param now - Current date/time to check against
+ * @returns true if the current hour matches the digest hour
+ */
+function isDigestTimeNow(dailyDigestTime: string, timeZone: string, now: Date): boolean {
+  // Parse the configured digest hour (e.g., "08:00" -> 8)
+  const [digestHourStr] = dailyDigestTime.split(':');
+  const digestHour = parseInt(digestHourStr, 10);
+
+  if (isNaN(digestHour) || digestHour < 0 || digestHour > 23) {
+    // Invalid time format, default to allowing the digest
+    return true;
+  }
+
+  // Get the current hour in the user's timezone using Temporal
+  const instant = Temporal.Instant.from(now.toISOString());
+  const zonedDateTime = instant.toZonedDateTimeISO(timeZone);
+  const currentHour = zonedDateTime.hour;
+
+  return currentHour === digestHour;
+}
+
 export async function processDailyDigests(): Promise<DailyDigestResult> {
   let sent = 0;
   let failed = 0;
@@ -492,6 +541,8 @@ export async function processDailyDigests(): Promise<DailyDigestResult> {
 
     console.log(`[daily-digest:process] Found ${usersWithDigest.length} users with digest enabled`);
 
+    const now = new Date();
+
     for (const settings of usersWithDigest) {
       // Skip if no notification email
       if (!settings.notificationEmail) {
@@ -501,12 +552,20 @@ export async function processDailyDigests(): Promise<DailyDigestResult> {
       }
 
       const timeZone = settings.timezone || 'UTC';
-      const now = new Date();
+
+      // Check if current hour matches user's configured digest time
+      if (!isDigestTimeNow(settings.dailyDigestTime, timeZone, now)) {
+        console.log(`[daily-digest:process] Skipping user ${settings.userId}: not digest time (configured: ${settings.dailyDigestTime}, timezone: ${timeZone})`);
+        skipped++;
+        continue;
+      }
+
       const { start: dayStart, end: dayEnd } = getStartAndEndOfDay(now, timeZone);
       const dateStr = formatDateHeader(now, timeZone);
 
       console.log(`[daily-digest:process] Processing user ${settings.userId}:`, {
         timeZone,
+        digestTime: settings.dailyDigestTime,
         dayStart: dayStart.toISOString(),
         dayEnd: dayEnd.toISOString(),
       });
@@ -552,12 +611,12 @@ export async function processDailyDigests(): Promise<DailyDigestResult> {
         console.log(`[daily-digest:process] Sent digest to ${settings.notificationEmail}`);
         sent++;
       } else {
-        console.error(`[daily-digest:process] Failed to send to ${settings.notificationEmail}:`, result.error);
+        // Error already logged in sendDailyDigestEmail
         failed++;
       }
     }
   } catch (error) {
-    console.error('[daily-digest:process] Error:', error);
+    logError(ErrorIds.DAILY_DIGEST_PROCESS_FAILED, 'Failed to process daily digests', error);
     throw error;
   }
 

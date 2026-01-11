@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { entries, transactions, categories, budgets, accounts, income, transfers } from '@/lib/schema';
-import { eq, and, gte, lte, sql, desc, isNotNull } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, isNotNull, isNull } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
 
 export type DashboardData = {
@@ -112,7 +112,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
 
   const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
 
-  // 5. Get transfers for the month
+  // 5. Get transfers for the month (exclude internal transfers)
+  // TransfersIn: Only deposits (toAccountId set, fromAccountId null)
   const [{ total: totalTransfersIn }] = await db
     .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
     .from(transfers)
@@ -120,9 +121,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
       gte(transfers.date, startDate),
       lte(transfers.date, endDate),
       eq(transfers.userId, userId),
-      isNotNull(transfers.toAccountId)
+      isNotNull(transfers.toAccountId),
+      isNull(transfers.fromAccountId)
     ));
 
+  // TransfersOut: Only withdrawals (fromAccountId set, toAccountId null)
   const [{ total: totalTransfersOut }] = await db
     .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
     .from(transfers)
@@ -130,7 +133,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
       gte(transfers.date, startDate),
       lte(transfers.date, endDate),
       eq(transfers.userId, userId),
-      isNotNull(transfers.fromAccountId)
+      isNotNull(transfers.fromAccountId),
+      isNull(transfers.toAccountId)
     ));
 
   // 6. Calculate totals

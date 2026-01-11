@@ -13,7 +13,8 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
   const t = useTranslations('summary');
   const percentage = budget > 0 ? (spent / budget) * 100 : 0;
   const remaining = budget - spent;
-  const isOverBudget = remaining < 0;
+  const noBudget = budget === 0;
+  const isOverBudget = !noBudget && remaining < 0;
 
   return (
     <Card data-slot="summary-card">
@@ -35,11 +36,11 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
 
         <div className="border-t pt-4">
           <div className="text-xs text-gray-500">
-            {isOverBudget ? t('overBudget') : t('remaining')}
+            {noBudget ? t('unbudgeted') : isOverBudget ? t('overBudget') : t('remaining')}
           </div>
           <div
             className={`text-2xl font-semibold ${
-              isOverBudget ? 'text-red-600' : 'text-green-600'
+              noBudget ? 'text-gray-600' : isOverBudget ? 'text-red-600' : 'text-green-600'
             }`}
           >
             {formatCurrency(Math.abs(remaining))}

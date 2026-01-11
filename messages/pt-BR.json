@@ -285,6 +285,7 @@
     "totalBudget": "Orçamento Total",
     "overBudget": "Acima do Orçamento",
     "remaining": "Restante",
+    "unbudgeted": "Sem Orçamento",
     "budgetUsed": "do orçamento usado",
     "balanceSummary": "Resumo do Saldo",
     "totalIncome": "Total de Receitas",

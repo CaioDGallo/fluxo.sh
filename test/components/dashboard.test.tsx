@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { BalanceSummary } from '@/components/balance-summary';
 import { SummaryCard } from '@/components/summary-card';
 import { BudgetProgress } from '@/components/budget-progress';
 import { RecentExpenses } from '@/components/recent-expenses';
 import { MonthPicker } from '@/components/month-picker';
+import { CashFlowReport } from '@/components/cash-flow-report';
 
 // Mock next-intl
 vi.mock('next-intl', () => ({
@@ -22,7 +23,16 @@ vi.mock('next-intl', () => ({
         totalBudget: 'Total Budget',
         overBudget: 'Over Budget',
         remaining: 'Remaining',
+        unbudgeted: 'Unbudgeted',
         budgetUsed: 'of budget used',
+      },
+      cashFlow: {
+        title: 'Cash Flow',
+        income: 'Income',
+        expenses: 'Expenses',
+        transfersIn: 'Transfers In',
+        transfersOut: 'Transfers Out',
+        net: 'Net Cash Flow',
       },
       recentExpenses: {
         title: 'Recent Expenses',
@@ -244,7 +254,7 @@ describe('Dashboard Components', () => {
       it('handles budget=0 with spent>0', () => {
         const { container } = render(<SummaryCard spent={50000} budget={0} />);
 
-        expect(screen.getByText('Over Budget')).toBeInTheDocument();
+        expect(screen.getByText('Unbudgeted')).toBeInTheDocument();
 
         // With budget=0, percentage should be 0
         const progressBar = container.querySelector('.h-full.transition-all');
@@ -695,6 +705,152 @@ describe('Dashboard Components', () => {
           expect(screen.getByText(new RegExp(name, 'i'))).toBeInTheDocument();
           unmount();
         });
+      });
+    });
+  });
+
+  describe('CashFlowReport Component', () => {
+    describe('Display Tests', () => {
+      it('shows income, expenses, transfers, and net cash flow', () => {
+        render(
+          <CashFlowReport
+            income={100000}
+            expenses={60000}
+            transfersIn={5000}
+            transfersOut={10000}
+            net={35000}
+          />
+        );
+
+        expect(screen.getByText('Cash Flow')).toBeInTheDocument();
+        expect(screen.getByText('Income')).toBeInTheDocument();
+        expect(screen.getByText('Expenses')).toBeInTheDocument();
+        expect(screen.getByText('Transfers In')).toBeInTheDocument();
+        expect(screen.getByText('Transfers Out')).toBeInTheDocument();
+        expect(screen.getByText('Net Cash Flow')).toBeInTheDocument();
+
+        // Check formatted amounts
+        expect(screen.getByText(/R\$\s*1\.000,00/)).toBeInTheDocument(); // Income
+        expect(screen.getByText(/R\$\s*600,00/)).toBeInTheDocument(); // Expenses
+        expect(screen.getByText(/R\$\s*50,00/)).toBeInTheDocument(); // TransfersIn
+        expect(screen.getByText(/R\$\s*100,00/)).toBeInTheDocument(); // TransfersOut
+        expect(screen.getByText(/R\$\s*350,00/)).toBeInTheDocument(); // Net
+      });
+
+      it('displays positive net cash flow in green', () => {
+        render(
+          <CashFlowReport
+            income={100000}
+            expenses={60000}
+            transfersIn={0}
+            transfersOut={0}
+            net={40000}
+          />
+        );
+
+        const netText = screen.getByText(/\+R\$\s*400,00/);
+        expect(netText).toHaveClass('text-green-600');
+      });
+
+      it('displays negative net cash flow in red', () => {
+        render(
+          <CashFlowReport
+            income={50000}
+            expenses={80000}
+            transfersIn={0}
+            transfersOut={0}
+            net={-30000}
+          />
+        );
+
+        const netText = screen.getByText(/-R\$\s*300,00/);
+        expect(netText).toHaveClass('text-red-600');
+      });
+
+      it('displays zero net cash flow as positive (green)', () => {
+        render(
+          <CashFlowReport
+            income={50000}
+            expenses={50000}
+            transfersIn={0}
+            transfersOut={0}
+            net={0}
+          />
+        );
+
+        // Zero is considered positive (netPositive = net >= 0)
+        // Find the Net Cash Flow row specifically to avoid matching Transfers In
+        const netLabel = screen.getByText('Net Cash Flow');
+        const netRow = netLabel.closest('.flex');
+        const netText = within(netRow as HTMLElement).getByText(/\+R\$\s*0,00/i);
+        expect(netText).toHaveClass('text-green-600');
+      });
+    });
+
+    describe('Edge Cases', () => {
+      it('handles all zero values', () => {
+        render(
+          <CashFlowReport
+            income={0}
+            expenses={0}
+            transfersIn={0}
+            transfersOut={0}
+            net={0}
+          />
+        );
+
+        // All amounts should be R$ 0,00
+        const zeroAmounts = screen.getAllByText(/R\$\s*0,00/);
+        expect(zeroAmounts.length).toBeGreaterThanOrEqual(5);
+      });
+
+      it('handles large amounts correctly', () => {
+        render(
+          <CashFlowReport
+            income={99999999}
+            expenses={50000000}
+            transfersIn={10000000}
+            transfersOut={5000000}
+            net={54999999}
+          />
+        );
+
+        expect(screen.getByText(/R\$\s*999\.999,99/)).toBeInTheDocument();
+        expect(screen.getByText(/R\$\s*500\.000,00/)).toBeInTheDocument();
+        expect(screen.getByText(/R\$\s*549\.999,99/)).toBeInTheDocument();
+      });
+
+      it('handles negative values with correct sign display', () => {
+        render(
+          <CashFlowReport
+            income={0}
+            expenses={100000}
+            transfersIn={0}
+            transfersOut={50000}
+            net={-150000}
+          />
+        );
+
+        // Negative net should show with - prefix
+        const netText = screen.getByText(/-R\$\s*1\.500,00/);
+        expect(netText).toBeInTheDocument();
+        expect(netText).toHaveClass('text-red-600');
+      });
+
+      it('handles transfers only (no income/expenses)', () => {
+        render(
+          <CashFlowReport
+            income={0}
+            expenses={0}
+            transfersIn={50000}
+            transfersOut={30000}
+            net={20000}
+          />
+        );
+
+        expect(screen.getByText(/\+R\$\s*500,00/)).toBeInTheDocument(); // TransfersIn
+        expect(screen.getByText(/-R\$\s*300,00/)).toBeInTheDocument(); // TransfersOut
+        expect(screen.getByText(/\+R\$\s*200,00/)).toBeInTheDocument(); // Net
       });
     });
   });

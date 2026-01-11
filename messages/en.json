@@ -285,6 +285,7 @@
     "totalBudget": "Total Budget",
     "overBudget": "Over Budget",
     "remaining": "Remaining",
+    "unbudgeted": "Unbudgeted",
     "budgetUsed": "of budget used",
     "balanceSummary": "Balance Summary",
     "totalIncome": "Total Income",

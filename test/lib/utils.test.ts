@@ -3,6 +3,7 @@ import {
   centsToDisplay,
   displayToCents,
   formatCurrency,
+  formatCurrencyWithLocale,
   getCurrentYearMonth,
   parseYearMonth,
   addMonths,
@@ -50,6 +51,42 @@ describe('Money Utilities', () => {
 
     it('handles large values with thousand separators', () => {
       expect(formatCurrency(100000000)).toBe('R$\u00A01.000.000,00');
+    });
+  });
+
+  describe('formatCurrencyWithLocale', () => {
+    it('formats cents as BRL with pt-BR locale', () => {
+      // Should match formatCurrency default behavior
+      expect(formatCurrencyWithLocale(10050, 'pt-BR')).toBe('R$\u00A0100,50');
+      expect(formatCurrencyWithLocale(100000, 'pt-BR')).toBe('R$\u00A01.000,00');
+    });
+
+    it('formats cents as BRL with en locale', () => {
+      // English locale uses period for decimal, comma for thousands
+      expect(formatCurrencyWithLocale(10050, 'en')).toBe('R$100.50');
+      expect(formatCurrencyWithLocale(100000, 'en')).toBe('R$1,000.00');
+    });
+
+    it('formats cents as BRL with en-US locale', () => {
+      expect(formatCurrencyWithLocale(10050, 'en-US')).toBe('R$100.50');
+      expect(formatCurrencyWithLocale(1000000, 'en-US')).toBe('R$10,000.00');
+    });
+
+    it('handles negative values with locale', () => {
+      expect(formatCurrencyWithLocale(-5000, 'pt-BR')).toBe('-R$\u00A050,00');
+      expect(formatCurrencyWithLocale(-5000, 'en')).toBe('-R$50.00');
+    });
+
+    it('handles zero with locale', () => {
+      expect(formatCurrencyWithLocale(0, 'pt-BR')).toBe('R$\u00A00,00');
+      expect(formatCurrencyWithLocale(0, 'en')).toBe('R$0.00');
+    });
+
+    it('handles large values with locale-specific separators', () => {
+      // pt-BR: period for thousands, comma for decimal
+      expect(formatCurrencyWithLocale(100000000, 'pt-BR')).toBe('R$\u00A01.000.000,00');
+      // en: comma for thousands, period for decimal
+      expect(formatCurrencyWithLocale(100000000, 'en')).toBe('R$1,000,000.00');
     });
   });
 });

@@ -203,9 +203,10 @@ describe('Dashboard Actions - getDashboardData', () => {
 
       const result = await getDashboardData('2025-01');
 
-      expect(result.totalTransfersIn).toBe(18000);
-      expect(result.totalTransfersOut).toBe(20000);
-      expect(result.cashFlowNet).toBe(-2000);
+      // Internal transfer (15000) should be excluded from cash flow
+      expect(result.totalTransfersIn).toBe(3000); // Only deposit
+      expect(result.totalTransfersOut).toBe(5000); // Only withdrawal
+      expect(result.cashFlowNet).toBe(-2000); // 0 income + 3000 in - 0 spent - 5000 out
     });
 
     it('handles budgets without spending', async () => {
@@ -1031,6 +1032,101 @@ describe('Dashboard Actions - getDashboardData', () => {
 
       expect(result.totalSpent).toBe(10000); // Only January entry
       expect(result.recentExpenses).toHaveLength(1);
+    });
+  });
+
+  describe('Transfer Type Tests', () => {
+    it('counts only deposits (external in) in transfersIn', async () => {
+      // Deposit: toAccountId set, fromAccountId null
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: null,
+        toAccountId: accountId1,
+        amount: 50000,
+        date: '2025-01-10',
+        type: 'deposit',
+      });
+
+      const result = await getDashboardData('2025-01');
+
+      expect(result.totalTransfersIn).toBe(50000);
+      expect(result.totalTransfersOut).toBe(0);
+      expect(result.cashFlowNet).toBe(50000); // 0 income + 50000 transfersIn - 0 spent - 0 transfersOut
+    });
+
+    it('counts only withdrawals (external out) in transfersOut', async () => {
+      // Withdrawal: fromAccountId set, toAccountId null
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: accountId1,
+        toAccountId: null,
+        amount: 30000,
+        date: '2025-01-15',
+        type: 'withdrawal',
+      });
+
+      const result = await getDashboardData('2025-01');
+
+      expect(result.totalTransfersIn).toBe(0);
+      expect(result.totalTransfersOut).toBe(30000);
+      expect(result.cashFlowNet).toBe(-30000); // 0 income + 0 transfersIn - 0 spent - 30000 transfersOut
+    });
+
+    it('excludes internal transfers (both accounts set) from cash flow', async () => {
+      // Internal transfer: both fromAccountId and toAccountId set
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: accountId1,
+        toAccountId: accountId2,
+        amount: 100000,
+        date: '2025-01-20',
+        type: 'internal_transfer',
+      });
+
+      const result = await getDashboardData('2025-01');
+
+      // Internal transfers should NOT appear in either transfersIn or transfersOut
+      expect(result.totalTransfersIn).toBe(0);
+      expect(result.totalTransfersOut).toBe(0);
+      expect(result.cashFlowNet).toBe(0); // No impact on cash flow
+    });
+
+    it('handles mixed transfer types correctly', async () => {
+      // Deposit
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: null,
+        toAccountId: accountId1,
+        amount: 50000,
+        date: '2025-01-05',
+        type: 'deposit',
+      });
+
+      // Withdrawal
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: accountId1,
+        toAccountId: null,
+        amount: 20000,
+        date: '2025-01-10',
+        type: 'withdrawal',
+      });
+
+      // Internal transfer (should be excluded)
+      await db.insert(schema.transfers).values({
+        userId: TEST_USER_ID,
+        fromAccountId: accountId1,
+        toAccountId: accountId2,
+        amount: 100000,
+        date: '2025-01-15',
+        type: 'internal_transfer',
+      });
+
+      const result = await getDashboardData('2025-01');
+
+      expect(result.totalTransfersIn).toBe(50000); // Only deposit
+      expect(result.totalTransfersOut).toBe(20000); // Only withdrawal
+      expect(result.cashFlowNet).toBe(30000); // 0 income + 50000 in - 0 spent - 20000 out
     });
   });
 });

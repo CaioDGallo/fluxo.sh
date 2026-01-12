@@ -178,6 +178,8 @@ export function MonthAgendaEventItem({
         "transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "cursor-pointer",
+        status === 'cancelled' && "line-through opacity-75 bg-red-300/20",
+        status === 'completed' && "opacity-40"
       )}
       aria-label={ariaLabel}
       title={title}

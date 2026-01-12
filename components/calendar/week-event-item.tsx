@@ -107,13 +107,22 @@ export function WeekEventItem({
       aria-label={ariaLabel}
       title={title}
     >
-      {/* Header: Priority + Status */}
-      <div className="flex items-center justify-between gap-1 min-h-[16px]">
+      {/* Priority | Title | Status */}
+      <div className="flex items-center gap-1 min-h-[16px]">
         <HugeiconsIcon
           icon={PriorityIcon}
           className={cn("size-2.5 shrink-0", priorityColor)}
           aria-label={`Priority: ${priority}`}
         />
+        <span
+          className={cn(
+            "flex-1 text-[10px] font-medium leading-tight truncate",
+            status === 'cancelled' && "line-through opacity-60",
+            status === 'completed' && "opacity-70"
+          )}
+        >
+          {title}
+        </span>
         <Badge
           variant={statusConfig.variant}
           className="text-[8px] px-1 py-0 h-auto shrink-0"
@@ -122,17 +131,6 @@ export function WeekEventItem({
           <HugeiconsIcon icon={StatusIcon} className="size-2" />
         </Badge>
       </div>
-
-      {/* Title */}
-      <span
-        className={cn(
-          "text-[10px] font-medium leading-tight break-words",
-          status === 'cancelled' && "line-through opacity-60",
-          status === 'completed' && "opacity-70"
-        )}
-      >
-        {title}
-      </span>
 
       {/* Time (if space allows) */}
       {timeDisplay && (

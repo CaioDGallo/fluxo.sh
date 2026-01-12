@@ -325,10 +325,9 @@ export default function CalendarPage() {
       <MonthGridEventItem
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
-        onDelete={handleEventItemDelete}
       />
     );
-  }, [handleEventItemEdit, handleEventItemDelete]);
+  }, [handleEventItemEdit]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {

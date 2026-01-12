@@ -107,18 +107,22 @@ export function DayEventItem({
       aria-label={ariaLabel}
       title={title}
     >
-      {/* Header: Time + Priority + Status */}
+      {/* Priority | Title | Status */}
       <div className="flex items-center gap-1.5">
-        {timeDisplay && (
-          <span className="text-[9px] text-muted-foreground font-medium whitespace-nowrap">
-            {timeDisplay}
-          </span>
-        )}
         <HugeiconsIcon
           icon={PriorityIcon}
-          className={cn("size-2.5 shrink-0 ml-auto", priorityColor)}
+          className={cn("size-2.5 shrink-0", priorityColor)}
           aria-label={`Priority: ${priority}`}
         />
+        <span
+          className={cn(
+            "flex-1 text-[11px] font-medium leading-tight truncate",
+            status === 'cancelled' && "line-through opacity-60",
+            status === 'completed' && "opacity-70"
+          )}
+        >
+          {title}
+        </span>
         <Badge
           variant={statusConfig.variant}
           className="text-[8px] px-1.5 py-0.5 h-auto gap-0.5 shrink-0"
@@ -129,16 +133,12 @@ export function DayEventItem({
         </Badge>
       </div>
 
-      {/* Title */}
-      <span
-        className={cn(
-          "text-[11px] font-medium leading-tight break-words",
-          status === 'cancelled' && "line-through opacity-60",
-          status === 'completed' && "opacity-70"
-        )}
-      >
-        {title}
-      </span>
+      {/* Time (if available) */}
+      {timeDisplay && (
+        <span className="text-[9px] text-muted-foreground font-medium">
+          {timeDisplay}
+        </span>
+      )}
     </div>
   )
 

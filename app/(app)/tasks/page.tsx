@@ -294,10 +294,9 @@ export default function TasksPage() {
       <MonthGridEventItem
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
-        onDelete={handleEventItemDelete}
       />
     );
-  }, [handleEventItemEdit, handleEventItemDelete]);
+  }, [handleEventItemEdit]);
 
   const filteredTasks = useMemo(() => {
     return filterTasks(tasks, statusFilters, priorityFilters);

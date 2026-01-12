@@ -19,7 +19,7 @@ import {
   ArrowRight01Icon,
   SearchIcon,
   Cancel01Icon,
-  Settings01Icon,
+  FilterIcon,
 } from '@hugeicons/core-free-icons';
 import { addMonths } from '@/lib/utils';
 import { ActiveFilterBadges } from '@/components/active-filter-badges';
@@ -118,14 +118,14 @@ export function TransactionFilters({
   const activeStatus =
     statusValue && statusValue !== 'all'
       ? {
-          value: statusValue,
-          label:
-            statusValue === 'pending'
-              ? tTransaction('pending')
-              : variant === 'expense'
-                ? tTransaction('paid')
-                : tTransaction('received'),
-        }
+        value: statusValue,
+        label:
+          statusValue === 'pending'
+            ? tTransaction('pending')
+            : variant === 'expense'
+              ? tTransaction('paid')
+              : tTransaction('received'),
+      }
       : null;
 
   const hasActiveFilters = Boolean(activeCategory || activeAccount || activeStatus);
@@ -133,13 +133,13 @@ export function TransactionFilters({
   const statusOptions =
     variant === 'expense'
       ? [
-          { value: 'pending', label: tTransaction('pending') },
-          { value: 'paid', label: tTransaction('paid') },
-        ]
+        { value: 'pending', label: tTransaction('pending') },
+        { value: 'paid', label: tTransaction('paid') },
+      ]
       : [
-          { value: 'pending', label: tTransaction('pending') },
-          { value: 'received', label: tTransaction('received') },
-        ];
+        { value: 'pending', label: tTransaction('pending') },
+        { value: 'received', label: tTransaction('received') },
+      ];
 
   return (
     <div className="mb-6 space-y-3">
@@ -184,7 +184,7 @@ export function TransactionFilters({
                 size="icon"
                 className={hasActiveFilters ? 'text-primary' : ''}
               >
-                <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
+                <HugeiconsIcon icon={FilterIcon} strokeWidth={2} />
               </Button>
             </div>
           </>

@@ -200,7 +200,8 @@ export function MonthAgendaEventItem({
       <span
         className={cn(
           "flex-1 text-xs font-medium truncate",
-          status === 'cancelled' && "line-through opacity-60"
+          status === 'cancelled' && "line-through opacity-60",
+          status === 'completed' && "opacity-70"
         )}
       >
         {title}

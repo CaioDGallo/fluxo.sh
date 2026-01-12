@@ -217,7 +217,8 @@ export function parseTaskInput(
  */
 export function parseInputWithTokens(
   text: string,
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  defaultType?: 'task' | 'event'
 ): ParsedInputWithTokens {
   const tokens: TokenMatch[] = [];
   let workingText = text;
@@ -341,11 +342,12 @@ export function parseInputWithTokens(
   cleanedTitle = cleanedTitle.replace(/\s+/g, ' ').trim();
 
   // 6. Infer type (event if time + duration, else task)
-  let inferredType: 'task' | 'event' = 'task';
+  let inferredType: 'task' | 'event' = defaultType || 'task';
   if (explicitType) {
     inferredType = explicitType;
   } else if (durationMinutes && dateResult?.start.isCertain('hour')) {
-    inferredType = 'event';
+    // Only auto-detect to event if no defaultType provided
+    if (!defaultType) inferredType = 'event';
   }
 
   // 7. Add partial matches for words not yet fully matched

@@ -60,7 +60,7 @@ export function useTokenizedInput(
         inferredType: defaultType,
       };
     }
-    return parseInputWithTokens(deferredValue);
+    return parseInputWithTokens(deferredValue, new Date(), defaultType);
   }, [deferredValue, defaultType]);
 
   // Filter out dissolved tokens and tokens being actively edited

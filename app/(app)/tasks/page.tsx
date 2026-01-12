@@ -286,6 +286,10 @@ export default function TasksPage() {
     timezone: timeZone,
     isDark: theme === 'dark' || (theme === 'system' && prefersDark),
     isResponsive: true,
+    dayBoundaries: {
+      start: '06:00',
+      end: '23:00',
+    },
     calendars: {
       tasks: {
         colorName: 'tasks',

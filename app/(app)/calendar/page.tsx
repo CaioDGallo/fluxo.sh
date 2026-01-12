@@ -385,6 +385,10 @@ export default function CalendarPage() {
     timezone: timeZone,
     isDark: theme === 'dark' || (theme === 'system' && prefersDark),
     isResponsive: true,
+    dayBoundaries: {
+      start: '06:00',
+      end: '23:00',
+    },
     calendars: {
       events: {
         colorName: 'events',

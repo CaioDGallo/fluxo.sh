@@ -97,6 +97,7 @@
     "calendars": "Calendários",
     "calendar": "Calendário",
     "tasks": "Tarefas",
+    "preferences": "Preferências",
     "expandSidebar": "Expandir barra lateral"
   },
   "dashboard": {
@@ -569,6 +570,7 @@
     "notificationEmail": "Email de Notificação",
     "notificationEmailPlaceholder": "seu@email.com",
     "notificationsEnabled": "Habilitar Notificações",
+    "digestScheduleNote": "Emails de resumo diário são enviados às 9:00 no fuso horário selecionado",
     "defaultEventOffset": "Offset Padrão para Eventos",
     "defaultTaskOffset": "Offset Padrão para Tarefas",
     "yes": "Sim",

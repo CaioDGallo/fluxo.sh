@@ -16,6 +16,7 @@ import {
   Calendar03Icon,
   Tick02Icon,
   ArrowLeftRightIcon,
+  Notification02Icon,
 } from '@hugeicons/core-free-icons';
 import {
   Sidebar,
@@ -57,6 +58,7 @@ const settingsItems = [
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
   { key: 'calendars', href: '/settings/calendars', icon: Calendar03Icon },
+  { key: 'preferences', href: '/settings/preferences', icon: Notification02Icon },
 ];
 
 export function AppSidebar() {

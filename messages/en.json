@@ -97,6 +97,7 @@
     "calendars": "Calendars",
     "calendar": "Calendar",
     "tasks": "Tasks",
+    "preferences": "Preferences",
     "expandSidebar": "Expand sidebar"
   },
   "dashboard": {
@@ -569,6 +570,7 @@
     "notificationEmail": "Notification Email",
     "notificationEmailPlaceholder": "your@email.com",
     "notificationsEnabled": "Enable Notifications",
+    "digestScheduleNote": "Daily digest emails are sent at 9:00 AM in your selected timezone",
     "defaultEventOffset": "Default Event Notification Offset",
     "defaultTaskOffset": "Default Task Notification Offset",
     "yes": "Yes",

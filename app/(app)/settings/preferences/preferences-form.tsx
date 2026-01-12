@@ -23,16 +23,6 @@ const TIMEZONES = [
   'Australia/Sydney',
 ];
 
-const OFFSET_OPTIONS = [
-  { label: '0 minutes', value: 0 },
-  { label: '15 minutes', value: 15 },
-  { label: '30 minutes', value: 30 },
-  { label: '1 hour', value: 60 },
-  { label: '2 hours', value: 120 },
-  { label: '4 hours', value: 240 },
-  { label: '1 day', value: 1440 },
-];
-
 type PreferencesFormProps = {
   settings: UserSettings;
 };
@@ -41,8 +31,6 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
   const [timezone, setTimezone] = useState(settings.timezone || 'UTC');
   const [notificationEmail, setNotificationEmail] = useState(settings.notificationEmail || '');
   const [notificationsEnabled, setNotificationsEnabled] = useState(settings.notificationsEnabled ?? true);
-  const [defaultEventOffset, setDefaultEventOffset] = useState(settings.defaultEventOffsetMinutes || 60);
-  const [defaultTaskOffset, setDefaultTaskOffset] = useState(settings.defaultTaskOffsetMinutes || 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -59,8 +47,6 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
         timezone,
         notificationEmail: notificationEmail || null,
         notificationsEnabled,
-        defaultEventOffsetMinutes: defaultEventOffset,
-        defaultTaskOffsetMinutes: defaultTaskOffset,
       });
 
       if (!result.success) {
@@ -123,42 +109,9 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
               </SelectGroup>
             </SelectContent>
           </Select>
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="defaultEventOffset">{t('defaultEventOffset')}</FieldLabel>
-          <Select value={defaultEventOffset.toString()} onValueChange={(v) => setDefaultEventOffset(Number(v))}>
-            <SelectTrigger id="defaultEventOffset">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {OFFSET_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value.toString()}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="defaultTaskOffset">{t('defaultTaskOffset')}</FieldLabel>
-          <Select value={defaultTaskOffset.toString()} onValueChange={(v) => setDefaultTaskOffset(Number(v))}>
-            <SelectTrigger id="defaultTaskOffset">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {OFFSET_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value.toString()}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t('digestScheduleNote')}
+          </p>
         </Field>
 
         {error && (

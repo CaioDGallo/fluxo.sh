@@ -141,7 +141,7 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
         status,
       };
 
-      const result = task
+      const result = task?.id
         ? await updateTask(task.id, data)
         : await createTask(data);
 
@@ -362,7 +362,7 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? tCommon('saving') : task ? tCommon('update') : tCommon('create')}
+            {isSubmitting ? tCommon('saving') : task?.id ? tCommon('update') : tCommon('create')}
           </Button>
         </AlertDialogFooter>
       </FieldGroup>

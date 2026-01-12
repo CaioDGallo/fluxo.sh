@@ -147,7 +147,7 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
         priority,
       };
 
-      const result = event
+      const result = event?.id
         ? await updateEvent(event.id, data)
         : await createEvent(data);
 
@@ -340,7 +340,7 @@ export function EventForm({ event, onSuccess }: EventFormProps) {
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? tCommon('saving') : event ? tCommon('update') : tCommon('create')}
+            {isSubmitting ? tCommon('saving') : event?.id ? tCommon('update') : tCommon('create')}
           </Button>
         </AlertDialogFooter>
       </FieldGroup>

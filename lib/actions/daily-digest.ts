@@ -36,70 +36,30 @@ function getUserTodayRange(timezone: string): UserTodayRange {
 
   const localDateStr = formatter.format(now); // "2026-01-12"
 
-  // Parse the local date and create start/end of day boundaries
+  // Parse the local date
   const [year, month, day] = localDateStr.split('-').map(Number);
 
-  // Create Date objects at midnight and end of day in the user's timezone
-  // We need to convert these to UTC for database queries
-  const localMidnight = new Date(localDateStr + 'T00:00:00');
-  const localEndOfDay = new Date(localDateStr + 'T23:59:59.999');
+  // Calculate timezone offset by comparing UTC noon with formatted time
+  // This avoids parsing dates in local machine timezone
+  const refUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const tzFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const [tzHour, tzMin] = tzFormatter.format(refUtc).split(':').map(Number);
+  const offsetMs = (12 - tzHour) * 60 * 60 * 1000 - tzMin * 60 * 1000;
 
-  // Get timezone offset at these specific times
-  const startOffsetMs = getTimezoneOffsetMs(timezone, year, month, day, 0, 0, 0);
-  const endOffsetMs = getTimezoneOffsetMs(timezone, year, month, day, 23, 59, 59);
-
-  // Convert to UTC by adjusting for timezone offset
-  const dayStartUTC = new Date(localMidnight.getTime() - startOffsetMs);
-  const dayEndUTC = new Date(localEndOfDay.getTime() - endOffsetMs);
+  // Calculate day boundaries in UTC
+  const dayStartUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) + offsetMs);
+  const dayEndUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) + offsetMs);
 
   return {
     start: dayStartUTC,
     end: dayEndUTC,
     localDateStr,
   };
-}
-
-function getTimezoneOffsetMs(
-  timezone: string,
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-  second: number
-): number {
-  // Create a date string in the target timezone
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
-
-  // Parse as if it's in the target timezone
-  const dateInTz = new Date(dateStr);
-
-  // Get what this time would be in UTC
-  const utcTime = Date.UTC(year, month - 1, day, hour, minute, second);
-
-  // Format the same logical time in the target timezone to get actual UTC time
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(dateInTz);
-  const tzYear = parseInt(parts.find(p => p.type === 'year')!.value);
-  const tzMonth = parseInt(parts.find(p => p.type === 'month')!.value);
-  const tzDay = parseInt(parts.find(p => p.type === 'day')!.value);
-  const tzHour = parseInt(parts.find(p => p.type === 'hour')!.value);
-  const tzMinute = parseInt(parts.find(p => p.type === 'minute')!.value);
-  const tzSecond = parseInt(parts.find(p => p.type === 'second')!.value);
-
-  const tzTime = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, tzSecond);
-
-  return utcTime - tzTime;
 }
 
 async function getTodaysEventsForUser(

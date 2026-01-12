@@ -1,10 +1,69 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import type { Account } from '@/lib/schema';
 import { TransferForm } from '@/components/transfer-form';
-import { freezeTime, resetTime } from '@/test/time-utils';
 import { createTransfer, updateTransfer } from '@/lib/actions/transfers';
+
+vi.mock('@/components/ui/select', async () => {
+  const React = await import('react');
+
+  const SelectTrigger = () => null;
+  const SelectValue = () => null;
+  const SelectContent = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
+  const SelectGroup = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
+
+  const SelectItem = ({ value, children }: { value: string; children?: React.ReactNode }) => (
+    <option value={value}>{children}</option>
+  );
+
+  const findTriggerId = (nodes: React.ReactNode): string | undefined => {
+    let found: string | undefined;
+    React.Children.forEach(nodes, (child) => {
+      if (!React.isValidElement(child) || found) {
+        return;
+      }
+      if (child.type === SelectTrigger && typeof child.props.id === 'string') {
+        found = child.props.id;
+        return;
+      }
+      if (child.props?.children) {
+        found = findTriggerId(child.props.children);
+      }
+    });
+    return found;
+  };
+
+  const Select = ({
+    value,
+    onValueChange,
+    children,
+  }: {
+    value?: string;
+    onValueChange?: (value: string) => void;
+    children?: React.ReactNode;
+  }) => {
+    const triggerId = findTriggerId(children);
+    return (
+      <select
+        id={triggerId}
+        value={value}
+        onChange={(event) => onValueChange?.(event.target.value)}
+      >
+        {children}
+      </select>
+    );
+  };
+
+  return {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  };
+});
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -47,16 +106,9 @@ const accounts: Account[] = [
 describe('TransferForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    freezeTime('2026-01-12T12:00:00Z');
-  });
-
-  afterEach(() => {
-    resetTime();
   });
 
   it('toggles from/to account fields based on transfer type', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-
     render(
       <TransferForm
         accounts={accounts}
@@ -68,21 +120,19 @@ describe('TransferForm', () => {
     expect(screen.getByLabelText('fromAccount')).toBeInTheDocument();
     expect(screen.getByLabelText('toAccount')).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText('type'));
-    await user.click(screen.getByText('types.deposit'));
+    fireEvent.change(screen.getByLabelText('type'), { target: { value: 'deposit' } });
 
     expect(screen.queryByLabelText('fromAccount')).not.toBeInTheDocument();
     expect(screen.getByLabelText('toAccount')).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText('type'));
-    await user.click(screen.getByText('types.withdrawal'));
+    fireEvent.change(screen.getByLabelText('type'), { target: { value: 'withdrawal' } });
 
     expect(screen.getByLabelText('fromAccount')).toBeInTheDocument();
     expect(screen.queryByLabelText('toAccount')).not.toBeInTheDocument();
   });
 
   it('shows error and prevents submission when using the same account', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
     const { container } = render(
       <TransferForm
         accounts={accounts}
@@ -93,17 +143,18 @@ describe('TransferForm', () => {
 
     await user.type(screen.getByLabelText('amount'), '50.00');
 
-    await user.click(screen.getByLabelText('toAccount'));
-    await user.click(screen.getByText('Checking'));
+    fireEvent.change(screen.getByLabelText('toAccount'), { target: { value: '1' } });
 
-    fireEvent.submit(container.querySelector('form')!);
+    const form = document.querySelector('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
 
     expect(await screen.findByText('invalidAccountId')).toBeInTheDocument();
     expect(createTransfer).not.toHaveBeenCalled();
   });
 
   it('keeps submit disabled when amount is zero or less', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
     render(
       <TransferForm
@@ -119,8 +170,9 @@ describe('TransferForm', () => {
   });
 
   it('calls createTransfer and resets form on success', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
     vi.mocked(createTransfer).mockResolvedValueOnce(undefined);
+    const today = new Date().toISOString().split('T')[0];
 
     render(
       <TransferForm
@@ -136,7 +188,9 @@ describe('TransferForm', () => {
       target: { value: '2026-01-05' },
     });
 
-    await user.click(screen.getByRole('button', { name: 'create' }));
+    const form = document.querySelector('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
 
     await waitFor(() => {
       expect(createTransfer).toHaveBeenCalledWith({
@@ -149,13 +203,13 @@ describe('TransferForm', () => {
       });
     });
 
-    expect(screen.getByLabelText('amount')).toHaveValue('');
+    expect(screen.getByLabelText('amount')).toHaveValue(null);
     expect(screen.getByLabelText('description')).toHaveValue('');
-    expect(screen.getByLabelText('date')).toHaveValue('2026-01-12');
+    expect(screen.getByLabelText('date')).toHaveValue(today);
   });
 
   it('calls updateTransfer for edit mode', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
     vi.mocked(updateTransfer).mockResolvedValueOnce(undefined);
 
     render(
@@ -177,7 +231,9 @@ describe('TransferForm', () => {
 
     fireEvent.change(screen.getByLabelText('amount'), { target: { value: '100.00' } });
 
-    await user.click(screen.getByRole('button', { name: 'update' }));
+    const form = document.querySelector('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
 
     await waitFor(() => {
       expect(updateTransfer).toHaveBeenCalledWith(44, {

@@ -123,6 +123,11 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
                               {row.type === 'income' ? 'Income' : 'Expense'}
                             </span>
                           )}
+                          {rowWithSuggestion.isDuplicate && (
+                            <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                              {t('alreadyImported')}
+                            </span>
+                          )}
                         </div>
                       </td>
                       {hasSuggestions && (

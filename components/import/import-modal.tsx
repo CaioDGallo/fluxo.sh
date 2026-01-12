@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { parserList, parsers, type ParserKey } from '@/lib/import/parsers';
 import type { ParseResult, ImportRowWithSuggestion } from '@/lib/import/types';
 import type { Account, Category } from '@/lib/schema';
-import { importExpenses, importMixed, getCategorySuggestions } from '@/lib/actions/import';
+import { importExpenses, importMixed, getCategorySuggestions, checkDuplicates } from '@/lib/actions/import';
 import { FileDropzone } from './file-dropzone';
 import { ImportPreview } from './import-preview';
 
@@ -49,22 +49,33 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
       if (result.rows.length > 0) {
         const expenseDescriptions = result.rows.filter((r) => r.type === 'expense').map((r) => r.description);
         const incomeDescriptions = result.rows.filter((r) => r.type === 'income').map((r) => r.description);
+        const externalIds = result.rows.map((r) => r.externalId).filter((id): id is string => !!id);
 
-        const suggestions = await getCategorySuggestions({ expenseDescriptions, incomeDescriptions });
+        const [suggestions, duplicateIds] = await Promise.all([
+          getCategorySuggestions({ expenseDescriptions, incomeDescriptions }),
+          externalIds.length > 0 ? checkDuplicates(externalIds).catch((error) => {
+            console.error('Failed to check duplicates:', error);
+            return [];
+          }) : Promise.resolve<string[]>([]),
+        ]);
+        const duplicateSet = new Set(duplicateIds);
 
         const enrichedRows = result.rows.map((row) => {
+          const isDuplicate = !!row.externalId && duplicateSet.has(row.externalId);
           if (row.type === 'expense') {
-            return { ...row, suggestedCategory: suggestions.expense[row.description] };
+            return { ...row, suggestedCategory: suggestions.expense[row.description], isDuplicate };
           }
           if (row.type === 'income') {
-            return { ...row, suggestedCategory: suggestions.income[row.description] };
+            return { ...row, suggestedCategory: suggestions.income[row.description], isDuplicate };
           }
-          return row;
+          return { ...row, isDuplicate };
         });
 
         setRowsWithSuggestions(enrichedRows);
+        setSelectedRows(new Set(enrichedRows.filter((row) => !row.isDuplicate).map((row) => row.rowIndex)));
       } else {
         setRowsWithSuggestions([]);
+        setSelectedRows(new Set());
       }
 
       setStep('configure');

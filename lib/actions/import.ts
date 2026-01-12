@@ -24,6 +24,38 @@ type SuggestionsResult = {
   income: Record<string, CategorySuggestion>;
 };
 
+async function fetchExistingExternalIds(
+  userId: string,
+  externalIds: string[]
+): Promise<Set<string>> {
+  const uniqueIds = Array.from(new Set(externalIds.filter((id): id is string => !!id)));
+
+  if (uniqueIds.length === 0) {
+    return new Set<string>();
+  }
+
+  const [existingTransactions, existingIncome, existingTransfers] = await Promise.all([
+    db
+      .select({ externalId: transactions.externalId })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), inArray(transactions.externalId, uniqueIds))),
+    db
+      .select({ externalId: income.externalId })
+      .from(income)
+      .where(and(eq(income.userId, userId), inArray(income.externalId, uniqueIds))),
+    db
+      .select({ externalId: transfers.externalId })
+      .from(transfers)
+      .where(and(eq(transfers.userId, userId), inArray(transfers.externalId, uniqueIds))),
+  ]);
+
+  return new Set([
+    ...existingTransactions.map((t) => t.externalId).filter((id): id is string => !!id),
+    ...existingIncome.map((i) => i.externalId).filter((id): id is string => !!id),
+    ...existingTransfers.map((t) => t.externalId).filter((id): id is string => !!id),
+  ]);
+}
+
 export async function getCategorySuggestions(
   input: SuggestionsInput
 ): Promise<SuggestionsResult> {
@@ -94,6 +126,12 @@ export async function getCategorySuggestions(
   }
 
   return { expense: expenseMap, income: incomeMap };
+}
+
+export async function checkDuplicates(externalIds: string[]): Promise<string[]> {
+  const userId = await getCurrentUserId();
+  const existingIds = await fetchExistingExternalIds(userId, externalIds);
+  return Array.from(existingIds);
 }
 
 type ImportExpenseData = {
@@ -475,34 +513,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
     // Collect external IDs for duplicate detection
     const externalIds = rows.map((r) => r.externalId).filter((id): id is string => !!id);
-
-    // Query existing records with these external IDs
-    // Also check transfers table - expenses converted to fatura payments preserve their externalId there
-    let existingIds = new Set<string>();
-
-    if (externalIds.length > 0) {
-      const existingTransactions = await db
-        .select({ externalId: transactions.externalId })
-        .from(transactions)
-        .where(and(eq(transactions.userId, userId), inArray(transactions.externalId, externalIds)));
-
-      const existingIncome = await db
-        .select({ externalId: income.externalId })
-        .from(income)
-        .where(and(eq(income.userId, userId), inArray(income.externalId, externalIds)));
-
-      // Check transfers for externalIds from expenses that were converted to fatura payments
-      const existingTransfers = await db
-        .select({ externalId: transfers.externalId })
-        .from(transfers)
-        .where(and(eq(transfers.userId, userId), inArray(transfers.externalId, externalIds)));
-
-      existingIds = new Set([
-        ...existingTransactions.map((t) => t.externalId).filter((id): id is string => !!id),
-        ...existingIncome.map((i) => i.externalId).filter((id): id is string => !!id),
-        ...existingTransfers.map((t) => t.externalId).filter((id): id is string => !!id),
-      ]);
-    }
+    const existingIds = await fetchExistingExternalIds(userId, externalIds);
 
     // Filter out duplicates
     const newExpenses = expenseRows.filter((r) => !r.externalId || !existingIds.has(r.externalId));

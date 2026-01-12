@@ -366,6 +366,7 @@
     "successMessage": "Successfully imported {count} item(s)",
     "successMixed": "Imported {expenses} expense(s) and {income} income(s)",
     "skippedDuplicates": "{count} duplicate(s) skipped",
+    "alreadyImported": "Already imported",
     "errorMessage": "Failed to import. Please try again.",
     "errorParsing": "Failed to parse CSV file. Please check the file format and try again.",
     "noDefaultCategories": "Configure default import categories in Settings > Categories first"

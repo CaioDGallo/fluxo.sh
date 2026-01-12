@@ -45,4 +45,5 @@ export type CategorySuggestion = {
 
 export type ImportRowWithSuggestion = ValidatedImportRow & {
   suggestedCategory?: CategorySuggestion;
+  isDuplicate?: boolean;
 };

@@ -27,7 +27,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={jetbrainsMono.variable} suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href="/manifest.webmanifest" />
 
         {/* Favicons */}
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />

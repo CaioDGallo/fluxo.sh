@@ -33,6 +33,9 @@ import {
 import { TaskForm } from '@/components/task-form';
 import { QuickAddTask } from '@/components/quick-add-task';
 import { MonthAgendaEventItem } from '@/components/calendar/month-agenda-event-item';
+import { WeekEventItem } from '@/components/calendar/week-event-item';
+import { DayEventItem } from '@/components/calendar/day-event-item';
+import { MonthGridEventItem } from '@/components/calendar/month-grid-event-item';
 import { EventDetailSheet } from '@/components/calendar/event-detail-sheet';
 import { useTranslations } from 'next-intl';
 import { Theme } from '@/components/theme-toggle';
@@ -255,10 +258,40 @@ export default function TasksPage() {
     });
   }, []);
 
-  // Custom event item component for month agenda view
-  const CustomNorthstarEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
+  // Custom event item components for each view
+  const CustomMonthAgendaEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
     return (
       <MonthAgendaEventItem
+        calendarEvent={calendarEvent}
+        onEdit={handleEventItemEdit}
+        onDelete={handleEventItemDelete}
+      />
+    );
+  }, [handleEventItemEdit, handleEventItemDelete]);
+
+  const CustomWeekEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
+    return (
+      <WeekEventItem
+        calendarEvent={calendarEvent}
+        onEdit={handleEventItemEdit}
+        onDelete={handleEventItemDelete}
+      />
+    );
+  }, [handleEventItemEdit, handleEventItemDelete]);
+
+  const CustomDayEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
+    return (
+      <DayEventItem
+        calendarEvent={calendarEvent}
+        onEdit={handleEventItemEdit}
+        onDelete={handleEventItemDelete}
+      />
+    );
+  }, [handleEventItemEdit, handleEventItemDelete]);
+
+  const CustomMonthGridEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
+    return (
+      <MonthGridEventItem
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
         onDelete={handleEventItemDelete}
@@ -489,7 +522,10 @@ export default function TasksPage() {
       ) : (
         <div className="bg-background border border-border -mx-4">
           <ScheduleXCalendar calendarApp={calendar} customComponents={{
-            monthAgendaEvent: CustomNorthstarEventItem
+            monthAgendaEvent: CustomMonthAgendaEventItem,
+            timeGridEvent: CustomWeekEventItem,
+            dateGridEvent: CustomDayEventItem,
+            monthGridEvent: CustomMonthGridEventItem
           }} />
         </div>
       )}

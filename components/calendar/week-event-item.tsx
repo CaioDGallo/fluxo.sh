@@ -20,7 +20,7 @@ import {
   getEventTypeBorderColor,
 } from "./calendar-helpers"
 
-export function MonthAgendaEventItem({
+export function WeekEventItem({
   calendarEvent,
   onEdit,
   onDelete,
@@ -87,42 +87,46 @@ export function MonthAgendaEventItem({
     <div
       className={cn(
         "group/event-item",
-        "flex items-center gap-2",
-        "px-2 py-4",
+        "flex flex-col gap-1",
+        "px-1.5 py-1",
         "bg-background hover:bg-muted/50",
         "border border-border",
         "border-l-[3px]",
         borderColor,
-        "rounded-none",
-        "shadow-gray-600 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
+        "rounded-sm",
+        "shadow-gray-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
         "dark:shadow-gray-400",
         "transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "cursor-pointer",
+        "overflow-hidden",
+        "h-full",
         status === 'cancelled' && "line-through opacity-75 bg-red-300/20",
         status === 'completed' && "opacity-40"
       )}
       aria-label={ariaLabel}
       title={title}
     >
-      {/* Time display */}
-      {timeDisplay && (
-        <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
-          {timeDisplay}
-        </span>
-      )}
-
-      {/* Priority indicator */}
-      <HugeiconsIcon
-        icon={PriorityIcon}
-        className={cn("size-3 shrink-0", priorityColor)}
-        aria-label={`Priority: ${priority}`}
-      />
+      {/* Header: Priority + Status */}
+      <div className="flex items-center justify-between gap-1 min-h-[16px]">
+        <HugeiconsIcon
+          icon={PriorityIcon}
+          className={cn("size-2.5 shrink-0", priorityColor)}
+          aria-label={`Priority: ${priority}`}
+        />
+        <Badge
+          variant={statusConfig.variant}
+          className="text-[8px] px-1 py-0 h-auto shrink-0"
+          aria-label={`Status: ${status}`}
+        >
+          <HugeiconsIcon icon={StatusIcon} className="size-2" />
+        </Badge>
+      </div>
 
       {/* Title */}
       <span
         className={cn(
-          "flex-1 text-xs font-medium truncate",
+          "text-[10px] font-medium leading-tight break-words",
           status === 'cancelled' && "line-through opacity-60",
           status === 'completed' && "opacity-70"
         )}
@@ -130,15 +134,12 @@ export function MonthAgendaEventItem({
         {title}
       </span>
 
-      {/* Status badge */}
-      <Badge
-        variant={statusConfig.variant}
-        className="text-[10px] p-2 h-auto gap-1 shrink-0"
-        aria-label={`Status: ${status}`}
-      >
-        <HugeiconsIcon icon={StatusIcon} className="size-2.5" />
-        <span className="hidden sm:inline">{status.replace('_', ' ')}</span>
-      </Badge>
+      {/* Time (if space allows) */}
+      {timeDisplay && (
+        <span className="text-[8px] text-muted-foreground font-medium mt-auto">
+          {timeDisplay}
+        </span>
+      )}
     </div>
   )
 

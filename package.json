@@ -9,6 +9,7 @@
     "build:clean": "rm -rf .next && SERWIST_SUPPRESS_TURBOPACK_WARNING=1 next build",
     "start": "next start",
     "lint": "eslint",
+    "tidy": "pnpm lint && pnpm test:run && pnpm build",
     "test": "NODE_ENV=test vitest",
     "test:ui": "NODE_ENV=test vitest --ui",
     "test:run": "NODE_ENV=test vitest run",

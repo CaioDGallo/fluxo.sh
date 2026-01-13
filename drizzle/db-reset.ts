@@ -3,7 +3,8 @@ import 'dotenv/config';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { promisify } from 'util';
 import { db } from '../lib/db';
-import { accounts, budgets, categories, entries, events, faturas, income, tasks, transactions, transfers } from '../lib/schema';
+import * as schema from '../lib/schema';
+import { reset as resetDatabase } from 'drizzle-seed';
 
 const execAsync = promisify(exec);
 
@@ -13,7 +14,7 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-async function reset() {
+async function resetDb() {
   const dbUrl = process.env.DATABASE_URL!;
   console.log('🔄 Resetting database...');
   console.log(`📍 Target: ${dbUrl}\n`);
@@ -21,16 +22,7 @@ async function reset() {
   try {
     // Step 1: Truncate all tables (reverse FK order)
     console.log('  🗑️  Truncating all tables...');
-    await db.delete(income);
-    await db.delete(transfers);
-    await db.delete(faturas);
-    await db.delete(entries);
-    await db.delete(transactions);
-    await db.delete(budgets);
-    await db.delete(categories);
-    await db.delete(accounts);
-    await db.delete(tasks);
-    await db.delete(events);
+    await resetDatabase(db, schema);
     console.log('  ✓ Tables truncated\n');
 
     // Step 2: Run migrations
@@ -63,4 +55,4 @@ async function reset() {
   }
 }
 
-reset();
+resetDb();

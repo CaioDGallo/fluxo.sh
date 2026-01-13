@@ -237,14 +237,15 @@ export function createTestCalendarSource(overrides: Partial<NewCalendarSource> =
 }
 
 // Extend the test object
-export const test = base.extend<{ db: typeof db }>({
-  db: async ({ }, use) => {
-    // 1. Reset the DB before the test runs
-    await resetDatabase();
-
-    // 2. Pass the db instance to the test
-    await use(db);
-
-    // 3. (Optional) Cleanup after test if needed
+export const test = base.extend<{ db: typeof db; resetDb: void }>({
+  resetDb: [
+    async ({}, run) => {
+      await resetDatabase();
+      await run(undefined);
+    },
+    { auto: true },
+  ],
+  db: async ({}, run) => {
+    await run(db);
   },
 });

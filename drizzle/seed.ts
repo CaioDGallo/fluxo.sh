@@ -1,10 +1,12 @@
 import 'dotenv/config';
 
+import bcrypt from 'bcryptjs';
+import { sql } from 'drizzle-orm';
+import { reset, seed } from 'drizzle-seed';
 import { db } from '../lib/db';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
-import { accounts, budgets, categories, entries, faturas, income, transactions, users } from '../lib/schema';
+import * as schema from '../lib/schema';
 import { addMonths, getCurrentYearMonth } from '../lib/utils';
-import bcrypt from 'bcryptjs';
 
 // Production safety check
 if (process.env.NODE_ENV === 'production') {
@@ -35,6 +37,109 @@ const TEST_USER_ID = DEFAULT_USERS[0].id;
 const CURRENT_MONTH = getCurrentYearMonth();
 const PREV_MONTH = addMonths(CURRENT_MONTH, -1);
 const TWO_MONTHS_AGO = addMonths(CURRENT_MONTH, -2);
+
+const seedSchema = {
+  users: schema.users,
+  accounts: schema.accounts,
+  categories: schema.categories,
+  budgets: schema.budgets,
+  transactions: schema.transactions,
+  entries: schema.entries,
+  faturas: schema.faturas,
+  income: schema.income,
+};
+
+type SeedTableKey = keyof typeof seedSchema;
+
+type SeedRow = Record<string, unknown>;
+
+const serialTables = new Set<SeedTableKey>([
+  'accounts',
+  'categories',
+  'budgets',
+  'transactions',
+  'entries',
+  'faturas',
+  'income',
+]);
+
+const idCounters: Record<SeedTableKey, number> = {
+  users: 0,
+  accounts: 0,
+  categories: 0,
+  budgets: 0,
+  transactions: 0,
+  entries: 0,
+  faturas: 0,
+  income: 0,
+};
+
+function assignIds<T extends SeedRow>(tableKey: SeedTableKey, rows: T[]) {
+  if (!serialTables.has(tableKey)) {
+    return rows;
+  }
+
+  return rows.map((row) => {
+    idCounters[tableKey] += 1;
+    return { id: idCounters[tableKey], ...row };
+  });
+}
+
+async function seedRow(tableKey: SeedTableKey, row: SeedRow) {
+  await seed(db, seedSchema).refine((funcs) => {
+    const refinements: Record<string, { count?: number; columns?: Record<string, unknown> }> = {};
+
+    for (const key of Object.keys(seedSchema)) {
+      refinements[key] = { count: 0 };
+    }
+
+    const columns = Object.fromEntries(
+      Object.entries(row)
+        .filter(([, value]) => value !== undefined)
+        .map(([column, value]) => [
+          column,
+          funcs.valuesFromArray({ values: [value as number | string | boolean | null] }),
+        ])
+    );
+
+    refinements[tableKey] = {
+      count: 1,
+      columns,
+    };
+
+    return refinements;
+  });
+}
+
+async function seedRows(tableKey: SeedTableKey, rows: SeedRow[]) {
+  const rowsWithIds = assignIds(tableKey, rows);
+
+  for (const row of rowsWithIds) {
+    await seedRow(tableKey, row);
+  }
+
+  return rowsWithIds;
+}
+
+async function resetSequences() {
+  const sequenceTables = [
+    { table: 'accounts', count: idCounters.accounts },
+    { table: 'categories', count: idCounters.categories },
+    { table: 'budgets', count: idCounters.budgets },
+    { table: 'transactions', count: idCounters.transactions },
+    { table: 'entries', count: idCounters.entries },
+    { table: 'faturas', count: idCounters.faturas },
+    { table: 'income', count: idCounters.income },
+  ];
+
+  for (const { table, count } of sequenceTables) {
+    if (count > 0) {
+      await db.execute(
+        sql.raw(`select setval(pg_get_serial_sequence('${table}', 'id'), ${count})`)
+      );
+    }
+  }
+}
 
 function getRelativeDate(monthOffset: number, day: number): string {
   const now = new Date();
@@ -72,16 +177,16 @@ const categoriesData = [
 function createBudgets(categoryIds: Record<string, number>, userId: string) {
   const months = [CURRENT_MONTH, PREV_MONTH, TWO_MONTHS_AGO];
   const budgetAmounts: Record<string, number> = {
-    'Alimentação': 80000,    // R$ 800
-    'Transporte': 50000,     // R$ 500
+    'Alimentação': 80000, // R$ 800
+    'Transporte': 50000, // R$ 500
     'Entretenimento': 30000, // R$ 300
-    'Compras': 60000,        // R$ 600
-    'Saúde': 40000,          // R$ 400
-    'Contas': 120000,        // R$ 1200
-    'Educação': 20000,       // R$ 200
+    'Compras': 60000, // R$ 600
+    'Saúde': 40000, // R$ 400
+    'Contas': 120000, // R$ 1200
+    'Educação': 20000, // R$ 200
   };
 
-  return months.flatMap(month =>
+  return months.flatMap((month) =>
     Object.entries(budgetAmounts).map(([name, amount]) => ({
       userId,
       categoryId: categoryIds[name],
@@ -105,104 +210,230 @@ type TransactionSeed = {
 const transactionsData: TransactionSeed[] = [
   // ALIMENTAÇÃO - Over budget (~R$ 950 vs R$ 800)
   {
-    description: 'iFood mensal', totalAmount: 35000, categoryName: 'Alimentação',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 5, paid: false
+    description: 'iFood mensal',
+    totalAmount: 35000,
+    categoryName: 'Alimentação',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 5,
+    paid: false,
   },
   {
-    description: 'Mercado Extra', totalAmount: 28000, categoryName: 'Alimentação',
-    accountName: 'Itaú Corrente', startMonth: 0, installments: 1, startDay: 8, paid: true
+    description: 'Mercado Extra',
+    totalAmount: 28000,
+    categoryName: 'Alimentação',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 8,
+    paid: true,
   },
   {
-    description: 'Padaria Zé', totalAmount: 4500, categoryName: 'Alimentação',
-    accountName: 'Carteira', startMonth: 0, installments: 1, startDay: 12, paid: true
+    description: 'Padaria Zé',
+    totalAmount: 4500,
+    categoryName: 'Alimentação',
+    accountName: 'Carteira',
+    startMonth: 0,
+    installments: 1,
+    startDay: 12,
+    paid: true,
   },
   {
-    description: 'Restaurante Família', totalAmount: 18000, categoryName: 'Alimentação',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 15, paid: false
+    description: 'Restaurante Família',
+    totalAmount: 18000,
+    categoryName: 'Alimentação',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 15,
+    paid: false,
   },
   {
-    description: 'Supermercado Dia', totalAmount: 9500, categoryName: 'Alimentação',
-    accountName: 'Carteira', startMonth: 0, installments: 1, startDay: 20, paid: true
+    description: 'Supermercado Dia',
+    totalAmount: 9500,
+    categoryName: 'Alimentação',
+    accountName: 'Carteira',
+    startMonth: 0,
+    installments: 1,
+    startDay: 20,
+    paid: true,
   },
 
   // TRANSPORTE - Warning zone (~R$ 425 vs R$ 500)
   {
-    description: 'Uber mensal', totalAmount: 22000, categoryName: 'Transporte',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 3, paid: false
+    description: 'Uber mensal',
+    totalAmount: 22000,
+    categoryName: 'Transporte',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 3,
+    paid: false,
   },
   {
-    description: 'Gasolina Shell', totalAmount: 18000, categoryName: 'Transporte',
-    accountName: 'Itaú Corrente', startMonth: 0, installments: 1, startDay: 10, paid: true
+    description: 'Gasolina Shell',
+    totalAmount: 18000,
+    categoryName: 'Transporte',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 10,
+    paid: true,
   },
   {
-    description: 'Estacionamento', totalAmount: 2500, categoryName: 'Transporte',
-    accountName: 'Carteira', startMonth: 0, installments: 1, startDay: 14, paid: true
+    description: 'Estacionamento',
+    totalAmount: 2500,
+    categoryName: 'Transporte',
+    accountName: 'Carteira',
+    startMonth: 0,
+    installments: 1,
+    startDay: 14,
+    paid: true,
   },
 
   // ENTRETENIMENTO - Under budget (~R$ 120 vs R$ 300)
   {
-    description: 'Netflix', totalAmount: 4500, categoryName: 'Entretenimento',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 1, paid: true
+    description: 'Netflix',
+    totalAmount: 4500,
+    categoryName: 'Entretenimento',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 1,
+    paid: true,
   },
   {
-    description: 'Cinema Ingresso', totalAmount: 7500, categoryName: 'Entretenimento',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 18, paid: false
+    description: 'Cinema Ingresso',
+    totalAmount: 7500,
+    categoryName: 'Entretenimento',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 18,
+    paid: false,
   },
 
   // COMPRAS - Multi-installment examples
   {
-    description: 'Cadeira Gamer', totalAmount: 120000, categoryName: 'Compras',
-    accountName: 'Nubank', startMonth: -2, installments: 6, startDay: 15, paid: 'partial'
+    description: 'Cadeira Gamer',
+    totalAmount: 120000,
+    categoryName: 'Compras',
+    accountName: 'Nubank',
+    startMonth: -2,
+    installments: 6,
+    startDay: 15,
+    paid: 'partial',
   },
   {
-    description: 'Fone Bluetooth', totalAmount: 45000, categoryName: 'Compras',
-    accountName: 'Nubank', startMonth: -1, installments: 3, startDay: 10, paid: 'partial'
+    description: 'Fone Bluetooth',
+    totalAmount: 45000,
+    categoryName: 'Compras',
+    accountName: 'Nubank',
+    startMonth: -1,
+    installments: 3,
+    startDay: 10,
+    paid: 'partial',
   },
 
   // CONTAS - Fixed bills (~R$ 870 vs R$ 1200)
   {
-    description: 'Aluguel', totalAmount: 65000, categoryName: 'Contas',
-    accountName: 'Itaú Corrente', startMonth: 0, installments: 1, startDay: 5, paid: true
+    description: 'Aluguel',
+    totalAmount: 65000,
+    categoryName: 'Contas',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 5,
+    paid: true,
   },
   {
-    description: 'Conta de Luz', totalAmount: 12000, categoryName: 'Contas',
-    accountName: 'Itaú Corrente', startMonth: 0, installments: 1, startDay: 10, paid: true
+    description: 'Conta de Luz',
+    totalAmount: 12000,
+    categoryName: 'Contas',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 10,
+    paid: true,
   },
   {
-    description: 'Internet', totalAmount: 10000, categoryName: 'Contas',
-    accountName: 'Itaú Corrente', startMonth: 0, installments: 1, startDay: 15, paid: false
+    description: 'Internet',
+    totalAmount: 10000,
+    categoryName: 'Contas',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 15,
+    paid: false,
   },
 
   // EDUCAÇÃO - Under budget (~R$ 60 vs R$ 200)
   {
-    description: 'Curso Udemy', totalAmount: 6000, categoryName: 'Educação',
-    accountName: 'Nubank', startMonth: 0, installments: 1, startDay: 2, paid: true
+    description: 'Curso Udemy',
+    totalAmount: 6000,
+    categoryName: 'Educação',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 2,
+    paid: true,
   },
 
   // SAÚDE - Zero spending (has budget, no transactions in current month)
 
   // HISTORICAL DATA - Previous month (mostly paid)
   {
-    description: 'iFood', totalAmount: 32000, categoryName: 'Alimentação',
-    accountName: 'Nubank', startMonth: -1, installments: 1, startDay: 8, paid: true
+    description: 'iFood',
+    totalAmount: 32000,
+    categoryName: 'Alimentação',
+    accountName: 'Nubank',
+    startMonth: -1,
+    installments: 1,
+    startDay: 8,
+    paid: true,
   },
   {
-    description: 'Mercado', totalAmount: 25000, categoryName: 'Alimentação',
-    accountName: 'Itaú Corrente', startMonth: -1, installments: 1, startDay: 12, paid: true
+    description: 'Mercado',
+    totalAmount: 25000,
+    categoryName: 'Alimentação',
+    accountName: 'Itaú Corrente',
+    startMonth: -1,
+    installments: 1,
+    startDay: 12,
+    paid: true,
   },
   {
-    description: 'Consulta Médica', totalAmount: 35000, categoryName: 'Saúde',
-    accountName: 'Nubank', startMonth: -1, installments: 1, startDay: 20, paid: true
+    description: 'Consulta Médica',
+    totalAmount: 35000,
+    categoryName: 'Saúde',
+    accountName: 'Nubank',
+    startMonth: -1,
+    installments: 1,
+    startDay: 20,
+    paid: true,
   },
 
   // 2 MONTHS AGO - Sparse data
   {
-    description: 'Aluguel', totalAmount: 65000, categoryName: 'Contas',
-    accountName: 'Itaú Corrente', startMonth: -2, installments: 1, startDay: 5, paid: true
+    description: 'Aluguel',
+    totalAmount: 65000,
+    categoryName: 'Contas',
+    accountName: 'Itaú Corrente',
+    startMonth: -2,
+    installments: 1,
+    startDay: 5,
+    paid: true,
   },
   {
-    description: 'Curso Online', totalAmount: 18000, categoryName: 'Educação',
-    accountName: 'Nubank', startMonth: -2, installments: 3, startDay: 1, paid: true
+    description: 'Curso Online',
+    totalAmount: 18000,
+    categoryName: 'Educação',
+    accountName: 'Nubank',
+    startMonth: -2,
+    installments: 3,
+    startDay: 1,
+    paid: true,
   },
 ];
 
@@ -320,9 +551,10 @@ function generateEntries(
     // txData.paid === false means all pending
 
     // Last installment absorbs rounding difference
-    const amount = i === txData.installments - 1
-      ? txData.totalAmount - amountPerInstallment * (txData.installments - 1)
-      : amountPerInstallment;
+    const amount =
+      i === txData.installments - 1
+        ? txData.totalAmount - amountPerInstallment * (txData.installments - 1)
+        : amountPerInstallment;
 
     result.push({
       userId,
@@ -340,22 +572,18 @@ function generateEntries(
   return result;
 }
 
-async function seed() {
+async function seedDatabase() {
   const dbUrl = process.env.DATABASE_URL!;
   console.log('🌱 Seeding database...');
   console.log(`📍 Target: ${dbUrl}\n`);
 
   try {
-    // 1. Clear all tables (reverse FK order)
+    // 1. Clear all tables
     console.log('  🗑️  Clearing existing data...');
-    await db.delete(income);
-    await db.delete(faturas);
-    await db.delete(entries);
-    await db.delete(transactions);
-    await db.delete(budgets);
-    await db.delete(categories);
-    await db.delete(accounts);
-    await db.delete(users);
+    await reset(db, schema);
+    for (const key of Object.keys(idCounters) as SeedTableKey[]) {
+      idCounters[key] = 0;
+    }
     console.log('  ✓ Data cleared\n');
 
     // 2. Create default users
@@ -368,65 +596,72 @@ async function seed() {
         passwordHash: await bcrypt.hash(user.password, 10),
         emailVerified: new Date(),
         createdAt: new Date(),
+        image: null,
       }))
     );
-    await db.insert(users).values(userRecords);
+    await seedRows('users', userRecords);
     console.log(`  ✓ ${userRecords.length} users created\n`);
 
     // 3. Insert accounts
     console.log('  💳 Inserting accounts...');
-    const insertedAccounts = await db.insert(accounts).values(
-      accountsData.map(a => ({ ...a, userId: TEST_USER_ID }))
-    ).returning();
-    const accountMap = Object.fromEntries(insertedAccounts.map(a => [a.name, a.id]));
+    const accountRecords = accountsData.map((account) => ({
+      ...account,
+      userId: TEST_USER_ID,
+      closingDay: account.closingDay ?? null,
+      paymentDueDay: account.paymentDueDay ?? null,
+      creditLimit: null,
+    }));
+    const seededAccounts = await seedRows('accounts', accountRecords);
+    const accountMap = Object.fromEntries(seededAccounts.map((account) => [account.name, account.id]));
+    const accountSeedByName = Object.fromEntries(accountsData.map((account) => [account.name, account]));
     const accountsById = Object.fromEntries(
-      insertedAccounts.map((acc, idx) => [acc.id, accountsData[idx]])
+      seededAccounts.map((account) => [account.id, accountSeedByName[account.name]])
     );
-    console.log(`  ✓ ${insertedAccounts.length} accounts created\n`);
+    console.log(`  ✓ ${seededAccounts.length} accounts created\n`);
 
     // 4. Insert categories
     console.log('  🏷️  Inserting categories...');
-    const insertedCategories = await db.insert(categories).values(
-      categoriesData.map(c => ({ ...c, userId: TEST_USER_ID }))
-    ).returning();
-    const categoryMap = Object.fromEntries(insertedCategories.map(c => [c.name, c.id]));
-    console.log(`  ✓ ${insertedCategories.length} categories created\n`);
+    const categoryRecords = categoriesData.map((category) => ({
+      ...category,
+      userId: TEST_USER_ID,
+    }));
+    const seededCategories = await seedRows('categories', categoryRecords);
+    const categoryMap = Object.fromEntries(seededCategories.map((category) => [category.name, category.id]));
+    console.log(`  ✓ ${seededCategories.length} categories created\n`);
 
     // 5. Insert budgets
     console.log('  💰 Inserting budgets...');
     const budgetRecords = createBudgets(categoryMap, TEST_USER_ID);
-    await db.insert(budgets).values(budgetRecords);
+    await seedRows('budgets', budgetRecords);
     console.log(`  ✓ ${budgetRecords.length} budgets created\n`);
 
     // 6. Insert transactions and entries
     console.log('  📝 Inserting transactions and entries...');
-    let totalEntries = 0;
+    const transactionRecords = transactionsData.map((transaction) => ({
+      userId: TEST_USER_ID,
+      description: transaction.description,
+      totalAmount: transaction.totalAmount,
+      totalInstallments: transaction.installments,
+      categoryId: categoryMap[transaction.categoryName],
+      externalId: null,
+    }));
+    const seededTransactions = await seedRows('transactions', transactionRecords);
 
-    for (const txData of transactionsData) {
-      const [tx] = await db.insert(transactions).values({
-        userId: TEST_USER_ID,
-        description: txData.description,
-        totalAmount: txData.totalAmount,
-        totalInstallments: txData.installments,
-        categoryId: categoryMap[txData.categoryName],
-      }).returning();
+    const entryRecords = transactionsData.flatMap((transaction, index) => {
+      const transactionId = seededTransactions[index].id as number;
+      return generateEntries(transactionId, transaction, accountMap, accountsById, TEST_USER_ID);
+    });
 
-      const entryRecords = generateEntries(tx.id, txData, accountMap, accountsById, TEST_USER_ID);
-      await db.insert(entries).values(entryRecords);
-      totalEntries += entryRecords.length;
-    }
+    await seedRows('entries', entryRecords);
 
-    console.log(`  ✓ ${transactionsData.length} transactions created`);
-    console.log(`  ✓ ${totalEntries} entries created\n`);
+    console.log(`  ✓ ${seededTransactions.length} transactions created`);
+    console.log(`  ✓ ${entryRecords.length} entries created\n`);
 
     // 7. Insert faturas (credit card statements)
     console.log('  💳 Creating faturas...');
-    const allEntries = await db.query.entries.findMany();
-
-    // Group entries by (accountId, faturaMonth)
     const faturaGroups = new Map<string, { accountId: number; faturaMonth: string; total: number }>();
 
-    for (const entry of allEntries) {
+    for (const entry of entryRecords) {
       const key = `${entry.accountId}-${entry.faturaMonth}`;
       const existing = faturaGroups.get(key);
 
@@ -441,7 +676,6 @@ async function seed() {
       }
     }
 
-    // Create fatura records
     const faturaRecords: Array<{
       userId: string;
       accountId: number;
@@ -454,7 +688,6 @@ async function seed() {
     for (const group of faturaGroups.values()) {
       const account = accountsById[group.accountId];
 
-      // Only create faturas for credit card accounts
       if (account.type === 'credit_card' && account.closingDay && account.paymentDueDay) {
         const dueDate = getFaturaPaymentDueDate(
           group.faturaMonth,
@@ -468,19 +701,19 @@ async function seed() {
           yearMonth: group.faturaMonth,
           totalAmount: group.total,
           dueDate,
-          paidAt: null, // All unpaid by default
+          paidAt: null,
         });
       }
     }
 
     if (faturaRecords.length > 0) {
-      await db.insert(faturas).values(faturaRecords);
+      await seedRows('faturas', faturaRecords);
     }
     console.log(`  ✓ ${faturaRecords.length} faturas created\n`);
 
     // 8. Insert income
     console.log('  💵 Inserting income...');
-    const incomeRecords = incomeData.map(inc => ({
+    const incomeRecords = incomeData.map((inc) => ({
       userId: TEST_USER_ID,
       description: inc.description,
       amount: inc.amount,
@@ -489,17 +722,19 @@ async function seed() {
       receivedDate: getRelativeDate(inc.monthOffset, inc.day),
       receivedAt: inc.received ? new Date(getRelativeDate(inc.monthOffset, inc.day)) : null,
     }));
-    await db.insert(income).values(incomeRecords);
+    await seedRows('income', incomeRecords);
     console.log(`  ✓ ${incomeRecords.length} income entries created\n`);
+
+    await resetSequences();
 
     console.log('✅ Seeding complete!\n');
     console.log('📊 Summary:');
     console.log(`   Users: ${userRecords.length}`);
-    console.log(`   Accounts: ${insertedAccounts.length}`);
-    console.log(`   Categories: ${insertedCategories.length}`);
+    console.log(`   Accounts: ${seededAccounts.length}`);
+    console.log(`   Categories: ${seededCategories.length}`);
     console.log(`   Budgets: ${budgetRecords.length}`);
-    console.log(`   Transactions: ${transactionsData.length}`);
-    console.log(`   Entries: ${totalEntries}`);
+    console.log(`   Transactions: ${seededTransactions.length}`);
+    console.log(`   Entries: ${entryRecords.length}`);
     console.log(`   Faturas: ${faturaRecords.length}`);
     console.log(`   Income: ${incomeRecords.length}`);
   } catch (error) {
@@ -508,4 +743,4 @@ async function seed() {
   }
 }
 
-seed();
+seedDatabase();

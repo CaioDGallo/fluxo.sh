@@ -256,12 +256,13 @@ export function TransactionForm({
 
             {/* Category */}
             <Field>
-              <FieldLabel>{t('category')}</FieldLabel>
+              <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
               {hasCategories ? (
                 <CategorySelect
                   categories={categories}
                   value={categoryId}
                   onChange={setCategoryId}
+                  triggerId="category"
                 />
               ) : (
                 <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">

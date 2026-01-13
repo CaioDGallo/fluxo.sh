@@ -15,12 +15,20 @@ type CategorySelectProps = {
   categories: Category[];
   value: number;
   onChange: (value: number) => void;
+  triggerId?: string;
+  triggerTestId?: string;
 };
 
-export function CategorySelect({ categories, value, onChange }: CategorySelectProps) {
+export function CategorySelect({
+  categories,
+  value,
+  onChange,
+  triggerId,
+  triggerTestId,
+}: CategorySelectProps) {
   return (
     <Select value={value.toString()} onValueChange={(v) => onChange(parseInt(v))}>
-      <SelectTrigger>
+      <SelectTrigger id={triggerId} data-testid={triggerTestId}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

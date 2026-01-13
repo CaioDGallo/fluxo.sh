@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./test/setup.ts'],
     include: ['**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', '.next', 'out', 'drizzle'],
+    exclude: ['node_modules', '.next', 'out', 'drizzle', 'test/e2e'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

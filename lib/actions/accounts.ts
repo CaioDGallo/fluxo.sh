@@ -1,6 +1,5 @@
 'use server';
 
-import { cache } from 'react';
 import { db } from '@/lib/db';
 import { accounts, entries, income, transfers, type NewAccount } from '@/lib/schema';
 import { eq, and, isNotNull, sql } from 'drizzle-orm';
@@ -47,10 +46,10 @@ async function validateCreditLimit(limit: unknown) {
   }
 }
 
-export const getAccounts = cache(async () => {
+export async function getAccounts() {
   const userId = await getCurrentUserId();
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
-});
+}
 
 type DbClient = Pick<typeof db, 'select' | 'update'>;
 
@@ -185,7 +184,7 @@ export async function updateAccountBalance(
     .where(and(eq(accounts.userId, effectiveUserId), eq(accounts.id, accountId)));
 }
 
-export const getAccountsWithBalances = cache(async () => {
+export async function getAccountsWithBalances() {
   const userId = await getCurrentUserId();
   const userAccounts = await getAccountsByUser(userId);
   const balances = await Promise.all(
@@ -196,9 +195,9 @@ export const getAccountsWithBalances = cache(async () => {
     ...account,
     currentBalance: balances[index] ?? account.currentBalance,
   }));
-});
+}
 
-// Internal function for use by cached helpers (can't call getCurrentUserId inside unstable_cache)
+// Internal helper so callers can reuse the same query shape.
 export async function getAccountsByUser(userId: string) {
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
 }

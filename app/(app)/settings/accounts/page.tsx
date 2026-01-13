@@ -28,6 +28,10 @@ export default function AccountsPage() {
     setIsLoading(false);
   }
 
+  async function handleAccountsChanged() {
+    await loadAccounts();
+  }
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAccounts();
@@ -55,7 +59,12 @@ export default function AccountsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('addAccount')}</AlertDialogTitle>
               </AlertDialogHeader>
-              <AccountForm onSuccess={() => setAddOpen(false)} />
+              <AccountForm
+                onSuccess={async () => {
+                  await handleAccountsChanged();
+                  setAddOpen(false);
+                }}
+              />
             </AlertDialogContent>
           </AlertDialog>
         </div>
@@ -72,7 +81,11 @@ export default function AccountsPage() {
                 <h2 className="mb-3 text-sm font-medium text-gray-500">{t('creditCards')}</h2>
                 <div className="space-y-3">
                   {creditCardAccounts.map((account) => (
-                    <AccountCard key={account.id} account={account} />
+                    <AccountCard
+                      key={account.id}
+                      account={account}
+                      onChange={handleAccountsChanged}
+                    />
                   ))}
                 </div>
               </div>
@@ -84,7 +97,11 @@ export default function AccountsPage() {
                 <h2 className="mb-3 text-sm font-medium text-gray-500">{t('checkingAccounts')}</h2>
                 <div className="space-y-3">
                   {checkingAccounts.map((account) => (
-                    <AccountCard key={account.id} account={account} />
+                    <AccountCard
+                      key={account.id}
+                      account={account}
+                      onChange={handleAccountsChanged}
+                    />
                   ))}
                 </div>
               </div>
@@ -96,7 +113,11 @@ export default function AccountsPage() {
                 <h2 className="mb-3 text-sm font-medium text-gray-500">{t('savingsAccounts')}</h2>
                 <div className="space-y-3">
                   {savingsAccounts.map((account) => (
-                    <AccountCard key={account.id} account={account} />
+                    <AccountCard
+                      key={account.id}
+                      account={account}
+                      onChange={handleAccountsChanged}
+                    />
                   ))}
                 </div>
               </div>
@@ -108,7 +129,11 @@ export default function AccountsPage() {
                 <h2 className="mb-3 text-sm font-medium text-gray-500">{t('cash')}</h2>
                 <div className="space-y-3">
                   {cashAccounts.map((account) => (
-                    <AccountCard key={account.id} account={account} />
+                    <AccountCard
+                      key={account.id}
+                      account={account}
+                      onChange={handleAccountsChanged}
+                    />
                   ))}
                 </div>
               </div>

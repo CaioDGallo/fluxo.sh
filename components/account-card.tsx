@@ -31,9 +31,10 @@ import { useTranslations } from 'next-intl';
 
 type AccountCardProps = {
   account: Account;
+  onChange?: () => void | Promise<void>;
 };
 
-export function AccountCard({ account }: AccountCardProps) {
+export function AccountCard({ account, onChange }: AccountCardProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export function AccountCard({ account }: AccountCardProps) {
     try {
       await deleteAccount(account.id);
       setDeleteOpen(false);
+      await onChange?.();
     } catch (err) {
       console.error('[AccountCard] Delete failed:', err);
       setDeleteError(tCommon('unexpectedError'));
@@ -135,7 +137,13 @@ export function AccountCard({ account }: AccountCardProps) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
                 </AlertDialogHeader>
-                <AccountForm account={account} onSuccess={() => setEditOpen(false)} />
+                <AccountForm
+                  account={account}
+                  onSuccess={async () => {
+                    await onChange?.();
+                    setEditOpen(false);
+                  }}
+                />
               </AlertDialogContent>
             </AlertDialog>
 

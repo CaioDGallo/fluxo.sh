@@ -62,7 +62,6 @@ describe('Auth Actions', () => {
     vi.clearAllMocks();
 
     process.env.NEXTAUTH_URL = 'http://localhost:3000';
-    delete process.env.E2E_AUTH_BYPASS;
 
     fetchMock.mockResolvedValue({ json: async () => ({ ok: true }) });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -78,7 +77,7 @@ describe('Auth Actions', () => {
     compareMock.mockResolvedValue(true);
     sendEmailMock.mockResolvedValue(undefined);
 
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   afterEach(() => {
@@ -111,16 +110,6 @@ describe('Auth Actions', () => {
     const result = await validateLoginAttempt('user@example.com', 'invalid-captcha');
 
     expect(result).toEqual({ allowed: false, error: 'login.captchaFailed' });
-  });
-
-  it('validateLoginAttempt bypasses checks in E2E mode', async () => {
-    process.env.E2E_AUTH_BYPASS = 'true';
-
-    const { validateLoginAttempt } = await loadActions();
-    const result = await validateLoginAttempt('user@example.com', '');
-
-    expect(result).toEqual({ allowed: true, error: null });
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('forgotPassword returns translated error when rate limit denied', async () => {

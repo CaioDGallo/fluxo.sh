@@ -2,11 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function proxy(request: NextRequest) {
-  // E2E bypass for testing
-  if (process.env.E2E_AUTH_BYPASS === 'true') {
-    return NextResponse.next();
-  }
-
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const { pathname } = request.nextUrl;
 

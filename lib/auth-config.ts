@@ -7,13 +7,6 @@ import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 
 export const authConfig: NextAuthOptions = {
-  // adapter: DrizzleAdapter(db, {
-  //   usersTable: users,
-  //   accountsTable: authAccounts,
-  //   sessionsTable: sessions,
-  //   verificationTokensTable: verificationTokens,
-  // }),
-
   // JWT session strategy (adapter commented out for now)
   session: {
     strategy: 'jwt' as const,
@@ -43,15 +36,6 @@ export const authConfig: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           console.log('[AUTH] Missing email or password');
           return null;
-        }
-
-        // E2E bypass
-        if (process.env.E2E_AUTH_BYPASS === 'true' && process.env.E2E_AUTH_USER_ID) {
-          console.log('[AUTH] Using E2E bypass');
-          const user = await db.query.users.findFirst({
-            where: eq(users.id, process.env.E2E_AUTH_USER_ID),
-          });
-          return user || null;
         }
 
         // CAPTCHA already verified by validateLoginAttempt server action

@@ -16,11 +16,6 @@ import { getCurrentUserId } from '@/lib/auth';
  * The actual authentication happens via NextAuth signIn on the client
  */
 export async function validateLoginAttempt(email: string, captchaToken: string) {
-  // E2E bypass
-  if (process.env.E2E_AUTH_BYPASS === 'true') {
-    return { allowed: true, error: null };
-  }
-
   // Rate limiting
   const rateLimit = await checkLoginRateLimit();
   if (!rateLimit.allowed) {

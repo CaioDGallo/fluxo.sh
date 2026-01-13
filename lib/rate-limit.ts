@@ -59,7 +59,7 @@ function checkLimit(
 
 export async function checkLoginRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
-  return checkLimit(loginStore, ip, 5, 60 * 1000); // 5 attempts per minute
+  return checkLimit(loginStore, ip, 15, 60 * 1000); // 15 attempts per minute
 }
 
 export async function checkPasswordResetRateLimit(): Promise<RateLimitResult> {

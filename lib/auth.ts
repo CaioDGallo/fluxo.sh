@@ -7,11 +7,6 @@ import { authConfig } from '@/lib/auth-config';
  * @returns The user's ID
  */
 export async function getCurrentUserId(): Promise<string> {
-  // E2E bypass (same as before)
-  if (process.env.E2E_AUTH_BYPASS === 'true' && process.env.E2E_AUTH_USER_ID) {
-    return process.env.E2E_AUTH_USER_ID;
-  }
-
   const session = await getServerSession(authConfig);
 
   if (!session?.user?.id) {

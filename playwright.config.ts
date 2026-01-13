@@ -20,9 +20,6 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       ...process.env,
-      E2E_AUTH_BYPASS: 'true',
-      NEXT_PUBLIC_E2E_AUTH_BYPASS: 'true',
-      E2E_AUTH_USER_ID: process.env.E2E_AUTH_USER_ID ?? '00000000-0000-4000-8000-000000000001',
       NEXT_PUBLIC_TURNSTILE_SITE_KEY:
         process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '1x00000000000000000000AA',
     },

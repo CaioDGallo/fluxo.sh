@@ -21,7 +21,6 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const isE2E = process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true';
 
   // Check for error parameter from OAuth callback
   useEffect(() => {
@@ -30,12 +29,6 @@ function LoginForm() {
       setError(t('authenticationFailed'));
     }
   }, [searchParams, t]);
-
-  useEffect(() => {
-    if (isE2E) {
-      setCaptchaToken('e2e-bypass');
-    }
-  }, [isE2E]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -127,14 +120,12 @@ function LoginForm() {
             </div>
 
             <div>
-              {!isE2E && (
-                <Turnstile
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                  onSuccess={(token) => setCaptchaToken(token)}
-                  onError={() => setCaptchaToken(null)}
-                  onExpire={() => setCaptchaToken(null)}
-                />
-              )}
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                onSuccess={(token) => setCaptchaToken(token)}
+                onError={() => setCaptchaToken(null)}
+                onExpire={() => setCaptchaToken(null)}
+              />
             </div>
 
             {error && (

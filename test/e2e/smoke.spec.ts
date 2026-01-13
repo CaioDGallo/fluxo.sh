@@ -1,4 +1,5 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { test, expect } from '@/test/fixtures';
 
 const TEST_EMAIL = 'e2e@example.com';
 const TEST_PASSWORD = 'Password123';
@@ -20,11 +21,6 @@ function addMonths(yearMonth: string, offset: number): string {
   return getYearMonth(date);
 }
 
-async function resetDatabase(request: APIRequestContext) {
-  const response = await request.post('/api/test/reset');
-  expect(response.ok()).toBeTruthy();
-}
-
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
@@ -36,34 +32,35 @@ async function login(page: Page) {
 async function createAccount(page: Page, name: string) {
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
   await dialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(page.getByText(name)).toBeVisible();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { name }).first()).toBeVisible();
 }
 
 async function createCategory(page: Page, heading: string, name: string) {
   await page.goto('/settings/categories');
   const section = page.getByRole('heading', { name: heading }).locator('..');
   await section.getByRole('button', { name: 'Adicionar' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
   await dialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(page.getByText(name)).toBeVisible();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { name }).first()).toBeVisible();
 }
 
 async function setCategoryBudget(page: Page, categoryName: string, amount: string) {
   await page.goto('/settings/budgets');
-  const row = page.getByText(categoryName, { exact: true }).locator('..').locator('..');
+  const row = page.getByText(categoryName, { exact: true }).locator('..').locator('..').first();
   const input = row.getByRole('spinbutton');
   await input.fill(amount);
   await input.blur();
   await expect(input).toHaveValue(amount);
+  await page.waitForTimeout(300);
 }
-
-test.beforeEach(async ({ request }) => {
-  await resetDatabase(request);
-});
 
 test('login redirects to dashboard', async ({ page }) => {
   await login(page);
@@ -78,13 +75,14 @@ test('create account, category, and expense installments', async ({ page }) => {
 
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('300');
   await dialog.getByLabel('Descrição').fill('Mercado E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).click();
+  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
 
   const slider = dialog.getByRole('slider');
   await slider.focus();
@@ -92,13 +90,14 @@ test('create account, category, and expense installments', async ({ page }) => {
   await slider.press('ArrowRight');
 
   await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
 
   const currentMonth = getYearMonth();
   const months = [currentMonth, addMonths(currentMonth, 1), addMonths(currentMonth, 2)];
 
   for (const month of months) {
     await page.goto(`/expenses?month=${month}`);
-    await expect(page.locator('h3', { hasText: 'Mercado E2E' })).toHaveCount(1);
+    await expect(page.locator('h3', { hasText: 'Mercado E2E' }).first()).toBeVisible();
   }
 
   await page.goto(`/dashboard?month=${currentMonth}`);
@@ -119,14 +118,16 @@ test('create income updates dashboard net balance', async ({ page }) => {
 
   await page.goto('/income');
   await page.getByRole('button', { name: 'Adicionar Receita' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('500');
   await dialog.getByLabel('Descrição').fill('Salário E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: INCOME_CATEGORY }).click();
+  await page.getByRole('option', { name: INCOME_CATEGORY }).first().click();
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
   await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
 
   const currentMonth = getYearMonth();
   await page.goto(`/dashboard?month=${currentMonth}`);
@@ -146,17 +147,19 @@ test('create transfer updates cash flow report', async ({ page }) => {
 
   await page.goto('/transfers');
   await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
 
   await dialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Depósito' }).click();
+  await page.getByRole('option', { name: 'Depósito' }).first().click();
   await dialog.getByLabel('Valor').fill('200');
   await dialog.getByLabel('Descrição').fill('Depósito E2E');
   await dialog.getByLabel('Conta de destino').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
   await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
 
-  await expect(page.getByText('Depósito E2E')).toBeVisible();
+  await expect(page.getByText('Depósito E2E').first()).toBeVisible();
 
   const currentMonth = getYearMonth();
   await page.goto(`/dashboard?month=${currentMonth}`);

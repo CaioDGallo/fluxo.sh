@@ -21,7 +21,7 @@ const DEFAULT_USERS = [
     name: 'Caio Gallo',
   },
   {
-    id: 'e2e-test-user-id',
+    id: '00000000-0000-4000-8000-000000000001',
     email: 'e2e@example.com',
     password: 'Password123',
     name: 'E2E Test User',

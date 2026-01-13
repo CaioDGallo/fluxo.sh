@@ -1,3 +1,6 @@
+import { test as base } from '@playwright/test';
+import { resetDatabase } from '@/lib/test-utils';
+import { db } from '@/lib/db';
 import type {
   NewAccount,
   NewCategory,
@@ -11,6 +14,8 @@ import type {
   NewFatura,
   NewMonthlyBudget,
 } from '@/lib/schema';
+
+export { expect } from '@playwright/test';
 
 export const TEST_USER_ID = 'test-user-fixtures-id';
 
@@ -230,3 +235,16 @@ export function createTestCalendarSource(overrides: Partial<NewCalendarSource> =
     ...overrides,
   };
 }
+
+// Extend the test object
+export const test = base.extend<{ db: typeof db }>({
+  db: async ({ }, use) => {
+    // 1. Reset the DB before the test runs
+    await resetDatabase();
+
+    // 2. Pass the db instance to the test
+    await use(db);
+
+    // 3. (Optional) Cleanup after test if needed
+  },
+});

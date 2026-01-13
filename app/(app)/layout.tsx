@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { BottomTabBar } from '@/components/bottom-tab-bar';
@@ -7,6 +9,12 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Check authentication
+  const session = await getSession();
+  if (!session?.user) {
+    redirect('/login');
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

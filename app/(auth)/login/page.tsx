@@ -61,6 +61,7 @@ function LoginForm() {
       const result = await signIn('credentials', {
         email,
         password,
+        captchaToken,
         redirect: false,
       });
 

@@ -41,6 +41,14 @@ describe('rate-limit', () => {
     await expect(getClientIP()).resolves.toBe('127.0.0.1');
   });
 
+  // it('bypasses rate limiting in test env', async () => {
+  //   const { checkLoginRateLimit } = await loadModule();
+  //
+  //   for (let i = 0; i < 10; i += 1) {
+  //     await expect(checkLoginRateLimit()).resolves.toEqual({ allowed: true });
+  //   }
+  // });
+
   it('returns retryAfter when login rate limit is exceeded', async () => {
     headersMock.mockResolvedValue(new Headers({ 'x-forwarded-for': '9.9.9.9' }));
 

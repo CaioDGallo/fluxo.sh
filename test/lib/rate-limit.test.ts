@@ -57,7 +57,7 @@ describe('rate-limit', () => {
 
     const { checkLoginRateLimit } = await loadModule();
 
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 15; i += 1) {
       await expect(checkLoginRateLimit()).resolves.toEqual({ allowed: true });
     }
 

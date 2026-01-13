@@ -12,50 +12,47 @@ import { checkLoginRateLimit, checkPasswordResetRateLimit } from '@/lib/rate-lim
 import { getCurrentUserId } from '@/lib/auth';
 
 /**
- * Login with email/password + CAPTCHA
- * Note: In NextAuth v4, actual authentication happens via the API route
- * This action validates and redirects to trigger the auth flow
+ * Validates rate limit and CAPTCHA before login
+ * The actual authentication happens via NextAuth signIn on the client
  */
-export async function login(email: string, password: string, captchaToken: string) {
+export async function validateLoginAttempt(email: string, captchaToken: string) {
   // E2E bypass
   if (process.env.E2E_AUTH_BYPASS === 'true') {
-    return { error: null };
+    return { allowed: true, error: null };
   }
 
   // Rate limiting
   const rateLimit = await checkLoginRateLimit();
   if (!rateLimit.allowed) {
     return {
+      allowed: false,
       error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
     };
   }
 
-  // For NextAuth v4 with credentials, we need to make a fetch call to the signin endpoint
+  // Verify CAPTCHA
   try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/callback/credentials`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        email,
-        password,
-        captchaToken,
-        redirect: 'false',
-        json: 'true',
-      }),
-    });
+    const verifyResponse = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: process.env.TURNSTILE_SECRET_KEY,
+          response: captchaToken,
+        }),
+      }
+    );
 
-    const data = await response.json();
-
-    if (data.error || !data.ok) {
-      return { error: await t('login.authenticationFailed') };
+    const verifyData = await verifyResponse.json();
+    if (!verifyData.success) {
+      return { allowed: false, error: await t('login.captchaFailed') };
     }
 
-    return { error: null };
+    return { allowed: true, error: null };
   } catch (error) {
-    console.error('Login error:', error);
-    return { error: await t('login.authenticationFailed') };
+    console.error('CAPTCHA verification error:', error);
+    return { allowed: false, error: await t('errors.unexpectedError') };
   }
 }
 
@@ -203,6 +200,9 @@ export async function updatePassword(newPassword: string) {
 
     return { error: null };
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return { error: await t('errors.notAuthenticated') };
+    }
     console.error('Update password error:', error);
     return { error: await t('errors.unexpectedError') };
   }

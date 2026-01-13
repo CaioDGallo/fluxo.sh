@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { promisify } from 'util';
 import { db } from '../lib/db';
-import { accounts, budgets, categories, entries, events, faturas, income, tasks, transactions } from '../lib/schema';
+import { accounts, budgets, categories, entries, events, faturas, income, tasks, transactions, transfers } from '../lib/schema';
 
 const execAsync = promisify(exec);
 
@@ -22,6 +22,7 @@ async function reset() {
     // Step 1: Truncate all tables (reverse FK order)
     console.log('  🗑️  Truncating all tables...');
     await db.delete(income);
+    await db.delete(transfers);
     await db.delete(faturas);
     await db.delete(entries);
     await db.delete(transactions);

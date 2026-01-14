@@ -22,7 +22,10 @@ describe('User Settings Actions', () => {
 
     vi.doMock('@/lib/db', () => ({ db }));
     mockAuth();
-    vi.doMock('@/lib/i18n/server-errors', () => ({ t: tMock }));
+    vi.doMock('@/lib/i18n/server-errors', () => ({
+      t: tMock,
+      getLocale: vi.fn().mockResolvedValue('pt-BR'),
+    }));
 
     const actions = await import('@/lib/actions/user-settings');
     getUserSettings = actions.getUserSettings;

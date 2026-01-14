@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createBillReminder,
   updateBillReminder,
@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { centsToDisplay, displayToCents, getCurrentYearMonth } from '@/lib/utils';
 
 type BillReminderFormProps = {
@@ -39,7 +39,7 @@ export function BillReminderForm({
   const [amount, setAmount] = useState(
     reminder?.amount ? centsToDisplay(reminder.amount) : ''
   );
-  const [dueDay, setDueDay] = useState(reminder?.dueDay || 1);
+  const [dueDay, setDueDay] = useState(reminder?.dueDay ?? 1);
   const [dueTime, setDueTime] = useState(reminder?.dueTime || '');
   const [recurrenceType, setRecurrenceType] = useState(
     reminder?.recurrenceType || 'monthly'
@@ -57,8 +57,31 @@ export function BillReminderForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const locale = useLocale();
   const t = useTranslations('billReminderForm');
   const tCommon = useTranslations('common');
+
+  const isWeekly = recurrenceType === 'weekly';
+  const weekdayOptions = Array.from({ length: 7 }, (_, dayIndex) => {
+    const referenceDate = new Date(2024, 0, 7 + dayIndex);
+    return {
+      value: dayIndex,
+      label: new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(referenceDate),
+    };
+  });
+
+  useEffect(() => {
+    if (isWeekly) {
+      if (dueDay < 0 || dueDay > 6) {
+        setDueDay(0);
+      }
+      return;
+    }
+
+    if (dueDay < 1 || dueDay > 31) {
+      setDueDay(1);
+    }
+  }, [dueDay, isWeekly]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -178,11 +201,17 @@ export function BillReminderForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                <SelectItem key={day} value={day.toString()}>
-                  {day}
-                </SelectItem>
-              ))}
+              {isWeekly
+                ? weekdayOptions.map((day) => (
+                    <SelectItem key={day.value} value={day.value.toString()}>
+                      {day.label}
+                    </SelectItem>
+                  ))
+                : Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <SelectItem key={day} value={day.toString()}>
+                      {day}
+                    </SelectItem>
+                  ))}
             </SelectContent>
           </Select>
         </Field>

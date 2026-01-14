@@ -5,6 +5,7 @@ import { notificationJobs, events, tasks, userSettings, billReminders, categorie
 import { eq, and, lte } from 'drizzle-orm';
 import { generateBillReminderHtml, generateBillReminderText } from '@/lib/email/bill-reminder-template';
 import { calculateNextDueDate } from '@/lib/utils/bill-reminders';
+import { defaultLocale } from '@/lib/i18n/config';
 
 interface ProcessNotificationJobResult {
   processed: number;
@@ -245,7 +246,12 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
         amount: reminderItem.amount,
         categoryName: category?.name || null,
         categoryColor: category?.color || null,
-        dueDate: nextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        dueDate: new Intl.DateTimeFormat(defaultLocale, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone,
+        }).format(nextDue),
         dueTime: reminderItem.dueTime,
         daysUntilDue: daysUntil,
         appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app',

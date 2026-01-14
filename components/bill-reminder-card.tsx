@@ -31,7 +31,7 @@ import {
 import { CategoryIcon } from '@/components/icon-picker';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MoreVerticalIcon } from '@hugeicons/core-free-icons';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { formatCurrencyWithLocale } from '@/lib/utils';
 
 type BillReminderCardProps = {
@@ -45,11 +45,15 @@ export function BillReminderCard({ reminder, categories }: BillReminderCardProps
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const locale = useLocale();
   const t = useTranslations('billReminders');
   const tCommon = useTranslations('common');
 
   const category = categories.find((c) => c.id === reminder.categoryId);
   const nextDue = calculateNextDueDate(reminder);
+  const formattedNextDue = Number.isNaN(nextDue.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(locale).format(nextDue);
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -101,10 +105,10 @@ export function BillReminderCard({ reminder, categories }: BillReminderCardProps
           <h3 className="font-medium text-sm truncate">{reminder.name}</h3>
           <p className="text-xs text-muted-foreground">
             {t('dueDay')} {reminder.dueDay}
-            {reminder.amount && ` • ${formatCurrencyWithLocale(reminder.amount, 'pt-BR')}`}
+            {reminder.amount && ` • ${formatCurrencyWithLocale(reminder.amount, locale)}`}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t('nextDue')}: {nextDue.toLocaleDateString()}
+            {t('nextDue')}: {formattedNextDue || '-'}
           </p>
         </div>
 

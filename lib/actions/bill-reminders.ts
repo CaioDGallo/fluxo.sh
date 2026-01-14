@@ -32,7 +32,16 @@ export async function createBillReminder(
     if (!data.name?.trim()) {
       throw new Error(await t('errors.nameRequired'));
     }
-    if (!data.dueDay || data.dueDay < 1 || data.dueDay > 31) {
+    if (data.dueDay == null) {
+      throw new Error(await t('errors.invalidDueDay'));
+    }
+
+    const recurrenceType = data.recurrenceType ?? 'monthly';
+    if (recurrenceType === 'weekly') {
+      if (data.dueDay < 0 || data.dueDay > 6) {
+        throw new Error(await t('errors.invalidDueDay'));
+      }
+    } else if (data.dueDay < 1 || data.dueDay > 31) {
       throw new Error(await t('errors.invalidDueDay'));
     }
 
@@ -60,8 +69,35 @@ export async function updateBillReminder(
     if (data.name !== undefined && !data.name?.trim()) {
       throw new Error(await t('errors.nameRequired'));
     }
-    if (data.dueDay !== undefined && (data.dueDay < 1 || data.dueDay > 31)) {
-      throw new Error(await t('errors.invalidDueDay'));
+    if (data.dueDay !== undefined || data.recurrenceType !== undefined) {
+      let dueDay = data.dueDay;
+      let recurrenceType = data.recurrenceType;
+
+      if (dueDay === undefined || recurrenceType === undefined) {
+        const [existing] = await db
+          .select({
+            dueDay: billReminders.dueDay,
+            recurrenceType: billReminders.recurrenceType,
+          })
+          .from(billReminders)
+          .where(and(eq(billReminders.id, id), eq(billReminders.userId, userId)))
+          .limit(1);
+
+        dueDay = dueDay ?? existing?.dueDay;
+        recurrenceType = recurrenceType ?? existing?.recurrenceType ?? 'monthly';
+      }
+
+      if (dueDay == null) {
+        throw new Error(await t('errors.invalidDueDay'));
+      }
+
+      if (recurrenceType === 'weekly') {
+        if (dueDay < 0 || dueDay > 6) {
+          throw new Error(await t('errors.invalidDueDay'));
+        }
+      } else if (dueDay < 1 || dueDay > 31) {
+        throw new Error(await t('errors.invalidDueDay'));
+      }
     }
 
     await db

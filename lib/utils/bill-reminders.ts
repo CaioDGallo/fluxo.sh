@@ -9,6 +9,12 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
 
+  const applyDueTime = (date: Date) => {
+    if (!reminder.dueTime) return;
+    const [hours, minutes] = reminder.dueTime.split(':').map(Number);
+    date.setHours(hours, minutes, 0, 0);
+  };
+
   switch (reminder.recurrenceType) {
     case 'once': {
       const [year, month] = reminder.startMonth.split('-').map(Number);
@@ -28,17 +34,28 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
       const targetDay = reminder.dueDay;
       let daysUntil = targetDay - today;
 
-      if (daysUntil <= 0) {
+      if (daysUntil < 0) {
         daysUntil += 7;
+      }
+
+      if (daysUntil === 0) {
+        if (reminder.dueTime) {
+          const [hours, minutes] = reminder.dueTime.split(':').map(Number);
+          const dueToday = new Date(now);
+          dueToday.setHours(hours, minutes, 0, 0);
+
+          if (dueToday <= now) {
+            daysUntil += 7;
+          }
+        } else {
+          daysUntil += 7;
+        }
       }
 
       const nextDate = new Date(now);
       nextDate.setDate(currentDay + daysUntil);
 
-      if (reminder.dueTime) {
-        const [hours, minutes] = reminder.dueTime.split(':').map(Number);
-        nextDate.setHours(hours, minutes, 0, 0);
-      }
+      applyDueTime(nextDate);
 
       return nextDate;
     }
@@ -50,13 +67,9 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
 
       // Find next occurrence
       const nextDate = new Date(startDate);
+      applyDueTime(nextDate);
       while (nextDate <= now) {
         nextDate.setDate(nextDate.getDate() + 14);
-      }
-
-      if (reminder.dueTime) {
-        const [hours, minutes] = reminder.dueTime.split(':').map(Number);
-        nextDate.setHours(hours, minutes, 0, 0);
       }
 
       return nextDate;
@@ -65,14 +78,11 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
     case 'monthly': {
       // Calculate next occurrence of dueDay
       let nextDate = new Date(currentYear, currentMonth, reminder.dueDay);
+      applyDueTime(nextDate);
 
       if (nextDate <= now) {
         nextDate = new Date(currentYear, currentMonth + 1, reminder.dueDay);
-      }
-
-      if (reminder.dueTime) {
-        const [hours, minutes] = reminder.dueTime.split(':').map(Number);
-        nextDate.setHours(hours, minutes, 0, 0);
+        applyDueTime(nextDate);
       }
 
       return nextDate;
@@ -82,14 +92,10 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
       // Calculate from startMonth
       const [startYear, startMonth] = reminder.startMonth.split('-').map(Number);
       const nextDate = new Date(startYear, startMonth - 1, reminder.dueDay);
+      applyDueTime(nextDate);
 
       while (nextDate <= now) {
         nextDate.setMonth(nextDate.getMonth() + 3);
-      }
-
-      if (reminder.dueTime) {
-        const [hours, minutes] = reminder.dueTime.split(':').map(Number);
-        nextDate.setHours(hours, minutes, 0, 0);
       }
 
       return nextDate;
@@ -99,14 +105,11 @@ export function calculateNextDueDate(reminder: BillReminder): Date {
       // Calculate from startMonth
       const [, startMonth] = reminder.startMonth.split('-').map(Number);
       let nextDate = new Date(currentYear, startMonth - 1, reminder.dueDay);
+      applyDueTime(nextDate);
 
       if (nextDate <= now) {
         nextDate = new Date(currentYear + 1, startMonth - 1, reminder.dueDay);
-      }
-
-      if (reminder.dueTime) {
-        const [hours, minutes] = reminder.dueTime.split(':').map(Number);
-        nextDate.setHours(hours, minutes, 0, 0);
+        applyDueTime(nextDate);
       }
 
       return nextDate;

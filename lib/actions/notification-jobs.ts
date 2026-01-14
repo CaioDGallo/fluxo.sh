@@ -226,7 +226,7 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
       body = `You have a task due: ${taskItem.title}\n\nDue: ${dueDate}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app'}/calendar`;
     } else if (job.itemType === 'bill_reminder' && itemData && 'dueDay' in itemData) {
       const reminderItem = itemData as BillReminderItem;
-      const nextDue = calculateNextDueDate(reminderItem);
+      const nextDue = calculateNextDueDate(reminderItem, { timeZone });
       const now = new Date();
       const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 

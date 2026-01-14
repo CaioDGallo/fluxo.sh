@@ -32,9 +32,10 @@ export async function GET(request: Request) {
   const runDailyDigest = !jobOverride || jobOverride === 'daily-digest' || jobOverride === 'all';
 
   try {
-    const [notificationResult, billReminderResult, balanceResult, statusResult, calendarSyncResult, dailyDigestResult] = await Promise.all([
-      runNotifications ? processPendingNotificationJobs() : Promise.resolve(null),
-      runBillReminders ? scheduleBillReminderNotifications() : Promise.resolve(null),
+    const billReminderResult = runBillReminders ? await scheduleBillReminderNotifications() : null;
+    const notificationResult = runNotifications ? await processPendingNotificationJobs() : null;
+
+    const [balanceResult, statusResult, calendarSyncResult, dailyDigestResult] = await Promise.all([
       runBalanceReconciliation ? reconcileAllAccountBalances() : Promise.resolve(null),
       runStatusUpdates ? updatePastItemStatuses() : Promise.resolve(null),
       runCalendarSync ? syncAllUsersCalendars() : Promise.resolve(null),

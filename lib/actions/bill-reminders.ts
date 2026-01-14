@@ -8,8 +8,8 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
-import { calculateNextDueDate } from '@/lib/utils/bill-reminders';
-import { getCurrentYearMonth } from '@/lib/utils';
+import { calculateNextDueDate, getCurrentYearMonthInTimeZone } from '@/lib/utils/bill-reminders';
+import { getUserSettings } from '@/lib/actions/user-settings';
 
 type ActionResult = { success: true; data?: { id: number } } | { success: false; error: string };
 
@@ -131,7 +131,9 @@ export async function deleteBillReminder(id: number): Promise<ActionResult> {
 export async function acknowledgeBillReminder(id: number): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
-    const currentMonth = getCurrentYearMonth();
+    const settings = await getUserSettings();
+    const timeZone = settings?.timezone || 'UTC';
+    const currentMonth = getCurrentYearMonthInTimeZone(timeZone);
 
     await db
       .update(billReminders)
@@ -149,7 +151,9 @@ export type BillReminderWithDue = BillReminder & { nextDue: Date };
 
 export async function getPendingBillReminders(): Promise<BillReminderWithDue[]> {
   const userId = await getCurrentUserId();
-  const currentMonth = getCurrentYearMonth();
+  const settings = await getUserSettings();
+  const timeZone = settings?.timezone || 'UTC';
+  const currentMonth = getCurrentYearMonthInTimeZone(timeZone);
 
   const reminders = await db
     .select()
@@ -165,12 +169,11 @@ export async function getPendingBillReminders(): Promise<BillReminderWithDue[]> 
       )
     );
 
-  // Calculate next due date for each reminder
   const now = new Date();
   const remindersWithDue: BillReminderWithDue[] = [];
 
   for (const reminder of reminders) {
-    const nextDue = calculateNextDueDate(reminder);
+    const nextDue = calculateNextDueDate(reminder, { now, timeZone });
     const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     // Only include reminders due within 3 days

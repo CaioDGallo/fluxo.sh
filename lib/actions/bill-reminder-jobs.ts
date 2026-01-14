@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { billReminders, notificationJobs } from '@/lib/schema';
+import { billReminders, notificationJobs, userSettings } from '@/lib/schema';
 import { eq, and } from 'drizzle-orm';
 import { calculateNextDueDate } from '@/lib/utils/bill-reminders';
 
@@ -14,43 +14,51 @@ export async function scheduleBillReminderNotifications(): Promise<{
 
   // Get all active bill reminders
   const activeReminders = await db
-    .select()
+    .select({
+      reminder: billReminders,
+      timezone: userSettings.timezone,
+    })
     .from(billReminders)
+    .leftJoin(userSettings, eq(userSettings.userId, billReminders.userId))
     .where(eq(billReminders.status, 'active'));
 
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  for (const reminder of activeReminders) {
+  const graceWindowMs = 24 * 60 * 60 * 1000;
+
+  for (const { reminder, timezone } of activeReminders) {
     try {
-      // Calculate next due date
-      const nextDue = calculateNextDueDate(reminder);
+      const timeZone = timezone || 'UTC';
+      const nextDue = calculateNextDueDate(reminder, { now, timeZone });
 
       // Only schedule if within next 7 days
       if (nextDue > sevenDaysFromNow) {
         continue;
       }
 
-      // Calculate notification times
+      const shouldSchedule = (scheduledAt: Date) =>
+        scheduledAt > now || now.getTime() - scheduledAt.getTime() <= graceWindowMs;
+
       const notifications: Array<{ offset: number; scheduledAt: Date }> = [];
 
       if (reminder.notify2DaysBefore) {
         const scheduledAt = new Date(nextDue.getTime() - 2 * 24 * 60 * 60 * 1000);
-        if (scheduledAt > now) {
+        if (shouldSchedule(scheduledAt)) {
           notifications.push({ offset: -2880, scheduledAt });
         }
       }
 
       if (reminder.notify1DayBefore) {
         const scheduledAt = new Date(nextDue.getTime() - 1 * 24 * 60 * 60 * 1000);
-        if (scheduledAt > now) {
+        if (shouldSchedule(scheduledAt)) {
           notifications.push({ offset: -1440, scheduledAt });
         }
       }
 
       if (reminder.notifyOnDueDay) {
         const scheduledAt = nextDue;
-        if (scheduledAt > now) {
+        if (shouldSchedule(scheduledAt)) {
           notifications.push({ offset: 0, scheduledAt });
         }
       }

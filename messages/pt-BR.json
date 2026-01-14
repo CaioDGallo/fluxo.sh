@@ -666,7 +666,10 @@
     "paused": "Pausado",
     "completed": "Concluído",
     "pause": "Pausar",
-    "activate": "Ativar"
+    "activate": "Ativar",
+    "bannerTitle": "Lembretes de contas vencendo em breve",
+    "bannerDescription": "{count, plural, =1 {1 conta vencendo em breve} other {{count} contas vencendo em breve}}",
+    "acknowledge": "Confirmar"
   },
   "billReminderForm": {
     "name": "Nome",

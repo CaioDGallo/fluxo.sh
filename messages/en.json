@@ -666,7 +666,10 @@
     "paused": "Paused",
     "completed": "Completed",
     "pause": "Pause",
-    "activate": "Activate"
+    "activate": "Activate",
+    "bannerTitle": "Bill reminders due soon",
+    "bannerDescription": "{count, plural, =1 {1 bill due soon} other {{count} bills due soon}}",
+    "acknowledge": "Acknowledge"
   },
   "billReminderForm": {
     "name": "Name",

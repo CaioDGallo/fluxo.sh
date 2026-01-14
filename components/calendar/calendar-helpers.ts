@@ -11,15 +11,18 @@ import {
 export interface ExtendedCalendarEvent extends CalendarEvent {
   priority?: 'low' | 'medium' | 'high' | 'critical'
   status?: string
-  itemType?: 'event' | 'task'
+  itemType?: 'event' | 'task' | 'bill_reminder'
   itemId?: number
   isAllDay?: boolean
+  amount?: number | null
+  categoryId?: number | null
 }
 
 export interface CalendarEventItemProps {
   calendarEvent: ExtendedCalendarEvent
-  onEdit?: (id: number, type: 'event' | 'task') => void
-  onDelete?: (id: number, type: 'event' | 'task') => void
+  onEdit?: (id: number, type?: 'event' | 'task' | 'bill_reminder') => void
+  onDelete?: (id: number, type?: 'event' | 'task' | 'bill_reminder') => void
+  onBillReminderClick?: (id: number) => void
 }
 
 // Helper: Get priority icon component
@@ -59,7 +62,19 @@ export function getStatusConfig(status: string, itemType: string) {
     cancelled: { variant: "ghost", icon: CircleIcon },
   }
 
-  const configs = itemType === 'event' ? eventStatuses : taskStatuses
+  const billReminderStatuses: Record<string, { variant: "default" | "secondary" | "outline" | "ghost" | "destructive", icon: typeof Clock01Icon }> = {
+    active: { variant: "outline", icon: Clock01Icon },
+    paused: { variant: "ghost", icon: CircleIcon },
+    completed: { variant: "default", icon: Tick02Icon },
+  }
+
+  let configs = eventStatuses
+  if (itemType === 'task') {
+    configs = taskStatuses
+  } else if (itemType === 'bill_reminder') {
+    configs = billReminderStatuses
+  }
+
   return configs[status] || { variant: "outline" as const, icon: Clock01Icon }
 }
 
@@ -81,7 +96,14 @@ export function formatTime(zdt: unknown): string {
 
 // Helper: Get border color for event type
 export function getEventTypeBorderColor(itemType: string): string {
-  return itemType === 'event'
-    ? 'border-l-[oklch(0.60_0.20_250)]' // Blue for events
-    : 'border-l-[oklch(0.65_0.15_145)]'  // Green for tasks
+  switch (itemType) {
+    case 'event':
+      return 'border-l-[oklch(0.60_0.20_250)]' // Blue for events
+    case 'task':
+      return 'border-l-[oklch(0.65_0.15_145)]'  // Green for tasks
+    case 'bill_reminder':
+      return 'border-l-[oklch(0.70_0.15_85)]'   // Yellow for bill reminders
+    default:
+      return 'border-l-[oklch(0.60_0.20_250)]'  // Default to blue
+  }
 }

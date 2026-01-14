@@ -116,7 +116,6 @@ describe('Task Actions - Create Task', () => {
       expect(result.success).toBe(true);
 
       expect(revalidatePathMock).toHaveBeenCalledWith('/calendar');
-      expect(revalidatePathMock).toHaveBeenCalledWith('/tasks');
       expect(revalidateTagMock).toHaveBeenCalledWith('tasks', 'default');
     });
   });

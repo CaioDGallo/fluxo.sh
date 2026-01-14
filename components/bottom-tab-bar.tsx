@@ -78,9 +78,9 @@ export function BottomTabBar() {
   const isMoreActive =
     pathname.startsWith('/income') ||
     pathname.startsWith('/settings') ||
-    pathname.startsWith('/tasks') ||
     pathname.startsWith('/faturas') ||
-    pathname.startsWith('/transfers');
+    pathname.startsWith('/transfers') ||
+    pathname.startsWith('/reminders');
 
   return (
     <>

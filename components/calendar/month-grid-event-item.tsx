@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { Invoice01Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "@/lib/utils"
 import {
@@ -16,6 +17,7 @@ import {
 export function MonthGridEventItem({
   calendarEvent,
   onEdit,
+  onBillReminderClick,
 }: Omit<CalendarEventItemProps, 'onDelete'>) {
   const {
     title = 'Untitled',
@@ -35,9 +37,10 @@ export function MonthGridEventItem({
     return time || ''
   }, [start, isAllDay])
 
-  // Get priority icon and color
+  // Get priority icon and color (not used for bill reminders)
   const PriorityIcon = getPriorityIcon(priority)
   const priorityColor = getPriorityColor(priority)
+  const isBillReminder = itemType === 'bill_reminder'
 
   // Get status icon
   const statusConfig = getStatusConfig(status, itemType)
@@ -49,9 +52,11 @@ export function MonthGridEventItem({
   // Create accessible label
   const ariaLabel = `${title}${timeDisplay ? ` - ${timeDisplay}` : ''}${priority ? ` - Priority: ${priority}` : ''}${status ? ` - Status: ${status}` : ''}`
 
-  // Handle click to edit (no context menu in grid view, too small)
+  // Handle click
   const handleClick = () => {
-    if (onEdit && itemId !== undefined) {
+    if (isBillReminder && onBillReminderClick && itemId !== undefined) {
+      onBillReminderClick(itemId)
+    } else if (onEdit && itemId !== undefined) {
       onEdit(itemId, itemType)
     }
   }
@@ -85,12 +90,20 @@ export function MonthGridEventItem({
         </span>
       )}
 
-      {/* Priority dot */}
-      <HugeiconsIcon
-        icon={PriorityIcon}
-        className={cn("size-2 shrink-0", priorityColor)}
-        aria-label={`Priority: ${priority}`}
-      />
+      {/* Priority dot or bill reminder icon */}
+      {isBillReminder ? (
+        <HugeiconsIcon
+          icon={Invoice01Icon}
+          className="size-2 shrink-0 text-yellow-600 dark:text-yellow-400"
+          aria-label="Bill Reminder"
+        />
+      ) : (
+        <HugeiconsIcon
+          icon={PriorityIcon}
+          className={cn("size-2 shrink-0", priorityColor)}
+          aria-label={`Priority: ${priority}`}
+        />
+      )}
 
       {/* Title */}
       <span

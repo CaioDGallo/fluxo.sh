@@ -22,6 +22,15 @@ export const getBillReminders = cache(async () => {
     .orderBy(billReminders.name);
 });
 
+export const getActiveBillReminders = cache(async (): Promise<BillReminder[]> => {
+  const userId = await getCurrentUserId();
+  return await db
+    .select()
+    .from(billReminders)
+    .where(and(eq(billReminders.userId, userId), eq(billReminders.status, 'active')))
+    .orderBy(billReminders.name);
+});
+
 export async function createBillReminder(
   data: Omit<NewBillReminder, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ): Promise<ActionResult> {

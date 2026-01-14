@@ -13,7 +13,6 @@ import {
   CreditCardIcon,
   Invoice03Icon,
   SparklesIcon,
-  Tick02Icon,
   Wallet01Icon,
   Calendar03Icon,
   Notification02Icon,
@@ -27,7 +26,6 @@ import { LanguageToggleRow } from './language-toggle-row';
 
 const moreItems = [
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
-  { key: 'tasks', href: '/tasks', icon: Tick02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
   { key: 'income', href: '/income', icon: ArrowUp01Icon },
   { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },

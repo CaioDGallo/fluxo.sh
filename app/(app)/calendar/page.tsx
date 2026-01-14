@@ -13,9 +13,13 @@ import { createEventsServicePlugin } from '@schedule-x/events-service';
 import 'temporal-polyfill/global';
 import '@schedule-x/theme-shadcn/dist/index.css';
 import { deleteEvent, getEventsWithRecurrence } from '@/lib/actions/events';
+import { deleteTask, getTasksWithRecurrence } from '@/lib/actions/tasks';
+import { getActiveBillReminders } from '@/lib/actions/bill-reminders';
 import { getUserSettings } from '@/lib/actions/user-settings';
-import { type Event } from '@/lib/schema';
+import { type Event, type Task, type BillReminder } from '@/lib/schema';
 import { parseRRule } from '@/lib/recurrence';
+import { buildTaskSchedule, type TaskWithRecurrence } from '@/lib/task-schedule';
+import { buildBillReminderSchedule } from '@/lib/bill-reminder-schedule';
 import { getBrowserTimeZone, resolveTimeZone, toZonedDateTime } from '@/lib/timezone-utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,22 +34,18 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EventForm } from '@/components/event-form';
+import { TaskForm } from '@/components/task-form';
 import { MonthAgendaEventItem } from '@/components/calendar/month-agenda-event-item';
 import { WeekEventItem } from '@/components/calendar/week-event-item';
 import { DayEventItem } from '@/components/calendar/day-event-item';
 import { MonthGridEventItem } from '@/components/calendar/month-grid-event-item';
 import { EventDetailSheet } from '@/components/calendar/event-detail-sheet';
+import { BillReminderDetailSheet } from '@/components/calendar/bill-reminder-detail-sheet';
 import { QuickAddTask } from '@/components/quick-add-task';
 import { useTranslations } from 'next-intl';
 import { Theme } from '@/components/theme-toggle';
-import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  Clock01Icon,
-  Flag01Icon,
-  Alert01Icon,
-  CircleIcon,
-  Tick02Icon,
-} from '@hugeicons/core-free-icons';
+import { Toggle } from '@/components/ui/toggle';
+import { Separator } from '@/components/ui/separator';
 
 function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -96,28 +96,31 @@ function resolveRecurrenceWindow(rule: ReturnType<typeof parseRRule>, baseStartA
 export default function CalendarPage() {
   const eventsService = useState(() => createEventsServicePlugin())[0];
   const [events, setEvents] = useState<EventWithRecurrence[]>([]);
+  const [tasks, setTasks] = useState<TaskWithRecurrence[]>([]);
+  const [billReminders, setBillReminders] = useState<BillReminder[]>([]);
   const [timeZone, setTimeZone] = useState(() => getBrowserTimeZone());
-  const [statusFilters, setStatusFilters] = useState({
-    scheduled: true,
-    completed: true,
-  });
-  const [priorityFilters, setPriorityFilters] = useState({
-    low: true,
-    medium: true,
-    high: true,
-    critical: true,
-  });
 
-  const toggleStatus = (key: 'scheduled' | 'completed') => {
-    setStatusFilters(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // Simple toggle filters
+  const [showEvents, setShowEvents] = useState(true);
+  const [showTasks, setShowTasks] = useState(true);
+  const [showBillReminders, setShowBillReminders] = useState(true);
+  const [hideCompleted, setHideCompleted] = useState(false);
 
-  const togglePriority = (key: 'low' | 'medium' | 'high' | 'critical') => {
-    setPriorityFilters(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // Event state
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [editEventDialogOpen, setEditEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  // Task state
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Bill Reminder state
+  const [billReminderSheetOpen, setBillReminderSheetOpen] = useState(false);
+  const [selectedBillReminder, setSelectedBillReminder] = useState<BillReminder | null>(null);
+
+  // Shared state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
@@ -141,6 +144,8 @@ export default function CalendarPage() {
     durationMinutes?: number | null;
   } | null>(null);
   const eventsRef = useRef<EventWithRecurrence[]>([]);
+  const tasksRef = useRef<TaskWithRecurrence[]>([]);
+  const billRemindersRef = useRef<BillReminder[]>([]);
   const occurrenceOverridesRef = useRef(new Map<string, { startAt: Date; endAt: Date }>());
   const t = useTranslations('calendar');
   const tCommon = useTranslations('common');
@@ -152,11 +157,15 @@ export default function CalendarPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    const [eventsData, settings] = await Promise.all([
+    const [eventsData, tasksData, billRemindersData, settings] = await Promise.all([
       getEventsWithRecurrence(),
+      getTasksWithRecurrence(),
+      getActiveBillReminders(),
       getUserSettings(),
     ]);
     setTimeZone(resolveTimeZone(settings));
+
+    // Normalize events
     const normalizedEvents = eventsData.map((event) => ({
       ...event,
       recurrenceRule: event.recurrenceRule ?? null,
@@ -167,6 +176,24 @@ export default function CalendarPage() {
     }));
     eventsRef.current = normalizedEvents;
     setEvents(normalizedEvents);
+
+    // Normalize tasks
+    const normalizedTasks = tasksData.map((task) => ({
+      ...task,
+      recurrenceRule: task.recurrenceRule ?? null,
+      dueAt: toDate(task.dueAt),
+      startAt: task.startAt ? toDate(task.startAt) : null,
+      completedAt: toOptionalDate(task.completedAt),
+      createdAt: toOptionalDate(task.createdAt),
+      updatedAt: toOptionalDate(task.updatedAt),
+    }));
+    tasksRef.current = normalizedTasks;
+    setTasks(normalizedTasks);
+
+    // Set bill reminders
+    billRemindersRef.current = billRemindersData;
+    setBillReminders(billRemindersData);
+
     setIsLoading(false);
   }, []);
 
@@ -175,42 +202,86 @@ export default function CalendarPage() {
   }, [loadData]);
 
   const handleCalendarEventClick = useCallback((calendarEvent: { id: string | number; calendarId?: string }) => {
-    function parseCalendarId(id: string | number) {
-      const raw = typeof id === 'number' ? `event-${id}` : id;
-      const match = /^event-(\d+)/.exec(raw);
-      if (!match) return null;
-      const parsed = Number(match[1]);
-      return Number.isNaN(parsed) ? null : parsed;
+    const idStr = String(calendarEvent.id);
+
+    // Parse item type and ID from calendar event ID
+    if (idStr.startsWith('event-')) {
+      const match = /^event-(\d+)/.exec(idStr);
+      if (!match) return;
+      const parsedId = Number(match[1]);
+      if (Number.isNaN(parsedId)) return;
+
+      const event = eventsRef.current.find((item) => item.id === parsedId);
+      if (!event) return;
+
+      const occurrenceOverride = occurrenceOverridesRef.current.get(idStr);
+      const startAt = occurrenceOverride?.startAt ?? event.startAt;
+      const endAt = occurrenceOverride?.endAt ?? event.endAt;
+
+      setDetailSheetData({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        startAt,
+        endAt,
+        isAllDay: event.isAllDay,
+        priority: event.priority,
+        status: event.status,
+        type: 'event',
+      });
+      setDetailSheetOpen(true);
+    } else if (idStr.startsWith('task-')) {
+      const match = /^task-(\d+)/.exec(idStr);
+      if (!match) return;
+      const parsedId = Number(match[1]);
+      if (Number.isNaN(parsedId)) return;
+
+      const task = tasksRef.current.find((item) => item.id === parsedId);
+      if (!task) return;
+
+      const occurrenceOverride = occurrenceOverridesRef.current.get(idStr);
+      const startAt = occurrenceOverride?.startAt ?? (task.startAt || task.dueAt);
+      const endAt = occurrenceOverride?.endAt ?? task.dueAt;
+
+      setDetailSheetData({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        location: task.location,
+        startAt,
+        endAt,
+        priority: task.priority,
+        status: task.status,
+        type: 'task',
+        durationMinutes: task.durationMinutes,
+      });
+      setDetailSheetOpen(true);
+    } else if (idStr.startsWith('bill-reminder-')) {
+      const match = /^bill-reminder-(\d+)/.exec(idStr);
+      if (!match) return;
+      const parsedId = Number(match[1]);
+      if (Number.isNaN(parsedId)) return;
+
+      const reminder = billRemindersRef.current.find((item) => item.id === parsedId);
+      if (!reminder) return;
+
+      setSelectedBillReminder(reminder);
+      setBillReminderSheetOpen(true);
     }
-
-    const parsedId = parseCalendarId(calendarEvent.id);
-    if (parsedId === null) return;
-
-    const event = eventsRef.current.find((item) => item.id === parsedId);
-    if (!event) return;
-    const eventKey = typeof calendarEvent.id === 'number' ? `event-${calendarEvent.id}` : calendarEvent.id;
-    const occurrenceOverride = occurrenceOverridesRef.current.get(eventKey);
-    const startAt = occurrenceOverride?.startAt ?? event.startAt;
-    const endAt = occurrenceOverride?.endAt ?? event.endAt;
-    setDetailSheetData({
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      location: event.location,
-      startAt,
-      endAt,
-      isAllDay: event.isAllDay,
-      priority: event.priority,
-      status: event.status,
-      type: 'event',
-    });
-    setDetailSheetOpen(true);
   }, []);
 
   function handleEditEventOpenChange(open: boolean) {
     setEditEventDialogOpen(open);
     if (!open) {
       setSelectedEvent(null);
+    }
+  }
+
+  function handleEditTaskOpenChange(open: boolean) {
+    setEditTaskDialogOpen(open);
+    if (!open) {
+      setSelectedTask(null);
     }
   }
 
@@ -235,7 +306,11 @@ export default function CalendarPage() {
     setDeleteError(null);
 
     try {
-      const result = await deleteEvent(deleteTarget.id);
+      // Determine item type from detail sheet data
+      const isTask = detailSheetData?.type === 'task';
+      const result = isTask
+        ? await deleteTask(deleteTarget.id)
+        : await deleteEvent(deleteTarget.id);
 
       if (!result.success) {
         setDeleteError(result.error);
@@ -245,6 +320,7 @@ export default function CalendarPage() {
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
       setSelectedEvent(null);
+      setSelectedTask(null);
       await loadData();
     } catch (error) {
       console.error('[Calendar] Delete failed:', error);
@@ -258,10 +334,17 @@ export default function CalendarPage() {
   const handleDetailSheetEdit = useCallback(() => {
     if (!detailSheetData) return;
 
-    const event = eventsRef.current.find((e) => e.id === detailSheetData.id);
-    if (!event) return;
-    setSelectedEvent(event);
-    setEditEventDialogOpen(true);
+    if (detailSheetData.type === 'event') {
+      const event = eventsRef.current.find((e) => e.id === detailSheetData.id);
+      if (!event) return;
+      setSelectedEvent(event);
+      setEditEventDialogOpen(true);
+    } else if (detailSheetData.type === 'task') {
+      const task = tasksRef.current.find((t) => t.id === detailSheetData.id);
+      if (!task) return;
+      setSelectedTask(task);
+      setEditTaskDialogOpen(true);
+    }
   }, [detailSheetData]);
 
   const handleDetailSheetDelete = useCallback(() => {
@@ -274,19 +357,32 @@ export default function CalendarPage() {
   }, [detailSheetData]);
 
   // Handlers for custom event item context menu
-  const handleEventItemEdit = useCallback((id: number) => {
-    handleCalendarEventClick({ id: `event-${id}`, calendarId: 'events' });
+  const handleEventItemEdit = useCallback((id: number, itemType?: string) => {
+    if (itemType === 'task') {
+      handleCalendarEventClick({ id: `task-${id}`, calendarId: 'tasks' });
+    } else {
+      handleCalendarEventClick({ id: `event-${id}`, calendarId: 'events' });
+    }
   }, [handleCalendarEventClick]);
 
-  const handleEventItemDelete = useCallback((id: number) => {
-    const item = eventsRef.current.find((e) => e.id === id);
+  const handleEventItemDelete = useCallback((id: number, itemType?: string) => {
+    if (itemType === 'task') {
+      const item = tasksRef.current.find((t) => t.id === id);
+      if (!item) return;
+      requestDelete({ id, title: item.title });
+    } else {
+      const item = eventsRef.current.find((e) => e.id === id);
+      if (!item) return;
+      requestDelete({ id, title: item.title });
+    }
+  }, []);
 
-    if (!item) return;
-
-    requestDelete({
-      id,
-      title: item.title,
-    });
+  // Handler for bill reminder clicks
+  const handleBillReminderClick = useCallback((id: number) => {
+    const reminder = billRemindersRef.current.find((r) => r.id === id);
+    if (!reminder) return;
+    setSelectedBillReminder(reminder);
+    setBillReminderSheetOpen(true);
   }, []);
 
   // Custom event item components for each view
@@ -296,9 +392,10 @@ export default function CalendarPage() {
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
         onDelete={handleEventItemDelete}
+        onBillReminderClick={handleBillReminderClick}
       />
     );
-  }, [handleEventItemEdit, handleEventItemDelete]);
+  }, [handleEventItemEdit, handleEventItemDelete, handleBillReminderClick]);
 
   const CustomWeekEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
     return (
@@ -306,9 +403,10 @@ export default function CalendarPage() {
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
         onDelete={handleEventItemDelete}
+        onBillReminderClick={handleBillReminderClick}
       />
     );
-  }, [handleEventItemEdit, handleEventItemDelete]);
+  }, [handleEventItemEdit, handleEventItemDelete, handleBillReminderClick]);
 
   const CustomDayEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
     return (
@@ -316,37 +414,44 @@ export default function CalendarPage() {
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
         onDelete={handleEventItemDelete}
+        onBillReminderClick={handleBillReminderClick}
       />
     );
-  }, [handleEventItemEdit, handleEventItemDelete]);
+  }, [handleEventItemEdit, handleEventItemDelete, handleBillReminderClick]);
 
   const CustomMonthGridEventItem = useCallback(({ calendarEvent }: { calendarEvent: CalendarEvent }) => {
     return (
       <MonthGridEventItem
         calendarEvent={calendarEvent}
         onEdit={handleEventItemEdit}
+        onBillReminderClick={handleBillReminderClick}
       />
     );
-  }, [handleEventItemEdit]);
+  }, [handleEventItemEdit, handleBillReminderClick]);
 
-  const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      // Status filter
-      const statusMatch =
-        (event.status === 'scheduled' && statusFilters.scheduled) ||
-        (event.status === 'completed' && statusFilters.completed);
-      if (!statusMatch) return false;
-
-      // Priority filter
-      if (!priorityFilters[event.priority]) return false;
-
+  // Filter and combine all item types
+  const filteredItems = useMemo(() => {
+    const filteredEventsList = showEvents ? events.filter((event) => {
+      if (hideCompleted && event.status === 'completed') return false;
       return true;
-    });
-  }, [events, statusFilters, priorityFilters]);
+    }) : [];
+
+    const filteredTasksList = showTasks ? tasks.filter((task) => {
+      if (hideCompleted && task.status === 'completed') return false;
+      return true;
+    }) : [];
+
+    return {
+      events: filteredEventsList,
+      tasks: filteredTasksList,
+      billReminders: showBillReminders ? billReminders : [],
+    };
+  }, [events, tasks, billReminders, showEvents, showTasks, showBillReminders, hideCompleted]);
 
   const scheduleData = useMemo(() => {
     const occurrenceOverrides = new Map<string, { startAt: Date; endAt: Date }>();
 
+    // Build event schedule events
     const buildScheduleEvent = (event: EventWithRecurrence, id: string, startAt: Date, endAt: Date) => {
       occurrenceOverrides.set(id, { startAt, endAt });
       return {
@@ -365,7 +470,7 @@ export default function CalendarPage() {
       };
     };
 
-    const scheduleEvents = filteredEvents.flatMap((event) => {
+    const eventScheduleEvents = filteredItems.events.flatMap((event) => {
       const baseStartAt = toDate(event.startAt);
       const baseEndAt = toDate(event.endAt);
       const baseId = `event-${event.id}`;
@@ -378,7 +483,7 @@ export default function CalendarPage() {
       try {
         rule = parseRRule(event.recurrenceRule, { dtstart: baseStartAt });
       } catch (error) {
-        console.error('[Calendar] Invalid recurrence rule:', {
+        console.error('[Calendar] Invalid event recurrence rule:', {
           eventId: event.id,
           rrule: event.recurrenceRule,
           error,
@@ -402,8 +507,31 @@ export default function CalendarPage() {
       });
     });
 
-    return { scheduleEvents, occurrenceOverrides };
-  }, [filteredEvents, timeZone]);
+    // Build task schedule using existing helper
+    const { scheduleEvents: taskScheduleEvents } = buildTaskSchedule(
+      filteredItems.tasks,
+      timeZone
+    );
+
+    // Build bill reminder schedule using existing helper
+    const now = new Date();
+    const viewStart = addMonthsToDate(now, -1);
+    const viewEnd = addMonthsToDate(now, 6);
+    const { scheduleEvents: billReminderScheduleEvents } = buildBillReminderSchedule(
+      filteredItems.billReminders,
+      timeZone,
+      viewStart,
+      viewEnd
+    );
+
+    const allScheduleEvents = [
+      ...eventScheduleEvents,
+      ...taskScheduleEvents,
+      ...billReminderScheduleEvents,
+    ];
+
+    return { scheduleEvents: allScheduleEvents, occurrenceOverrides };
+  }, [filteredItems, timeZone]);
 
   useEffect(() => {
     occurrenceOverridesRef.current = scheduleData.occurrenceOverrides;
@@ -435,6 +563,32 @@ export default function CalendarPage() {
           onContainer: 'oklch(0.95 0.05 250)',
         },
       },
+      tasks: {
+        colorName: 'tasks',
+        lightColors: {
+          main: 'oklch(0.65 0.15 145)',
+          container: 'oklch(0.95 0.10 145)',
+          onContainer: 'oklch(0.40 0.15 145)',
+        },
+        darkColors: {
+          main: 'oklch(0.75 0.15 145)',
+          container: 'oklch(0.35 0.10 145)',
+          onContainer: 'oklch(0.95 0.05 145)',
+        },
+      },
+      'bill-reminders': {
+        colorName: 'bill-reminders',
+        lightColors: {
+          main: 'oklch(0.70 0.15 85)',
+          container: 'oklch(0.95 0.10 85)',
+          onContainer: 'oklch(0.40 0.15 85)',
+        },
+        darkColors: {
+          main: 'oklch(0.80 0.15 85)',
+          container: 'oklch(0.35 0.10 85)',
+          onContainer: 'oklch(0.95 0.05 85)',
+        },
+      },
     },
     callbacks: {
       onEventClick: (event) => handleCalendarEventClick(event),
@@ -450,19 +604,33 @@ export default function CalendarPage() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-6 flex-col md:flex-row space-y-4 md:space-y-0">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <div className="flex gap-2 w-full justify-start md:justify-end">
+        <div className="flex gap-2 w-full justify-start md:justify-end flex-col md:flex-row">
           <QuickAddTask defaultType="event" onSuccess={loadData} />
-          <AlertDialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="hollow">{t('addEvent')}</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('addEvent')}</AlertDialogTitle>
-              </AlertDialogHeader>
-              <EventForm onSuccess={() => { setEventDialogOpen(false); loadData(); }} />
-            </AlertDialogContent>
-          </AlertDialog>
+
+          <div className='flex flex-row justify-center w-full md:w-auto space-x-4 md:justify-end'>
+            <AlertDialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="hollow">{t('addEvent')}</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('addEvent')}</AlertDialogTitle>
+                </AlertDialogHeader>
+                <EventForm onSuccess={() => { setEventDialogOpen(false); loadData(); }} />
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="hollow">{t('addTask')}</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('addTask')}</AlertDialogTitle>
+                </AlertDialogHeader>
+                <TaskForm onSuccess={() => { setTaskDialogOpen(false); loadData(); }} />
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
 
           <AlertDialog open={editEventDialogOpen} onOpenChange={handleEditEventOpenChange}>
             <AlertDialogContent closeOnBackdropClick>
@@ -502,90 +670,23 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="mb-4 gap-4 flex flex-col md:flex-row space-x-0 md:space-x-4">
-        {/* Status Filter */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
-            {t('statusLabel')}:
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant={statusFilters.scheduled ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => toggleStatus('scheduled')}
-              aria-label={t('status.scheduled')}
-              aria-pressed={statusFilters.scheduled}
-              title={t('status.scheduled')}
-              className='p-4'
-            >
-              <HugeiconsIcon icon={Clock01Icon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant={statusFilters.completed ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => toggleStatus('completed')}
-              aria-label={t('status.completed')}
-              aria-pressed={statusFilters.completed}
-              title={t('status.completed')}
-              className='p-4'
-            >
-              <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} />
-            </Button>
-          </div>
-        </div>
-
-        {/* Priority Filter */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground inline min-w-[60px]">
-            {t('priorityLabel')}:
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant={priorityFilters.low ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => togglePriority('low')}
-              aria-label={t('priority.low')}
-              aria-pressed={priorityFilters.low}
-              title={t('priority.low')}
-              className={'text-muted-foreground p-4'}
-            >
-              <HugeiconsIcon icon={CircleIcon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant={priorityFilters.medium ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => togglePriority('medium')}
-              aria-label={t('priority.medium')}
-              aria-pressed={priorityFilters.medium}
-              title={t('priority.medium')}
-              className={'text-blue-600 p-4'}
-            >
-              <HugeiconsIcon icon={Flag01Icon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant={priorityFilters.high ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => togglePriority('high')}
-              aria-label={t('priority.high')}
-              aria-pressed={priorityFilters.high}
-              title={t('priority.high')}
-              className={'text-orange-600 p-4'}
-            >
-              <HugeiconsIcon icon={Flag01Icon} strokeWidth={2} />
-            </Button>
-            <Button
-              variant={priorityFilters.critical ? 'popout' : 'hollow'}
-              size="icon-sm"
-              onClick={() => togglePriority('critical')}
-              aria-label={t('priority.critical')}
-              aria-pressed={priorityFilters.critical}
-              title={t('priority.critical')}
-              className={'text-red-600 p-4'}
-            >
-              <HugeiconsIcon icon={Alert01Icon} strokeWidth={2} />
-            </Button>
-          </div>
-        </div>
+      <div className="mb-4 gap-2 flex flex-wrap items-center">
+        <Toggle pressed={showEvents} onPressedChange={setShowEvents} aria-label="Show events">
+          <span className="w-2 h-2 rounded-full bg-[oklch(0.60_0.20_250)] dark:bg-[oklch(0.70_0.20_250)] mr-2" />
+          Events
+        </Toggle>
+        <Toggle pressed={showTasks} onPressedChange={setShowTasks} aria-label="Show tasks">
+          <span className="w-2 h-2 rounded-full bg-[oklch(0.65_0.15_145)] dark:bg-[oklch(0.75_0.15_145)] mr-2" />
+          Tasks
+        </Toggle>
+        <Toggle pressed={showBillReminders} onPressedChange={setShowBillReminders} aria-label="Show bill reminders">
+          <span className="w-2 h-2 rounded-full bg-[oklch(0.70_0.15_85)] dark:bg-[oklch(0.80_0.15_85)] mr-2" />
+          Bills
+        </Toggle>
+        <Separator orientation="vertical" className="h-6 mx-2" />
+        <Toggle pressed={hideCompleted} onPressedChange={setHideCompleted} aria-label="Hide completed">
+          Hide Completed
+        </Toggle>
       </div>
 
       {isLoading ? (
@@ -640,6 +741,43 @@ export default function CalendarPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Edit Task Dialog */}
+      <AlertDialog open={editTaskDialogOpen} onOpenChange={handleEditTaskOpenChange}>
+        <AlertDialogContent closeOnBackdropClick>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('editTask')}</AlertDialogTitle>
+          </AlertDialogHeader>
+          {selectedTask && (
+            <>
+              <TaskForm
+                key={`task-${selectedTask.id}`}
+                task={selectedTask}
+                onSuccess={() => {
+                  setEditTaskDialogOpen(false);
+                  setSelectedTask(null);
+                  loadData();
+                }}
+              />
+              <div className="flex justify-end border-t border-border pt-3">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    setEditTaskDialogOpen(false);
+                    requestDelete({
+                      id: selectedTask.id,
+                      title: selectedTask.title,
+                    });
+                  }}
+                >
+                  {tCommon('delete')}
+                </Button>
+              </div>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Event Detail Sheet */}
       <EventDetailSheet
         open={detailSheetOpen}
@@ -648,6 +786,13 @@ export default function CalendarPage() {
         timeZone={timeZone}
         onEdit={handleDetailSheetEdit}
         onDelete={handleDetailSheetDelete}
+      />
+
+      {/* Bill Reminder Detail Sheet */}
+      <BillReminderDetailSheet
+        open={billReminderSheetOpen}
+        onOpenChange={setBillReminderSheetOpen}
+        reminder={selectedBillReminder}
       />
     </div>
   );

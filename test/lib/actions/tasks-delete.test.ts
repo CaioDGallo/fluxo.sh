@@ -319,7 +319,6 @@ describe('Task Actions - Delete Task', () => {
       await deleteTask(task.id);
 
       expect(revalidatePathMock).toHaveBeenCalledWith('/calendar');
-      expect(revalidatePathMock).toHaveBeenCalledWith('/tasks');
       expect(revalidateTagMock).toHaveBeenCalledWith('tasks', 'default');
     });
   });

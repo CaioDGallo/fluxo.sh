@@ -98,7 +98,6 @@ describe('Task Actions - Status Changes', () => {
       await completeTask(task.id);
 
       expect(revalidatePathMock).toHaveBeenCalledWith('/calendar');
-      expect(revalidatePathMock).toHaveBeenCalledWith('/tasks');
       expect(revalidateTagMock).toHaveBeenCalledWith('tasks', 'default');
     });
   });

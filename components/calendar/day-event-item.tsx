@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { Invoice01Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ export function DayEventItem({
   calendarEvent,
   onEdit,
   onDelete,
+  onBillReminderClick,
 }: CalendarEventItemProps) {
   const {
     title = 'Untitled',
@@ -56,9 +58,10 @@ export function DayEventItem({
     return `${startTime} - ${endTime}`
   }, [start, end, isAllDay])
 
-  // Get priority icon and color
+  // Get priority icon and color (not used for bill reminders)
   const PriorityIcon = getPriorityIcon(priority)
   const priorityColor = getPriorityColor(priority)
+  const isBillReminder = itemType === 'bill_reminder'
 
   // Get status badge config
   const statusConfig = getStatusConfig(status, itemType)
@@ -69,6 +72,13 @@ export function DayEventItem({
 
   // Create accessible label
   const ariaLabel = `${title}${timeDisplay ? ` - ${timeDisplay}` : ''}${priority ? ` - Priority: ${priority}` : ''}${status ? ` - Status: ${status}` : ''}`
+
+  // Handle click for bill reminders
+  const handleClick = () => {
+    if (isBillReminder && onBillReminderClick && itemId !== undefined) {
+      onBillReminderClick(itemId)
+    }
+  }
 
   // Handle context menu actions
   const handleEdit = () => {
@@ -106,14 +116,23 @@ export function DayEventItem({
       )}
       aria-label={ariaLabel}
       title={title}
+      onClick={isBillReminder ? handleClick : undefined}
     >
       {/* Priority | Title | Status */}
       <div className="flex items-center gap-1.5">
-        <HugeiconsIcon
-          icon={PriorityIcon}
-          className={cn("size-2.5 shrink-0", priorityColor)}
-          aria-label={`Priority: ${priority}`}
-        />
+        {isBillReminder ? (
+          <HugeiconsIcon
+            icon={Invoice01Icon}
+            className="size-2.5 shrink-0 text-yellow-600 dark:text-yellow-400"
+            aria-label="Bill Reminder"
+          />
+        ) : (
+          <HugeiconsIcon
+            icon={PriorityIcon}
+            className={cn("size-2.5 shrink-0", priorityColor)}
+            aria-label={`Priority: ${priority}`}
+          />
+        )}
         <span
           className={cn(
             "flex-1 text-[11px] font-medium leading-tight truncate",
@@ -141,6 +160,11 @@ export function DayEventItem({
       )}
     </div>
   )
+
+  // Bill reminders are view-only, no context menu
+  if (isBillReminder) {
+    return eventContent
+  }
 
   // If no handlers provided, return without context menu
   if (!onEdit && !onDelete) {

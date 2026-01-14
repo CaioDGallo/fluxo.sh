@@ -180,9 +180,10 @@ describe('Notification Scheduling', () => {
 
   it('creates notification jobs for events and ignores disabled configs', async () => {
     const startAt = new Date('2026-05-10T14:00:00Z');
+    const endAt = new Date('2026-05-10T15:00:00Z');
     const [event] = await db
       .insert(schema.events)
-      .values(createTestEvent({ title: 'Event With Notifications', startAt }))
+      .values(createTestEvent({ title: 'Event With Notifications', startAt, endAt }))
       .returning();
 
     await db.insert(schema.notifications).values([
@@ -216,9 +217,10 @@ describe('Notification Scheduling', () => {
 
   it('skips scheduling when the parent item is not owned', async () => {
     const startAt = new Date('2026-06-01T09:00:00Z');
+    const endAt = new Date('2026-06-01T10:00:00Z');
     const [event] = await db
       .insert(schema.events)
-      .values(createTestEvent({ userId: OTHER_USER_ID, startAt }))
+      .values(createTestEvent({ userId: OTHER_USER_ID, startAt, endAt }))
       .returning();
 
     await db.insert(schema.notifications).values({

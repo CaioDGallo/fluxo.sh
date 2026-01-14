@@ -32,7 +32,7 @@ While doing a code review, keep track of it and note your findings in a dedicate
 
 ## Coding Workflow
 
-1. Create a new branch named after your currenct bd issue (e.g. feat/northstar-3nf) or a short description if no bd issue (feat/bill-reminders).
+1. Create a new branch named after your currenct bd issue (e.g. feat/northstar-3nf) or a short description if no bd issue (feat/bill-reminders). Always get the main branch, up to date with remote, as the base branch.
 2. Work on this branch and land the plane on it at the end with everything being pushed and synced to the remote.
 3. Create the PR at the end using the github cli `gh`
 

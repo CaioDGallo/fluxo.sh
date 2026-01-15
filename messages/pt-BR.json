@@ -512,7 +512,8 @@
       "events": "Eventos",
       "tasks": "Tarefas",
       "billReminders": "Contas",
-      "hideCompleted": "Ocultar concluídas"
+      "hideCompleted": "Ocultar concluídas",
+      "showCompleted": "Mostrar concluídas"
     },
     "status": {
       "scheduled": "Agendado",

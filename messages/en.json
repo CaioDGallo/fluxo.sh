@@ -512,7 +512,8 @@
       "events": "Events",
       "tasks": "Tasks",
       "billReminders": "Bills",
-      "hideCompleted": "Hide Completed"
+      "hideCompleted": "Hide Completed",
+      "showCompleted": "Show Completed"
     },
     "status": {
       "scheduled": "Scheduled",

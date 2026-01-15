@@ -57,6 +57,7 @@ type ExpenseCardBaseProps = {
     accountId: number;
     accountName: string;
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+    ignored: boolean;
   };
   categories: Category[];
   accounts: Account[];
@@ -121,6 +122,12 @@ export function ExpenseCard(props: ExpenseCardProps) {
     }
   };
 
+  const handleToggleIgnore = async () => {
+    if (context) {
+      await context.toggleIgnore(entry.transactionId);
+    }
+  };
+
   const handleDelete = async () => {
     if (context) {
       await context.removeExpense(entry.transactionId);
@@ -156,6 +163,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
       <Card className={cn(
         "py-0 relative",
         isOptimistic && "opacity-70 animate-pulse",
+        entry.ignored && "opacity-50",
         props.selectionMode && "cursor-pointer",
         props.selectionMode && props.isSelected && "ring-2 ring-primary ring-offset-2"
       )}>
@@ -279,6 +287,9 @@ export function ExpenseCard(props: ExpenseCardProps) {
                   {t('markAsPaid')}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={handleToggleIgnore}>
+                {entry.ignored ? t('showInTotals') : t('hideFromTotals')}
+              </DropdownMenuItem>
               {canConvertToFatura && (
                 <DropdownMenuItem onClick={() => setConvertDialogOpen(true)}>
                   {t('convertToFaturaPayment')}

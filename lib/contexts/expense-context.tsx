@@ -11,6 +11,7 @@ import {
   markEntryPaid as serverMarkEntryPaid,
   markEntryPending as serverMarkEntryPending,
   bulkUpdateTransactionCategories as serverBulkUpdateTransactionCategories,
+  toggleIgnoreTransaction as serverToggleIgnoreTransaction,
   type ExpenseFilters,
 } from '@/lib/actions/expenses';
 import { centsToDisplay } from '@/lib/utils';
@@ -34,6 +35,7 @@ export type ExpenseEntry = {
   accountId: number;
   accountName: string;
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+  ignored: boolean;
 };
 
 // Optimistic item wrapper
@@ -63,7 +65,8 @@ type ReducerAction =
   | { type: 'add'; items: OptimisticExpenseEntry[] }
   | { type: 'toggle'; id: number; paidAt: string | null }
   | { type: 'remove'; transactionId: number }
-  | { type: 'bulkUpdateCategory'; transactionIds: number[]; category: Category };
+  | { type: 'bulkUpdateCategory'; transactionIds: number[]; category: Category }
+  | { type: 'toggleIgnore'; transactionId: number };
 
 // Reducer for useOptimistic
 function expenseReducer(
@@ -92,6 +95,12 @@ function expenseReducer(
             }
           : e
       );
+    case 'toggleIgnore':
+      return state.map((e) =>
+        e.transactionId === action.transactionId
+          ? { ...e, ignored: !e.ignored, _optimistic: true }
+          : e
+      );
     default:
       return state;
   }
@@ -115,6 +124,7 @@ type ExpenseContextValue = {
   togglePaid: (id: number, currentPaidAt: string | null) => Promise<void>;
   removeExpense: (transactionId: number) => Promise<void>;
   bulkUpdateCategory: (transactionIds: number[], categoryId: number) => Promise<void>;
+  toggleIgnore: (transactionId: number) => Promise<void>;
 };
 
 const ExpenseContext = createContext<ExpenseContextValue | null>(null);
@@ -182,6 +192,7 @@ function generateOptimisticEntries(
       accountId: input.accountId,
       accountName: input.accountName,
       accountType: input.accountType,
+      ignored: false,
       _optimistic: true,
       _tempId: `${tempId}-${i}`,
     });
@@ -307,6 +318,22 @@ export function ExpenseListProvider({
     [categories, dispatch]
   );
 
+  // Toggle ignore
+  const toggleIgnore = useCallback(
+    async (transactionId: number) => {
+      startTransition(() => {
+        dispatch({ type: 'toggleIgnore', transactionId });
+      });
+
+      try {
+        await serverToggleIgnoreTransaction(transactionId);
+      } catch {
+        toast.error('Failed to update ignore status');
+      }
+    },
+    [dispatch]
+  );
+
   const value: ExpenseContextValue = {
     expenses: optimisticExpenses,
     filteredExpenses,
@@ -320,6 +347,7 @@ export function ExpenseListProvider({
     togglePaid,
     removeExpense,
     bulkUpdateCategory,
+    toggleIgnore,
   };
 
   return <ExpenseContext.Provider value={value}>{children}</ExpenseContext.Provider>;

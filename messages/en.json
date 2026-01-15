@@ -137,7 +137,9 @@
     "convertToFaturaDescription": "Select the fatura this expense paid",
     "faturaSelectionLabel": "Target fatura",
     "selectFatura": "Select a fatura...",
-    "convertSuccess": "Expense converted to fatura payment"
+    "convertSuccess": "Expense converted to fatura payment",
+    "hideFromTotals": "Ignore in calculations",
+    "showInTotals": "Include in calculations"
   },
   "income": {
     "title": "Income",
@@ -152,7 +154,9 @@
     "deleteIncome": "Delete Income",
     "deleteConfirmationTitle": "Delete income?",
     "deleteConfirmation": "This will delete \"{description}\". This action cannot be undone.",
-    "viewDetails": "View Details"
+    "viewDetails": "View Details",
+    "hideFromTotals": "Ignore in calculations",
+    "showInTotals": "Include in calculations"
   },
   "transfers": {
     "title": "Transfers",
@@ -178,7 +182,9 @@
       "internal_transfer": "Transfer",
       "deposit": "Deposit",
       "withdrawal": "Withdrawal"
-    }
+    },
+    "hideFromTotals": "Ignore in calculations",
+    "showInTotals": "Include in calculations"
   },
   "settings": {
     "title": "Settings",

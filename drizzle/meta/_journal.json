@@ -134,6 +134,13 @@
       "when": 1768485939736,
       "tag": "0018_polite_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1768489437040,
+      "tag": "0019_mixed_naoko",
+      "breakpoints": true
     }
   ]
 }

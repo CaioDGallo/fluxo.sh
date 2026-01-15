@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
+import { activeTransactionCondition } from '@/lib/query-helpers';
 
 export async function getBudgetsForMonth(yearMonth: string) {
   try {
@@ -208,7 +209,8 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       .where(and(
         eq(entries.userId, userId),
         gte(entries.purchaseDate, startDate),
-        lte(entries.purchaseDate, endDate)
+        lte(entries.purchaseDate, endDate),
+        activeTransactionCondition()
       ))
       .groupBy(transactions.categoryId);
 

@@ -7,7 +7,7 @@ import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CategoryIcon } from '@/components/icon-picker';
-import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory } from '@/lib/actions/income';
+import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory, toggleIgnoreIncome } from '@/lib/actions/income';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
@@ -49,6 +49,7 @@ type IncomeCardBaseProps = {
     accountId: number;
     accountName: string;
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+    ignored: boolean;
   };
   categories: Category[];
   accounts: Account[];
@@ -107,6 +108,14 @@ export function IncomeCard(props: IncomeCardProps) {
     }
   };
 
+  const handleToggleIgnore = async () => {
+    if (context) {
+      await context.toggleIgnore(income.id);
+    } else {
+      await toggleIgnoreIncome(income.id);
+    }
+  };
+
   const handleDelete = async () => {
     if (context) {
       await context.removeIncome(income.id);
@@ -142,6 +151,7 @@ export function IncomeCard(props: IncomeCardProps) {
       <Card className={cn(
         "py-0 relative",
         isOptimistic && "opacity-70 animate-pulse",
+        income.ignored && "opacity-50",
         props.selectionMode && "cursor-pointer",
         props.selectionMode && props.isSelected && "ring-2 ring-primary ring-offset-2"
       )}>
@@ -250,6 +260,9 @@ export function IncomeCard(props: IncomeCardProps) {
                   {t('markAsReceived')}
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={handleToggleIgnore}>
+                {income.ignored ? t('showInTotals') : t('hideFromTotals')}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setEditOpen(true)}>
                 {tCommon('edit')}
               </DropdownMenuItem>

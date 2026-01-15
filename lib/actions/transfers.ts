@@ -253,6 +253,7 @@ export const getTransfers = cache(async (filters: TransferFilters = {}) => {
       fromAccountId: transfers.fromAccountId,
       toAccountId: transfers.toAccountId,
       faturaId: transfers.faturaId,
+      ignored: transfers.ignored,
       createdAt: transfers.createdAt,
     })
     .from(transfers)
@@ -348,5 +349,55 @@ export async function backfillFaturaTransfers(): Promise<{ created: number } | {
   } catch (error) {
     console.error('Failed to backfill fatura transfers:', error);
     return { error: await t('errors.failedToUpdate') };
+  }
+}
+
+export async function toggleIgnoreTransfer(transferId: number) {
+  if (!Number.isInteger(transferId) || transferId <= 0) {
+    throw new Error(await t('errors.invalidTransactionId'));
+  }
+
+  try {
+    const userId = await getCurrentUserId();
+
+    // Get current state
+    const [record] = await db
+      .select({
+        ignored: transfers.ignored,
+        fromAccountId: transfers.fromAccountId,
+        toAccountId: transfers.toAccountId,
+      })
+      .from(transfers)
+      .where(and(eq(transfers.userId, userId), eq(transfers.id, transferId)))
+      .limit(1);
+
+    if (!record) {
+      throw new Error(await t('errors.relatedRecordNotFound'));
+    }
+
+    // Toggle ignored state
+    const newIgnored = !record.ignored;
+
+    await db
+      .update(transfers)
+      .set({ ignored: newIgnored })
+      .where(and(eq(transfers.userId, userId), eq(transfers.id, transferId)));
+
+    // Sync affected account balances
+    if (record.fromAccountId) {
+      await syncAccountBalance(record.fromAccountId);
+    }
+    if (record.toAccountId) {
+      await syncAccountBalance(record.toAccountId);
+    }
+
+    revalidatePath('/transfers');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    console.error('Failed to toggle ignore transfer:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(await t('errors.failedToUpdate'));
   }
 }

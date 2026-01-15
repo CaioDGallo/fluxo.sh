@@ -95,6 +95,7 @@ export const transactions = pgTable('transactions', {
     .notNull()
     .references(() => categories.id, { onDelete: 'restrict' }),
   externalId: text('external_id'), // UUID from bank statement for idempotency
+  ignored: boolean('ignored').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -150,6 +151,7 @@ export const transfers = pgTable('transfers', {
   faturaId: integer('fatura_id').references(() => faturas.id),
   description: text('description'),
   externalId: text('external_id'), // UUID from bank statement - preserves idempotency when expenses are converted to fatura payments
+  ignored: boolean('ignored').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -168,6 +170,7 @@ export const income = pgTable('income', {
   receivedDate: date('received_date').notNull(),
   receivedAt: timestamp('received_at'), // null = pending, timestamp = received
   externalId: text('external_id'), // UUID from bank statement for idempotency
+  ignored: boolean('ignored').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

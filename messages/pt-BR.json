@@ -137,7 +137,9 @@
     "convertToFaturaDescription": "Selecione a fatura que este gasto pagou",
     "faturaSelectionLabel": "Fatura destino",
     "selectFatura": "Selecione uma fatura...",
-    "convertSuccess": "Gasto convertido em pagamento de fatura"
+    "convertSuccess": "Gasto convertido em pagamento de fatura",
+    "hideFromTotals": "Ignorar nos cálculos",
+    "showInTotals": "Incluir nos cálculos"
   },
   "income": {
     "title": "Receitas",
@@ -152,7 +154,9 @@
     "deleteIncome": "Excluir Receita",
     "deleteConfirmationTitle": "Excluir receita?",
     "deleteConfirmation": "Isso excluirá \"{description}\". Esta ação não pode ser desfeita.",
-    "viewDetails": "Ver Detalhes"
+    "viewDetails": "Ver Detalhes",
+    "hideFromTotals": "Ignorar nos cálculos",
+    "showInTotals": "Incluir nos cálculos"
   },
   "transfers": {
     "title": "Transferências",
@@ -178,7 +182,9 @@
       "internal_transfer": "Transferência",
       "deposit": "Depósito",
       "withdrawal": "Saque"
-    }
+    },
+    "hideFromTotals": "Ignorar nos cálculos",
+    "showInTotals": "Incluir nos cálculos"
   },
   "settings": {
     "title": "Configurações",

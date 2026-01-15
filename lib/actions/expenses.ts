@@ -347,6 +347,9 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
 
   const conditions = [eq(entries.userId, userId)];
 
+  // Filter ignored transactions (they should still appear but won't affect calculations)
+  // Note: We don't filter them out, allowing them to be visible but dimmed in UI
+
   // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
   if (yearMonth) {
     conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
@@ -378,6 +381,7 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
       transactionId: transactions.id,
       description: transactions.description,
       totalInstallments: transactions.totalInstallments,
+      ignored: transactions.ignored,
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
@@ -490,6 +494,55 @@ export async function bulkUpdateTransactionCategories(
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to bulk update categories:', { transactionIds, categoryId, error });
+    throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
+  }
+}
+
+export async function toggleIgnoreTransaction(transactionId: number) {
+  if (!Number.isInteger(transactionId) || transactionId <= 0) {
+    throw new Error(await t('errors.invalidTransactionId'));
+  }
+
+  try {
+    const userId = await getCurrentUserId();
+
+    // Get current state
+    const [txn] = await db
+      .select({ ignored: transactions.ignored })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)))
+      .limit(1);
+
+    if (!txn) {
+      throw new Error(await t('errors.notFound'));
+    }
+
+    // Toggle ignored state
+    const newIgnored = !txn.ignored;
+
+    await db
+      .update(transactions)
+      .set({ ignored: newIgnored })
+      .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
+
+    // Sync all affected account balances (entries may span multiple accounts for installments)
+    const affectedAccounts = await db
+      .selectDistinct({ accountId: entries.accountId })
+      .from(entries)
+      .where(eq(entries.transactionId, transactionId));
+
+    for (const { accountId } of affectedAccounts) {
+      await syncAccountBalance(accountId);
+    }
+
+    revalidatePath('/expenses');
+    revalidatePath('/dashboard');
+    revalidatePath('/budgets');
+  } catch (error) {
+    console.error('Failed to toggle ignore transaction:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
   }
 }

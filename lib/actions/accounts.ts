@@ -1,13 +1,14 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { accounts, entries, income, transfers, type NewAccount } from '@/lib/schema';
+import { accounts, entries, income, transfers, transactions, type NewAccount } from '@/lib/schema';
 import { eq, and, isNotNull, sql } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { computeBalance } from '@/lib/balance';
+import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -58,24 +59,40 @@ async function calculateAccountBalanceForUser(dbClient: DbClient, userId: string
   const [{ total: totalExpenses }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${entries.amount}), 0) AS INTEGER)` })
     .from(entries)
-    .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId)));
+    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+    .where(and(
+      eq(entries.userId, userId),
+      eq(entries.accountId, accountId),
+      activeTransactionCondition()
+    ));
 
   const [{ total: totalIncome }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${income.amount}), 0) AS INTEGER)` })
     .from(income)
-    .where(
-      and(eq(income.userId, userId), eq(income.accountId, accountId), isNotNull(income.receivedAt))
-    );
+    .where(and(
+      eq(income.userId, userId),
+      eq(income.accountId, accountId),
+      isNotNull(income.receivedAt),
+      activeIncomeCondition()
+    ));
 
   const [{ total: totalTransfersOut }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
     .from(transfers)
-    .where(and(eq(transfers.userId, userId), eq(transfers.fromAccountId, accountId)));
+    .where(and(
+      eq(transfers.userId, userId),
+      eq(transfers.fromAccountId, accountId),
+      activeTransferCondition()
+    ));
 
   const [{ total: totalTransfersIn }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
     .from(transfers)
-    .where(and(eq(transfers.userId, userId), eq(transfers.toAccountId, accountId)));
+    .where(and(
+      eq(transfers.userId, userId),
+      eq(transfers.toAccountId, accountId),
+      activeTransferCondition()
+    ));
 
   return computeBalance({
     totalExpenses,

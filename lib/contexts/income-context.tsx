@@ -10,6 +10,7 @@ import {
   markIncomeReceived as serverMarkIncomeReceived,
   markIncomePending as serverMarkIncomePending,
   bulkUpdateIncomeCategories as serverBulkUpdateIncomeCategories,
+  toggleIgnoreIncome as serverToggleIgnoreIncome,
   type IncomeFilters,
 } from '@/lib/actions/income';
 import { centsToDisplay } from '@/lib/utils';
@@ -28,6 +29,7 @@ export type IncomeEntry = {
   accountId: number;
   accountName: string;
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+  ignored: boolean;
 };
 
 // Optimistic item wrapper
@@ -56,7 +58,8 @@ type ReducerAction =
   | { type: 'add'; item: OptimisticIncomeEntry }
   | { type: 'toggle'; id: number; receivedAt: string | null }
   | { type: 'remove'; id: number }
-  | { type: 'bulkUpdateCategory'; incomeIds: number[]; category: Category };
+  | { type: 'bulkUpdateCategory'; incomeIds: number[]; category: Category }
+  | { type: 'toggleIgnore'; id: number };
 
 // Reducer for useOptimistic
 function incomeReducer(
@@ -85,6 +88,12 @@ function incomeReducer(
             }
           : item
       );
+    case 'toggleIgnore':
+      return state.map((item) =>
+        item.id === action.id
+          ? { ...item, ignored: !item.ignored, _optimistic: true }
+          : item
+      );
     default:
       return state;
   }
@@ -107,6 +116,7 @@ type IncomeContextValue = {
   toggleReceived: (id: number, currentReceivedAt: string | null) => Promise<void>;
   removeIncome: (id: number) => Promise<void>;
   bulkUpdateCategory: (incomeIds: number[], categoryId: number) => Promise<void>;
+  toggleIgnore: (id: number) => Promise<void>;
 };
 
 const IncomeContext = createContext<IncomeContextValue | null>(null);
@@ -147,6 +157,7 @@ function generateOptimisticIncome(input: CreateIncomeInput, tempId: string): Opt
     accountId: input.accountId,
     accountName: input.accountName,
     accountType: input.accountType,
+    ignored: false,
     _optimistic: true,
     _tempId: tempId,
   };
@@ -267,6 +278,22 @@ export function IncomeListProvider({
     [categories, dispatch]
   );
 
+  // Toggle ignore
+  const toggleIgnore = useCallback(
+    async (id: number) => {
+      startTransition(() => {
+        dispatch({ type: 'toggleIgnore', id });
+      });
+
+      try {
+        await serverToggleIgnoreIncome(id);
+      } catch {
+        toast.error('Failed to update ignore status');
+      }
+    },
+    [dispatch]
+  );
+
   const value: IncomeContextValue = {
     income: optimisticIncome,
     filteredIncome,
@@ -279,6 +306,7 @@ export function IncomeListProvider({
     toggleReceived,
     removeIncome,
     bulkUpdateCategory,
+    toggleIgnore,
   };
 
   return <IncomeContext.Provider value={value}>{children}</IncomeContext.Provider>;

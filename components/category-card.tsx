@@ -15,7 +15,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
@@ -125,17 +124,17 @@ export function CategoryCard({ category }: CategoryCardProps) {
             >
               {category.isImportDefault ? t('removeImportDefault') : t('setAsImportDefault')}
             </DropdownMenuItem>
- 
+
             <DropdownMenuItem onSelect={() => setEditOpen(true)}>
               {tCommon('edit')} {t('title')}
             </DropdownMenuItem>
- 
+
             <DropdownMenuItem onSelect={() => setDeleteOpen(true)}>
               {tCommon('delete')} {t('title')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
- 
+
         <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
           <AlertDialogContent closeOnBackdropClick>
             <AlertDialogHeader>
@@ -147,7 +146,7 @@ export function CategoryCard({ category }: CategoryCardProps) {
             />
           </AlertDialogContent>
         </AlertDialog>
- 
+
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -156,13 +155,13 @@ export function CategoryCard({ category }: CategoryCardProps) {
                 {tCommon('actionCannotBeUndone')}
               </AlertDialogDescription>
             </AlertDialogHeader>
- 
+
             {deleteError && (
               <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
                 {deleteError}
               </div>
             )}
- 
+
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>{tCommon('cancel')}</AlertDialogCancel>
               <AlertDialogAction

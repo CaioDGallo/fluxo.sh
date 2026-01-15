@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +25,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeftRightIcon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { useTranslations } from 'next-intl';
 import type { Account } from '@/lib/schema';
-import { deleteTransfer } from '@/lib/actions/transfers';
+import { deleteTransfer, toggleIgnoreTransfer } from '@/lib/actions/transfers';
 import { TransferForm } from '@/components/transfer-form';
 
 export type TransferListItem = {
@@ -39,6 +39,7 @@ export type TransferListItem = {
   faturaId: number | null;
   fromAccountName: string | null;
   toAccountName: string | null;
+  ignored: boolean;
 };
 
 type TransferCardProps = {
@@ -64,6 +65,14 @@ export function TransferCard({ transfer, accounts }: TransferCardProps) {
     }
   };
 
+  const handleToggleIgnore = async () => {
+    try {
+      await toggleIgnoreTransfer(transfer.id);
+    } catch (error) {
+      console.error('[TransferCard] Toggle ignore failed:', error);
+    }
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     setDeleteError(null);
@@ -82,7 +91,7 @@ export function TransferCard({ transfer, accounts }: TransferCardProps) {
 
   return (
     <>
-      <Card className="py-0">
+      <Card className={cn("py-0", transfer.ignored && "opacity-50")}>
         <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm truncate">{title}</h3>
@@ -108,6 +117,9 @@ export function TransferCard({ transfer, accounts }: TransferCardProps) {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   {tCommon('edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleToggleIgnore}>
+                  {transfer.ignored ? t('showInTotals') : t('hideFromTotals')}
                 </DropdownMenuItem>
                 <AlertDialog open={deleteOpen} onOpenChange={handleDeleteOpenChange}>
                   <AlertDialogTrigger asChild>

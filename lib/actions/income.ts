@@ -196,6 +196,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       amount: income.amount,
       receivedDate: income.receivedDate,
       receivedAt: sql<string | null>`${income.receivedAt}::text`,
+      ignored: income.ignored,
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
@@ -321,6 +322,47 @@ export async function bulkUpdateIncomeCategories(
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to bulk update income categories:', { incomeIds, categoryId, error });
+    throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
+  }
+}
+
+export async function toggleIgnoreIncome(incomeId: number) {
+  if (!Number.isInteger(incomeId) || incomeId <= 0) {
+    throw new Error(await t('errors.invalidIncomeId'));
+  }
+
+  try {
+    const userId = await getCurrentUserId();
+
+    // Get current state
+    const [record] = await db
+      .select({ ignored: income.ignored, accountId: income.accountId })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!record) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
+    // Toggle ignored state
+    const newIgnored = !record.ignored;
+
+    await db
+      .update(income)
+      .set({ ignored: newIgnored })
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
+
+    // Sync account balance
+    await syncAccountBalance(record.accountId);
+
+    revalidatePath('/income');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    console.error('Failed to toggle ignore income:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
   }
 }

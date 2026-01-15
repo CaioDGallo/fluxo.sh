@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { entries, transactions, categories, budgets, accounts, income, transfers } from '@/lib/schema';
 import { eq, and, gte, lte, sql, desc, isNotNull, isNull } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
+import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
 
 export type DashboardData = {
   totalSpent: number;
@@ -78,7 +79,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .where(and(
       gte(entries.purchaseDate, startDate),
       lte(entries.purchaseDate, endDate),
-      eq(entries.userId, userId)
+      eq(entries.userId, userId),
+      activeTransactionCondition()
     ))
     .groupBy(transactions.categoryId);
 
@@ -107,7 +109,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .where(and(
       gte(income.receivedDate, startDate),
       lte(income.receivedDate, endDate),
-      eq(income.userId, userId)
+      eq(income.userId, userId),
+      activeIncomeCondition()
     ));
 
   const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
@@ -122,7 +125,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
       lte(transfers.date, endDate),
       eq(transfers.userId, userId),
       isNotNull(transfers.toAccountId),
-      isNull(transfers.fromAccountId)
+      isNull(transfers.fromAccountId),
+      activeTransferCondition()
     ));
 
   // TransfersOut: Only withdrawals (fromAccountId set, toAccountId null)
@@ -134,7 +138,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
       lte(transfers.date, endDate),
       eq(transfers.userId, userId),
       isNotNull(transfers.fromAccountId),
-      isNull(transfers.toAccountId)
+      isNull(transfers.toAccountId),
+      activeTransferCondition()
     ));
 
   // 6. Calculate totals
@@ -163,7 +168,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .where(and(
       gte(entries.purchaseDate, startDate),
       lte(entries.purchaseDate, endDate),
-      eq(entries.userId, userId)
+      eq(entries.userId, userId),
+      activeTransactionCondition()
     ))
     .orderBy(desc(entries.createdAt))
     .limit(5);
@@ -186,7 +192,8 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     .where(and(
       gte(income.receivedDate, startDate),
       lte(income.receivedDate, endDate),
-      eq(income.userId, userId)
+      eq(income.userId, userId),
+      activeIncomeCondition()
     ))
     .orderBy(desc(income.createdAt))
     .limit(5);

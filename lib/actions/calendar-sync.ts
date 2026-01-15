@@ -327,7 +327,7 @@ function calculateDiff(existing: Event[], parsed: ParsedEvent[]): EventDiff {
 
   // Find orphans (existing events not in parsed set)
   for (const [uid, existingEvent] of existingByUid) {
-    if (!parsedUids.has(uid) && existingEvent.status !== 'cancelled') {
+    if (!parsedUids.has(uid) && existingEvent.status !== 'cancelled' && existingEvent.status !== 'completed') {
       toCancel.push(existingEvent);
     }
   }

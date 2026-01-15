@@ -210,4 +210,52 @@ END:VCALENDAR`,
 
     expect(allEvents.length).toBeGreaterThan(0);
   });
+
+  it('does not overwrite completed events when missing from feed', async () => {
+    // First sync with two events
+    await syncCalendarSource(sourceId);
+
+    // Manually mark one event as completed (simulating status update cronjob)
+    await db
+      .update(schema.events)
+      .set({ status: 'completed' })
+      .where(eq(schema.events.externalId, 'test-event-2'));
+
+    // Mock updated feed with only one event (test-event-2 is missing because it's past)
+    const updatedMockResult = {
+      success: true,
+      data: `BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-CALNAME:Test Calendar
+BEGIN:VEVENT
+DTSTART:20260215T100000Z
+DTEND:20260215T110000Z
+DTSTAMP:20260101T000000Z
+UID:test-event-1
+SUMMARY:Test Event 1
+LAST-MODIFIED:20260201T000000Z
+END:VEVENT
+END:VCALENDAR`,
+    };
+
+    const { fetchICalUrlWithRetry } = await import('@/lib/ical/fetch');
+    vi.mocked(fetchICalUrlWithRetry).mockResolvedValueOnce(updatedMockResult);
+
+    // Second sync
+    const result = await syncCalendarSource(sourceId);
+
+    expect(result.success).toBe(true);
+    expect(result.created).toBe(0);
+    expect(result.updated).toBe(0);
+    expect(result.cancelled).toBe(0); // Should NOT cancel the completed event
+
+    // Verify completed event is still completed
+    const completedEvent = await db
+      .select()
+      .from(schema.events)
+      .where(eq(schema.events.externalId, 'test-event-2'));
+
+    expect(completedEvent).toHaveLength(1);
+    expect(completedEvent[0].status).toBe('completed'); // Should remain completed, not cancelled
+  });
 });

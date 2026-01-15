@@ -143,17 +143,17 @@ export function EventDetailSheet({
 
   const duration = formatDuration(event.startAt, event.endAt, event.isAllDay)
 
-  // Type indicator color
-  const typeColor = event.type === 'event'
-    ? '[oklch(0.60_0.20_250)]' // Blue
-    : '[oklch(0.65_0.15_145)]'  // Green
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           {/* Type indicator bar */}
-          <div className={cn("h-1 w-3/5 mb-4 rounded-none", `bg-${typeColor}`)} />
+          <div className={cn(
+            "h-1 w-3/5 mb-4 rounded-none",
+            event.type === 'event'
+              ? "bg-[oklch(0.60_0.20_250)]" // Blue
+              : "bg-[oklch(0.65_0.15_145)]"  // Green
+          )} />
 
           <SheetTitle className={`text-base font-bold`}>
             {event.title}

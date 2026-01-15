@@ -16,7 +16,8 @@ import { deleteEvent, getEventsWithRecurrence } from '@/lib/actions/events';
 import { deleteTask, getTasksWithRecurrence } from '@/lib/actions/tasks';
 import { getActiveBillReminders } from '@/lib/actions/bill-reminders';
 import { getUserSettings } from '@/lib/actions/user-settings';
-import { type Event, type Task, type BillReminder } from '@/lib/schema';
+import { getCategories } from '@/lib/actions/categories';
+import { type Event, type Task, type BillReminder, type Category } from '@/lib/schema';
 import { parseRRule } from '@/lib/recurrence';
 import { buildTaskSchedule, type TaskWithRecurrence } from '@/lib/task-schedule';
 import { buildBillReminderSchedule } from '@/lib/bill-reminder-schedule';
@@ -49,7 +50,6 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Theme } from '@/components/theme-toggle';
 import { Toggle } from '@/components/ui/toggle';
-import { Separator } from '@/components/ui/separator';
 
 function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -117,12 +117,15 @@ export default function CalendarPage() {
   // Bill Reminder state
   const [billReminderSheetOpen, setBillReminderSheetOpen] = useState(false);
   const [selectedBillReminder, setSelectedBillReminder] = useState<BillReminder | null>(null);
+  const [billReminderOccurrenceDate, setBillReminderOccurrenceDate] = useState<Date | undefined>(undefined);
+  const [billReminderCategory, setBillReminderCategory] = useState<{ name: string; color: string } | undefined>(undefined);
 
   // Shared state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     title: string;
+    type: 'event' | 'task';
   } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -144,6 +147,7 @@ export default function CalendarPage() {
   const eventsRef = useRef<EventWithRecurrence[]>([]);
   const tasksRef = useRef<TaskWithRecurrence[]>([]);
   const billRemindersRef = useRef<BillReminder[]>([]);
+  const categoriesRef = useRef<Category[]>([]);
   const occurrenceOverridesRef = useRef(new Map<string, { startAt: Date; endAt: Date }>());
   const t = useTranslations('calendar');
   const tCommon = useTranslations('common');
@@ -158,11 +162,12 @@ export default function CalendarPage() {
     setIsLoading(true);
 
     try {
-      const [eventsData, tasksData, billRemindersData, settings] = await Promise.all([
+      const [eventsData, tasksData, billRemindersData, settings, categoriesData] = await Promise.all([
         getEventsWithRecurrence(),
         getTasksWithRecurrence(),
         getActiveBillReminders(),
         getUserSettings(),
+        getCategories(),
       ]);
       setTimeZone(resolveTimeZone(settings));
 
@@ -194,6 +199,9 @@ export default function CalendarPage() {
       // Set bill reminders
       billRemindersRef.current = billRemindersData;
       setBillReminders(billRemindersData);
+
+      // Set categories
+      categoriesRef.current = categoriesData;
     } catch (error) {
       logError(
         ErrorIds.CALENDAR_DATA_LOAD_FAILED,
@@ -267,15 +275,27 @@ export default function CalendarPage() {
       });
       setDetailSheetOpen(true);
     } else if (idStr.startsWith('bill-reminder-')) {
-      const match = /^bill-reminder-(\d+)/.exec(idStr);
-      if (!match) return;
-      const parsedId = Number(match[1]);
+      // Parse base ID and optional occurrence timestamp
+      const occMatch = /^bill-reminder-(\d+)-occ-(\d+)/.exec(idStr);
+      const baseMatch = /^bill-reminder-(\d+)/.exec(idStr);
+
+      const parsedId = occMatch ? Number(occMatch[1]) : (baseMatch ? Number(baseMatch[1]) : NaN);
       if (Number.isNaN(parsedId)) return;
 
       const reminder = billRemindersRef.current.find((item) => item.id === parsedId);
       if (!reminder) return;
 
+      // Extract occurrence date if present
+      const occurrenceDate = occMatch ? new Date(Number(occMatch[2])) : undefined;
+
+      // Look up category if reminder has one
+      const category = reminder.categoryId
+        ? categoriesRef.current.find((cat) => cat.id === reminder.categoryId)
+        : undefined;
+
       setSelectedBillReminder(reminder);
+      setBillReminderOccurrenceDate(occurrenceDate);
+      setBillReminderCategory(category ? { name: category.name, color: category.color } : undefined);
       setBillReminderSheetOpen(true);
     }
   }, []);
@@ -303,7 +323,7 @@ export default function CalendarPage() {
     }
   }
 
-  function requestDelete(target: { id: number; title: string }) {
+  function requestDelete(target: { id: number; title: string; type: 'event' | 'task' }) {
     setDeleteError(null);
     setDeleteTarget(target);
     setDeleteDialogOpen(true);
@@ -315,9 +335,8 @@ export default function CalendarPage() {
     setDeleteError(null);
 
     try {
-      // Determine item type from detail sheet data
-      const isTask = detailSheetData?.type === 'task';
-      const result = isTask
+      // Use item type from deleteTarget to avoid stale detailSheetData
+      const result = deleteTarget.type === 'task'
         ? await deleteTask(deleteTarget.id)
         : await deleteEvent(deleteTarget.id);
 
@@ -367,6 +386,7 @@ export default function CalendarPage() {
     requestDelete({
       id: detailSheetData.id,
       title: detailSheetData.title,
+      type: detailSheetData.type,
     });
   }, [detailSheetData]);
 
@@ -383,11 +403,11 @@ export default function CalendarPage() {
     if (itemType === 'task') {
       const item = tasksRef.current.find((t) => t.id === id);
       if (!item) return;
-      requestDelete({ id, title: item.title });
+      requestDelete({ id, title: item.title, type: 'task' });
     } else {
       const item = eventsRef.current.find((e) => e.id === id);
       if (!item) return;
-      requestDelete({ id, title: item.title });
+      requestDelete({ id, title: item.title, type: 'event' });
     }
   }, []);
 
@@ -446,19 +466,27 @@ export default function CalendarPage() {
   // Filter and combine all item types
   const filteredItems = useMemo(() => {
     const filteredEventsList = showEvents ? events.filter((event) => {
-      if (showCompleted && event.status === 'completed') return true;
+      // When showCompleted is false, hide completed items
+      if (!showCompleted && event.status === 'completed') return false;
       return true;
     }) : [];
 
     const filteredTasksList = showTasks ? tasks.filter((task) => {
-      if (showCompleted && task.status === 'completed') return true;
+      // When showCompleted is false, hide completed items
+      if (!showCompleted && task.status === 'completed') return false;
+      return true;
+    }) : [];
+
+    const filteredBillRemindersList = showBillReminders ? billReminders.filter((reminder) => {
+      // When showCompleted is false, hide completed reminders
+      if (!showCompleted && reminder.status === 'completed') return false;
       return true;
     }) : [];
 
     return {
       events: filteredEventsList,
       tasks: filteredTasksList,
-      billReminders: showBillReminders ? billReminders : [],
+      billReminders: filteredBillRemindersList,
     };
   }, [events, tasks, billReminders, showEvents, showTasks, showBillReminders, showCompleted]);
 
@@ -672,6 +700,7 @@ export default function CalendarPage() {
                         requestDelete({
                           id: selectedEvent.id,
                           title: selectedEvent.title,
+                          type: 'event',
                         });
                       }}
                     >
@@ -783,6 +812,7 @@ export default function CalendarPage() {
                     requestDelete({
                       id: selectedTask.id,
                       title: selectedTask.title,
+                      type: 'task',
                     });
                   }}
                 >
@@ -809,6 +839,8 @@ export default function CalendarPage() {
         open={billReminderSheetOpen}
         onOpenChange={setBillReminderSheetOpen}
         reminder={selectedBillReminder}
+        occurrenceDate={billReminderOccurrenceDate}
+        category={billReminderCategory}
       />
     </div>
   );

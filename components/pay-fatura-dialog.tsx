@@ -78,11 +78,11 @@ export function PayFaturaDialog({
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <label htmlFor="payment-account" className="text-sm font-medium mb-2 block">
               {t('payWithAccount')}
             </label>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger>
+              <SelectTrigger id="payment-account">
                 <SelectValue placeholder={t('selectAccount')} />
               </SelectTrigger>
               <SelectContent>

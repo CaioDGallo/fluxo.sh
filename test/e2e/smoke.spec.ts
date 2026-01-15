@@ -330,3 +330,284 @@ test('ignore transfer removes it from cash flow', async ({ page }) => {
   await page.goto(`/dashboard?month=${currentMonth}`);
   await expect(transfersBlock).toContainText(/R\$\s*150,00/);
 });
+
+test('view fatura details and pay it', async ({ page }) => {
+  await login(page);
+
+  // Create credit card account
+  await page.goto('/settings/accounts');
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  const accountDialog = page.getByRole('alertdialog');
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Cartão E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
+
+  // Wait for billing config fields to appear and set them
+  await expect(accountDialog.getByLabel('Dia do Fechamento')).toBeVisible();
+  await accountDialog.getByLabel('Dia do Fechamento').click();
+  await page.getByRole('option', { name: '1' }).first().click();
+  await accountDialog.getByLabel('Dia do Vencimento').click();
+  await page.getByRole('option', { name: '10' }).first().click();
+
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create checking account for payment
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Conta Corrente E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create expense category
+  await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
+
+  // Create expense on credit card to generate fatura
+  await page.goto('/expenses');
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('500');
+  await dialog.getByLabel('Descrição').fill('Compra E2E');
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: 'Cartão E2E' }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Go to faturas page for next month (purchases after closingDay go to next month's fatura)
+  const currentMonth = getYearMonth();
+  const faturaMonth = addMonths(currentMonth, 1);
+  await page.goto(`/faturas?month=${faturaMonth}`);
+  await expect(page.getByRole('heading', { name: 'Faturas' })).toBeVisible();
+
+  // Wait for fatura to load and be visible
+  await page.waitForTimeout(500);
+
+  // Verify fatura card shows with the amount
+  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  await expect(faturaCard).toBeVisible();
+  await expect(faturaCard).toContainText('R$ 500,00');
+
+  // Click on fatura to view details
+  await faturaCard.click();
+
+  // Verify detail sheet opens
+  const sheet = page.locator('[role="dialog"]');
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('heading', { name: /Cartão E2E/i })).toBeVisible();
+  await expect(sheet).toContainText(/R\$\s*500,00/);
+  await expect(sheet).toContainText('Compra E2E');
+
+  // Pay the fatura
+  await sheet.getByRole('button', { name: 'Pagar fatura' }).click();
+  const payDialog = page.getByRole('alertdialog');
+  await expect(payDialog).toBeVisible();
+  await payDialog.getByLabel('Pagar com conta:').click();
+  await page.getByRole('option', { name: 'Conta Corrente E2E' }).first().click();
+  await payDialog.getByRole('button', { name: 'Confirmar Pagamento' }).click();
+  await expect(payDialog).toBeHidden();
+
+  // Verify fatura is now paid
+  await expect(sheet.getByText('Pago em')).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Reverter pagamento' })).toBeVisible();
+});
+
+test('revert fatura payment', async ({ page }) => {
+  await login(page);
+
+  // Create credit card account
+  await page.goto('/settings/accounts');
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  const accountDialog = page.getByRole('alertdialog');
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Cartão E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
+
+  // Wait for billing config fields to appear and set them
+  await expect(accountDialog.getByLabel('Dia do Fechamento')).toBeVisible();
+  await accountDialog.getByLabel('Dia do Fechamento').click();
+  await page.getByRole('option', { name: '1' }).first().click();
+  await accountDialog.getByLabel('Dia do Vencimento').click();
+  await page.getByRole('option', { name: '10' }).first().click();
+
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create checking account for payment
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Conta Corrente E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create expense category
+  await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
+
+  // Create expense on credit card
+  await page.goto('/expenses');
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('300');
+  await dialog.getByLabel('Descrição').fill('Compra Revert E2E');
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: 'Cartão E2E' }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Go to faturas for next month and pay it
+  const currentMonth = getYearMonth();
+  const faturaMonth = addMonths(currentMonth, 1);
+  await page.goto(`/faturas?month=${faturaMonth}`);
+
+  // Wait for fatura to load
+  await page.waitForTimeout(500);
+
+  // Find and click fatura card
+  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  await faturaCard.click();
+
+  const sheet = page.locator('[role="dialog"]');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'Pagar fatura' }).click();
+  const payDialog = page.getByRole('alertdialog');
+  await expect(payDialog).toBeVisible();
+  await payDialog.getByLabel('Pagar com conta:').click();
+  await page.getByRole('option', { name: 'Conta Corrente E2E' }).first().click();
+  await payDialog.getByRole('button', { name: 'Confirmar pagamento' }).click();
+  await expect(payDialog).toBeHidden();
+
+  // Verify it's paid
+  await expect(sheet.getByText('Pago em')).toBeVisible();
+
+  // Now revert the payment
+  await sheet.getByRole('button', { name: 'Reverter pagamento' }).click();
+  await page.waitForTimeout(300);
+
+  // Verify payment is reverted
+  await expect(sheet.getByRole('button', { name: 'Pagar fatura' })).toBeVisible();
+  await expect(sheet.getByText('Pago em')).not.toBeVisible();
+
+  // Close sheet and verify fatura is pending
+  await page.keyboard.press('Escape');
+  await page.goto(`/faturas?month=${faturaMonth}`);
+
+  // Wait for page to reload
+  await page.waitForTimeout(300);
+
+  // Verify fatura shows as pending
+  const reloadedCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  await expect(reloadedCard).toContainText('Pendente');
+});
+
+test('convert expense to fatura payment', async ({ page }) => {
+  await login(page);
+
+  // Create credit card account
+  await page.goto('/settings/accounts');
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  const accountDialog = page.getByRole('alertdialog');
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Cartão Convert E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
+
+  // Wait for billing config fields to appear and set them
+  await expect(accountDialog.getByLabel('Dia do Fechamento')).toBeVisible();
+  await accountDialog.getByLabel('Dia do Fechamento').click();
+  await page.getByRole('option', { name: '1' }).first().click();
+  await accountDialog.getByLabel('Dia do Vencimento').click();
+  await page.getByRole('option', { name: '10' }).first().click();
+
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create checking account
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  await expect(accountDialog).toBeVisible();
+  await accountDialog.getByLabel('Nome').fill('Corrente Convert E2E');
+  await accountDialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
+  await accountDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(accountDialog).toBeHidden();
+
+  // Create expense category
+  await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
+
+  // Create expense on credit card to generate fatura
+  await page.goto('/expenses');
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  const expenseDialog = page.getByRole('alertdialog');
+  await expect(expenseDialog).toBeVisible();
+  await expenseDialog.getByLabel('Valor').fill('500');
+  await expenseDialog.getByLabel('Descrição').fill('Compra Cartão E2E');
+  await expenseDialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await expenseDialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: 'Cartão Convert E2E' }).first().click();
+  await expenseDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(expenseDialog).toBeHidden();
+
+  // Create expense on checking account (same amount as fatura)
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await expect(expenseDialog).toBeVisible();
+  await expenseDialog.getByLabel('Valor').fill('500');
+  await expenseDialog.getByLabel('Descrição').fill('Pagamento Fatura Manual');
+  await expenseDialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await expenseDialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: 'Corrente Convert E2E' }).first().click();
+  await expenseDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(expenseDialog).toBeHidden();
+
+  // Wait for expenses to load
+  await page.waitForTimeout(500);
+
+  // Find the checking account expense card and open its dropdown menu
+  const checkingExpenseCard = page.locator('h3', { hasText: 'Pagamento Fatura Manual' }).locator('..').locator('..').locator('..');
+  await expect(checkingExpenseCard).toBeVisible();
+
+  // Click the dropdown menu button (⋮)
+  await checkingExpenseCard.getByRole('button').last().click();
+
+  // Click "Converter em pagamento de fatura"
+  await page.getByRole('menuitem', { name: 'Converter em pagamento de fatura' }).click();
+
+  // Convert dialog should open
+  const convertDialog = page.getByRole('alertdialog');
+  await expect(convertDialog).toBeVisible();
+  await expect(convertDialog.getByRole('heading', { name: 'Converter em pagamento de fatura' })).toBeVisible();
+
+  // Select fatura from dropdown (should auto-select matching amount)
+  // Just click the convert button as it should have a default selection
+  await convertDialog.getByRole('button', { name: 'Converter' }).click();
+
+  // Verify success toast
+  await expect(page.getByText('Gasto convertido em pagamento de fatura')).toBeVisible();
+  await expect(convertDialog).toBeHidden();
+
+  // Navigate to faturas page for next month
+  const currentMonth = getYearMonth();
+  const faturaMonth = addMonths(currentMonth, 1);
+  await page.goto(`/faturas?month=${faturaMonth}`);
+  await expect(page.getByRole('heading', { name: 'Faturas' })).toBeVisible();
+
+  // Wait for fatura to load
+  await page.waitForTimeout(500);
+
+  // Find fatura card and verify it shows as paid
+  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  await expect(faturaCard).toBeVisible();
+  await expect(faturaCard).toContainText('R$ 500,00');
+  await expect(faturaCard).toContainText('Paga');
+});

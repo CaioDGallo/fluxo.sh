@@ -243,11 +243,11 @@ export function IncomeCard(props: IncomeCardProps) {
               </DropdownMenuItem>
               {isReceived ? (
                 <DropdownMenuItem onClick={handleMarkPending}>
-                  Mark as Pending
+                  {t('markAsPending')}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onClick={handleMarkReceived}>
-                  Mark as Received
+                  {t('markAsReceived')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => setEditOpen(true)}>
@@ -256,19 +256,19 @@ export function IncomeCard(props: IncomeCardProps) {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    Delete Income
+                    {t('deleteIncome')}
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete income?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('deleteConfirmationTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will delete &quot;{income.description}&quot;. This action cannot be undone.
+                      {t('deleteConfirmation', { description: income.description })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                    <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>{tCommon('delete')}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

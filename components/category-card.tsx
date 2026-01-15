@@ -125,57 +125,56 @@ export function CategoryCard({ category }: CategoryCardProps) {
             >
               {category.isImportDefault ? t('removeImportDefault') : t('setAsImportDefault')}
             </DropdownMenuItem>
-
-            <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  {tCommon('edit')} {t('title')}
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent closeOnBackdropClick>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
-                </AlertDialogHeader>
-                <CategoryForm
-                  category={category}
-                  onSuccess={() => setEditOpen(false)}
-                />
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  {tCommon('delete')} {t('title')}
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{tCommon('delete')} {t('title')}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {tCommon('actionCannotBeUndone')}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-
-                {deleteError && (
-                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-                    {deleteError}
-                  </div>
-                )}
-
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>{tCommon('cancel')}</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? tCommon('deleting') : tCommon('delete')}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+ 
+            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+              {tCommon('edit')} {t('title')}
+            </DropdownMenuItem>
+ 
+            <DropdownMenuItem onSelect={() => setDeleteOpen(true)}>
+              {tCommon('delete')} {t('title')}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+ 
+        <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
+          <AlertDialogContent closeOnBackdropClick>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
+            </AlertDialogHeader>
+            <CategoryForm
+              category={category}
+              onSuccess={() => setEditOpen(false)}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+ 
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{tCommon('delete')} {t('title')}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {tCommon('actionCannotBeUndone')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+ 
+            {deleteError && (
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                {deleteError}
+              </div>
+            )}
+ 
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>{tCommon('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? tCommon('deleting') : tCommon('delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
       </CardContent>
     </Card>
   );

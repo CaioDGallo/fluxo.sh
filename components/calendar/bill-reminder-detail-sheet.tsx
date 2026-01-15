@@ -134,7 +134,7 @@ export function BillReminderDetailSheet({
           {tDetail('sheetDescription', { name: reminder.name })}
         </SheetDescription>
 
-        <div className="space-y-6">
+        <div className="space-y-6 p-4">
           {/* Amount */}
           {reminder.amount && (
             <div className="flex items-start gap-3">

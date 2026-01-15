@@ -685,8 +685,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="mb-4 gap-2 flex flex-wrap items-center">
-        <div className='flex flex-row justify-between w-full space-x-2'>
+      <div className="mb-4 gap-2 flex flex-wrap items-center md:flex-row">
+        <div className='flex flex-row justify-between md:justify-start w-full md:w-auto space-x-2'>
           <Toggle pressed={showEvents} onPressedChange={setShowEvents} aria-label={t('filter.events')}>
             <span className="w-2 h-2 rounded-full bg-[oklch(0.60_0.20_250)] dark:bg-[oklch(0.70_0.20_250)] mr-2" />
             {t('filter.events')}

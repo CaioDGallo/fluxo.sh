@@ -101,6 +101,16 @@ Core tables for personal finance tracking:
 
 **Installment pattern**: Single `transaction` → multiple `entries` (one per month). Common for Brazilian credit card purchases.
 
+## Project Language & Market
+
+**Primary Language**: Portuguese (Brazil) - `pt-BR`
+
+- UI is in Portuguese by default
+- Primary target market is Brazil
+- Translations in `/messages/pt-BR.json` (primary) and `/messages/en.json` (secondary)
+- All user-facing text must be translated via `next-intl`
+- Financial features follow Brazilian conventions (BRL currency, credit card installments)
+
 ## Conventions
 
 **Money handling**:
@@ -120,3 +130,12 @@ Core tables for personal finance tracking:
 
 - `getCurrentYearMonth()` returns "YYYY-MM" format
 - `parseYearMonth()` / `addMonths()` for month arithmetic
+
+**E2E Testing** (`test/e2e/*.spec.ts`):
+
+- Use **Portuguese text selectors** (not test IDs): `page.getByRole('button', { name: 'Adicionar Conta' })`
+- This validates translations work correctly in production
+- Prefer accessible selectors: `getByRole()`, `getByLabel()`, `getByPlaceholder()`
+- Tests are written in Portuguese to match the primary UI language
+- When text is dynamic, use structural selectors: `page.locator('h3', { hasText: description })`
+- Framework: Playwright with automatic database reset via fixtures

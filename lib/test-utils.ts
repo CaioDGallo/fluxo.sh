@@ -10,6 +10,8 @@ const E2E_PASSWORD_HASH = bcrypt.hashSync(E2E_PASSWORD, 10);
 
 export async function resetDatabase() {
   await reset(db, schema);
+
+  // Create test user
   await db
     .insert(schema.users)
     .values({
@@ -20,6 +22,19 @@ export async function resetDatabase() {
       emailVerified: new Date(),
       createdAt: new Date(),
       image: null,
+    })
+    .onConflictDoNothing();
+
+  // Create user settings for test user
+  await db
+    .insert(schema.userSettings)
+    .values({
+      userId: E2E_USER_ID,
+      timezone: 'America/Sao_Paulo',
+      locale: 'pt-BR',
+      notificationsEnabled: true,
+      defaultEventOffsetMinutes: 60,
+      defaultTaskOffsetMinutes: 60,
     })
     .onConflictDoNothing();
 }

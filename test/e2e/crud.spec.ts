@@ -1,0 +1,445 @@
+import { type Page } from '@playwright/test';
+import { test, expect } from '@/test/fixtures';
+
+const TEST_EMAIL = 'e2e@example.com';
+const TEST_PASSWORD = 'Password123';
+
+async function login(page: Page) {
+  await page.goto('/login');
+  await page.getByLabel('E-mail').fill(TEST_EMAIL);
+  await page.getByLabel('Senha').fill(TEST_PASSWORD);
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeVisible();
+}
+
+async function createAccount(page: Page, name: string) {
+  await page.goto('/settings/accounts');
+  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Nome').fill(name);
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { name }).first()).toBeVisible();
+}
+
+async function createCategory(page: Page, heading: string, name: string) {
+  await page.goto('/settings/categories');
+  const section = page.getByRole('heading', { name: heading }).locator('..');
+  await section.getByRole('button', { name: 'Adicionar' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Nome').fill(name);
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { name }).first()).toBeVisible();
+}
+
+test('edit account name', async ({ page }) => {
+  await login(page);
+
+  const ORIGINAL_NAME = 'Conta Original E2E';
+  const NEW_NAME = 'Conta Editada E2E';
+
+  await createAccount(page, ORIGINAL_NAME);
+
+  // Find the account card and open dropdown
+  const accountCard = page.getByRole('heading', { name: ORIGINAL_NAME }).locator('../..');
+  await accountCard.getByRole('button').last().click(); // Three dots menu
+
+  // Wait for dropdown menu and click Edit option
+  const editMenuItem = page.getByRole('menuitem', { name: 'Editar Contas' });
+  await expect(editMenuItem).toBeVisible();
+  await editMenuItem.click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog');
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByLabel('Nome')).toHaveValue(ORIGINAL_NAME);
+
+  // Change name and save
+  await editDialog.getByLabel('Nome').fill(NEW_NAME);
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+
+  // Verify new name appears
+  await expect(page.getByRole('heading', { name: NEW_NAME }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: ORIGINAL_NAME })).toBeHidden();
+});
+
+test('delete account', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta Para Deletar E2E';
+
+  await createAccount(page, ACCOUNT_NAME);
+
+  // Find the account card and open dropdown
+  const accountCard = page.getByRole('heading', { name: ACCOUNT_NAME }).locator('../..');
+  await accountCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu and click Delete option
+  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir Contas' });
+  await expect(deleteMenuItem).toBeVisible();
+  await deleteMenuItem.click();
+
+  // Confirmation dialog should appear
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
+
+  // Confirm deletion
+  await confirmDialog.getByRole('button', { name: 'Excluir' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  // Verify account is gone
+  await expect(page.getByRole('heading', { name: ACCOUNT_NAME })).toBeHidden();
+});
+
+test('edit category name', async ({ page }) => {
+  await login(page);
+
+  const ORIGINAL_NAME = 'Categoria Original E2E';
+  const NEW_NAME = 'Categoria Editada E2E';
+
+  await createCategory(page, 'Categorias de Despesa', ORIGINAL_NAME);
+
+  // Find the category card and open dropdown
+  const categoryCard = page.getByRole('heading', { name: ORIGINAL_NAME }).locator('../../..');
+  await categoryCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Edit option
+  const editMenuItem = page.getByRole('menuitem', { name: 'Editar Categorias' });
+  await expect(editMenuItem).toBeVisible();
+  await editMenuItem.click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog');
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByLabel('Nome')).toHaveValue(ORIGINAL_NAME);
+
+  // Change name and save
+  await editDialog.getByLabel('Nome').fill(NEW_NAME);
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+
+  // Verify new name appears
+  await expect(page.getByRole('heading', { name: NEW_NAME }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: ORIGINAL_NAME })).toBeHidden();
+});
+
+test('delete category', async ({ page }) => {
+  await login(page);
+
+  const CATEGORY_NAME = 'Categoria Para Deletar E2E';
+
+  await createCategory(page, 'Categorias de Despesa', CATEGORY_NAME);
+
+  // Find the category card and open dropdown
+  const categoryCard = page.getByRole('heading', { name: CATEGORY_NAME }).locator('../../..');
+  await categoryCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Delete option
+  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir Categorias' });
+  await expect(deleteMenuItem).toBeVisible();
+  await deleteMenuItem.click();
+
+  // Confirmation dialog should appear
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
+
+  // Confirm deletion
+  await confirmDialog.getByRole('button', { name: 'Excluir' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  // Verify category is gone
+  await expect(page.getByRole('heading', { name: CATEGORY_NAME })).toBeHidden();
+});
+
+test('edit expense', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const CATEGORY_NAME = 'Alimentação E2E';
+  const ORIGINAL_DESC = 'Mercado Original E2E';
+  const NEW_DESC = 'Mercado Editado E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+  await createCategory(page, 'Categorias de Despesa', CATEGORY_NAME);
+
+  // Create expense
+  await page.goto('/expenses');
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('150');
+  await dialog.getByLabel('Descrição').fill(ORIGINAL_DESC);
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the expense card and open dropdown
+  const expenseCard = page.locator('h3', { hasText: ORIGINAL_DESC }).first().locator('../../..');
+  await expenseCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Edit option
+  const editMenuItem = page.getByRole('menuitem', { name: 'Editar' });
+  await expect(editMenuItem).toBeVisible();
+  await editMenuItem.click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog');
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByLabel('Descrição')).toHaveValue(ORIGINAL_DESC);
+
+  // Change description and save
+  await editDialog.getByLabel('Descrição').fill(NEW_DESC);
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+
+  // Verify new description appears
+  await expect(page.locator('h3', { hasText: NEW_DESC }).first()).toBeVisible();
+  await expect(page.locator('h3', { hasText: ORIGINAL_DESC })).toBeHidden();
+});
+
+test('delete expense', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const CATEGORY_NAME = 'Alimentação E2E';
+  const DESCRIPTION = 'Mercado Para Deletar E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+  await createCategory(page, 'Categorias de Despesa', CATEGORY_NAME);
+
+  // Create expense
+  await page.goto('/expenses');
+  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('100');
+  await dialog.getByLabel('Descrição').fill(DESCRIPTION);
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the expense card and open dropdown
+  const expenseCard = page.locator('h3', { hasText: DESCRIPTION }).first().locator('../../..');
+  await expenseCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Delete option
+  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir transação' });
+  await expect(deleteMenuItem).toBeVisible();
+  await deleteMenuItem.click();
+
+  // Confirmation dialog should appear
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
+
+  // Confirm deletion
+  await confirmDialog.getByRole('button', { name: 'Excluir' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  // Verify expense is gone
+  await expect(page.locator('h3', { hasText: DESCRIPTION })).toBeHidden();
+});
+
+test('edit income', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const CATEGORY_NAME = 'Salário E2E';
+  const ORIGINAL_DESC = 'Receita Original E2E';
+  const NEW_DESC = 'Receita Editada E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+  await createCategory(page, 'Categorias de Receita', CATEGORY_NAME);
+
+  // Create income
+  await page.goto('/income');
+  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('2000');
+  await dialog.getByLabel('Descrição').fill(ORIGINAL_DESC);
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the income card and open dropdown
+  const incomeCard = page.locator('h3', { hasText: ORIGINAL_DESC }).first().locator('../../..');
+  await incomeCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Edit option
+  const editMenuItem = page.getByRole('menuitem', { name: 'Editar' });
+  await expect(editMenuItem).toBeVisible();
+  await editMenuItem.click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog');
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByLabel('Descrição')).toHaveValue(ORIGINAL_DESC);
+
+  // Change description and save
+  await editDialog.getByLabel('Descrição').fill(NEW_DESC);
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+
+  // Verify new description appears
+  await expect(page.locator('h3', { hasText: NEW_DESC }).first()).toBeVisible();
+  await expect(page.locator('h3', { hasText: ORIGINAL_DESC })).toBeHidden();
+});
+
+test('delete income', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const CATEGORY_NAME = 'Salário E2E';
+  const DESCRIPTION = 'Receita Para Deletar E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+  await createCategory(page, 'Categorias de Receita', CATEGORY_NAME);
+
+  // Create income
+  await page.goto('/income');
+  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Valor').fill('1500');
+  await dialog.getByLabel('Descrição').fill(DESCRIPTION);
+  await dialog.getByLabel('Categoria').click();
+  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await dialog.getByLabel('Conta').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the income card and open dropdown
+  const incomeCard = page.locator('h3', { hasText: DESCRIPTION }).first().locator('../../..');
+  await incomeCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Delete option
+  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir Receita' });
+  await expect(deleteMenuItem).toBeVisible();
+  await deleteMenuItem.click();
+
+  // Confirmation dialog should appear
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
+
+  // Confirm deletion
+  await confirmDialog.getByRole('button', { name: 'Excluir' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  // Verify income is gone
+  await expect(page.locator('h3', { hasText: DESCRIPTION })).toBeHidden();
+});
+
+test('edit transfer', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const ORIGINAL_DESC = 'Depósito Original E2E';
+  const NEW_DESC = 'Depósito Editado E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+
+  // Create transfer
+  await page.goto('/transfers');
+  await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Depósito' }).first().click();
+  await dialog.getByLabel('Valor').fill('500');
+  await dialog.getByLabel('Descrição').fill(ORIGINAL_DESC);
+  await dialog.getByLabel('Conta de destino').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the transfer card and open dropdown
+  const transferCard = page.locator('h3', { hasText: ORIGINAL_DESC }).first().locator('../../..');
+  await transferCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Edit option
+  const editMenuItem = page.getByRole('menuitem', { name: 'Editar' });
+  await expect(editMenuItem).toBeVisible();
+  await editMenuItem.click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog');
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByLabel('Descrição')).toHaveValue(ORIGINAL_DESC);
+
+  // Change description and save
+  await editDialog.getByLabel('Descrição').fill(NEW_DESC);
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+
+  // Verify new description appears
+  await expect(page.locator('h3', { hasText: NEW_DESC }).first()).toBeVisible();
+  await expect(page.locator('h3', { hasText: ORIGINAL_DESC })).toBeHidden();
+});
+
+test('delete transfer', async ({ page }) => {
+  await login(page);
+
+  const ACCOUNT_NAME = 'Conta E2E';
+  const DESCRIPTION = 'Depósito Para Deletar E2E';
+
+  // Setup
+  await createAccount(page, ACCOUNT_NAME);
+
+  // Create transfer
+  await page.goto('/transfers');
+  await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Tipo').click();
+  await page.getByRole('option', { name: 'Depósito' }).first().click();
+  await dialog.getByLabel('Valor').fill('300');
+  await dialog.getByLabel('Descrição').fill(DESCRIPTION);
+  await dialog.getByLabel('Conta de destino').click();
+  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Find the transfer card and open dropdown
+  const transferCard = page.locator('h3', { hasText: DESCRIPTION }).first().locator('../../..');
+  await transferCard.getByRole('button').last().click();
+
+  // Wait for dropdown menu to appear and click Delete option
+  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir Transferência' });
+  await expect(deleteMenuItem).toBeVisible();
+  await deleteMenuItem.click();
+
+  // Confirmation dialog should appear
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
+
+  // Confirm deletion
+  await confirmDialog.getByRole('button', { name: 'Excluir' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  // Verify transfer is gone
+  await expect(page.locator('h3', { hasText: DESCRIPTION })).toBeHidden();
+});

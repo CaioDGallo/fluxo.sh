@@ -13,6 +13,8 @@ import {
   Loading03Icon,
 } from "@hugeicons/core-free-icons"
 
+import { useTranslations } from "next-intl"
+
 import {
   Sheet,
   SheetContent,
@@ -24,6 +26,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  getPriorityIcon,
+  getPriorityColor,
+  getStatusConfig,
+} from "./calendar-helpers"
 
 interface EventDetailSheetProps {
   open: boolean
@@ -44,47 +51,6 @@ interface EventDetailSheetProps {
   timeZone?: string
   onEdit?: () => void
   onDelete?: () => void
-}
-
-// Helper: Get priority icon
-function getPriorityIcon(priority: string) {
-  const icons = {
-    low: CircleIcon,
-    medium: Flag01Icon,
-    high: Flag01Icon,
-    critical: Alert01Icon,
-  }
-  return icons[priority as keyof typeof icons] || CircleIcon
-}
-
-// Helper: Get priority color and label
-function getPriorityInfo(priority: string) {
-  const info = {
-    low: { color: 'text-muted-foreground', label: 'Low' },
-    medium: { color: 'text-blue-600 dark:text-blue-400', label: 'Medium' },
-    high: { color: 'text-orange-600 dark:text-orange-400', label: 'High' },
-    critical: { color: 'text-red-600 dark:text-red-400', label: 'Critical' },
-  }
-  return info[priority as keyof typeof info] || info.low
-}
-
-// Helper: Get status badge config
-function getStatusConfig(status: string, type: string) {
-  const eventStatuses: Record<string, { variant: "default" | "secondary" | "outline" | "ghost", icon: typeof Clock01Icon }> = {
-    scheduled: { variant: "outline", icon: Clock01Icon },
-    completed: { variant: "default", icon: Tick02Icon },
-    cancelled: { variant: "ghost", icon: CircleIcon },
-  }
-
-  const taskStatuses: Record<string, { variant: "default" | "secondary" | "outline" | "ghost", icon: typeof Clock01Icon }> = {
-    pending: { variant: "outline", icon: Clock01Icon },
-    in_progress: { variant: "secondary", icon: Loading03Icon },
-    completed: { variant: "default", icon: Tick02Icon },
-    cancelled: { variant: "ghost", icon: CircleIcon },
-  }
-
-  const configs = type === 'event' ? eventStatuses : taskStatuses
-  return configs[status] || { variant: "outline" as const, icon: Clock01Icon }
 }
 
 // Helper: Format date/time
@@ -113,9 +79,19 @@ function formatDateTime(date: Date, isAllDay?: boolean, timeZone?: string): stri
 }
 
 // Helper: Format duration
-function formatDuration(start: Date, end: Date, isAllDay?: boolean): string {
+function formatDuration(
+  start: Date,
+  end: Date,
+  isAllDay?: boolean,
+  tDetail?: (key: string, values?: Record<string, string | number>) => string
+): string {
   if (isAllDay) {
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    if (tDetail) {
+      return days === 1
+        ? tDetail('allDayLabel')
+        : tDetail('daysLabel', { count: days })
+    }
     return days === 1 ? 'All day' : `${days} days`
   }
 
@@ -126,6 +102,11 @@ function formatDuration(start: Date, end: Date, isAllDay?: boolean): string {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
 }
 
+function getStatusTranslationKey(status: string): string {
+  if (status === 'in_progress') return 'inProgress'
+  return status
+}
+
 export function EventDetailSheet({
   open,
   onOpenChange,
@@ -134,14 +115,32 @@ export function EventDetailSheet({
   onEdit,
   onDelete,
 }: EventDetailSheetProps) {
+  const tCalendar = useTranslations('calendar')
+  const tCommon = useTranslations('common')
+
   if (!event) return null
 
-  const priorityInfo = getPriorityInfo(event.priority)
+  const tDetail = (
+    key: string,
+    values?: Record<string, string | number>
+  ) => tCalendar(`detail.${key}`, values)
   const PriorityIcon = getPriorityIcon(event.priority)
+  const priorityColor = getPriorityColor(event.priority)
   const statusConfig = getStatusConfig(event.status, event.type)
   const StatusIcon = statusConfig.icon
 
-  const duration = formatDuration(event.startAt, event.endAt, event.isAllDay)
+  const duration = formatDuration(
+    event.startAt,
+    event.endAt,
+    event.isAllDay,
+    tDetail
+  )
+  const priorityLabel = tCalendar(`priority.${event.priority}`)
+  const eventTypeLabel = tDetail(`typeNames.${event.type}`)
+  const statusLabel = tCalendar(
+    `status.${getStatusTranslationKey(event.status)}`
+  )
+  const toLabel = tDetail('toLabel')
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -165,7 +164,7 @@ export function EventDetailSheet({
             </SheetDescription>
           ) : (
             <SheetDescription className="sr-only">
-              {event.type} details
+              {tDetail('sheetDescription', { type: eventTypeLabel })}
             </SheetDescription>
           )}
         </SheetHeader>
@@ -182,11 +181,12 @@ export function EventDetailSheet({
                 <div className="text-xs font-medium">
                   {formatDateTime(event.startAt, event.isAllDay, timeZone)}
                 </div>
-                {!event.isAllDay && (
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    to {formatDateTime(event.endAt, event.isAllDay, timeZone)}
-                  </div>
-                )}
+                 {!event.isAllDay && (
+                   <div className="text-[10px] text-muted-foreground mt-1">
+                     {toLabel} {formatDateTime(event.endAt, event.isAllDay, timeZone)}
+                   </div>
+                 )}
+
               </div>
             </div>
 
@@ -220,11 +220,13 @@ export function EventDetailSheet({
             <div className="flex items-center gap-3">
               <HugeiconsIcon
                 icon={PriorityIcon}
-                className={cn("size-4", priorityInfo.color)}
+                className={cn("size-4", priorityColor)}
               />
               <div className="flex-1 text-xs">
-                <span className="text-muted-foreground">Priority:</span>{' '}
-                <span className="font-medium">{priorityInfo.label}</span>
+                <span className="text-muted-foreground">
+                  {tCalendar('priorityLabel')}:
+                </span>{' '}
+                <span className="font-medium">{priorityLabel}</span>
               </div>
             </div>
 
@@ -236,7 +238,7 @@ export function EventDetailSheet({
               />
               <div className="flex-1">
                 <Badge variant={statusConfig.variant} className="text-[10px]">
-                  {event.status.replace('_', ' ')}
+                  {statusLabel}
                 </Badge>
               </div>
             </div>
@@ -250,7 +252,9 @@ export function EventDetailSheet({
                 className="size-4 text-muted-foreground"
               />
               <div className="text-xs">
-                <span className="text-muted-foreground">Duration:</span>{' '}
+                <span className="text-muted-foreground">
+                  {tDetail('durationLabel')}:
+                </span>{' '}
                 <span className="font-medium">
                   {event.durationMinutes < 60
                     ? `${event.durationMinutes} min`
@@ -263,7 +267,7 @@ export function EventDetailSheet({
           {/* Type Badge */}
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px] capitalize">
-              {event.type}
+              {eventTypeLabel}
             </Badge>
           </div>
         </div>
@@ -279,9 +283,10 @@ export function EventDetailSheet({
                   onOpenChange(false)
                 }}
                 className="flex-1"
-              >
-                Edit
-              </Button>
+               >
+                 {tCommon('edit')}
+               </Button>
+
             )}
             {onDelete && (
               <Button
@@ -291,9 +296,10 @@ export function EventDetailSheet({
                   onOpenChange(false)
                 }}
                 className="flex-1 text-destructive hover:text-destructive"
-              >
-                Delete
-              </Button>
+               >
+                 {tCommon('delete')}
+               </Button>
+
             )}
           </SheetFooter>
         )}

@@ -533,6 +533,17 @@
       "medium": "Medium",
       "high": "High",
       "critical": "Critical"
+    },
+    "detail": {
+      "sheetDescription": "{type} details",
+      "typeNames": {
+        "event": "Event",
+        "task": "Task"
+      },
+      "toLabel": "to",
+      "durationLabel": "Duration",
+      "allDayLabel": "All day",
+      "daysLabel": "{count} days"
     }
   },
   "eventForm": {

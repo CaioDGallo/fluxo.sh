@@ -611,3 +611,120 @@ test('convert expense to fatura payment', async ({ page }) => {
   await expect(faturaCard).toContainText('R$ 500,00');
   await expect(faturaCard).toContainText('Paga');
 });
+
+test('create calendar event', async ({ page }) => {
+  await login(page);
+
+  await page.goto('/calendar');
+  await expect(page.getByRole('heading', { name: 'Calendário' })).toBeVisible();
+
+  // Click add event button
+  await page.getByRole('button', { name: 'Adicionar Evento' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Adicionar Evento' })).toBeVisible();
+
+  // Fill event form
+  await dialog.getByLabel('Título').fill('Reunião E2E');
+  await dialog.getByLabel('Descrição').fill('Reunião de teste E2E');
+  await dialog.getByLabel('Local').fill('Sala 101');
+
+  // Set priority
+  await dialog.getByLabel('Prioridade').click();
+  await page.getByRole('option', { name: 'Alta' }).first().click();
+
+  // Create event
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Wait for calendar to reload
+  await page.waitForTimeout(500);
+
+  // Verify event appears in calendar (check for title in page)
+  await expect(page.getByText('Reunião E2E')).toBeVisible();
+});
+
+test('create calendar task', async ({ page }) => {
+  await login(page);
+
+  await page.goto('/calendar');
+  await expect(page.getByRole('heading', { name: 'Calendário' })).toBeVisible();
+
+  // Click add task button
+  await page.getByRole('button', { name: 'Adicionar Tarefa' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Adicionar Tarefa' })).toBeVisible();
+
+  // Fill task form
+  await dialog.getByLabel('Título').fill('Tarefa E2E');
+  await dialog.getByLabel('Descrição').fill('Tarefa de teste E2E');
+  await dialog.getByLabel('Local').fill('Escritório');
+
+  // Set priority
+  await dialog.getByLabel('Prioridade').click();
+  await page.getByRole('option', { name: 'Média' }).first().click();
+
+  // Set status
+  await dialog.getByLabel('Status').click();
+  await page.getByRole('option', { name: 'Pendente' }).first().click();
+
+  // Create task
+  await dialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Wait for calendar to reload
+  await page.waitForTimeout(500);
+
+  // Verify task appears in calendar
+  await expect(page.getByText('Tarefa E2E')).toBeVisible();
+});
+
+test('edit calendar event', async ({ page }) => {
+  await login(page);
+
+  await page.goto('/calendar');
+  await expect(page.getByRole('heading', { name: 'Calendário' })).toBeVisible();
+
+  // Create an event first
+  await page.getByRole('button', { name: 'Adicionar Evento' }).click();
+  const createDialog = page.getByRole('alertdialog');
+  await expect(createDialog).toBeVisible();
+  await createDialog.getByLabel('Título').fill('Evento Original E2E');
+  await createDialog.getByLabel('Descrição').fill('Descrição original');
+  await createDialog.getByLabel('Local').fill('Local Original');
+  await createDialog.getByLabel('Prioridade').click();
+  await page.getByRole('option', { name: 'Baixa' }).first().click();
+  await createDialog.getByRole('button', { name: 'Criar' }).click();
+  await expect(createDialog).toBeHidden();
+  await page.waitForTimeout(500);
+
+  // Click on the event to open detail sheet
+  await page.getByText('Evento Original E2E').first().click();
+  await page.waitForTimeout(300);
+
+  // Find the detail sheet and click edit
+  const sheet = page.locator('[role="dialog"]').filter({ hasText: 'Evento Original E2E' });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'Editar' }).click();
+
+  // Edit dialog should open
+  const editDialog = page.getByRole('alertdialog').filter({ hasText: 'Editar Evento' });
+  await expect(editDialog).toBeVisible();
+
+  // Modify event details
+  await editDialog.getByLabel('Título').fill('Evento Editado E2E');
+  await editDialog.getByLabel('Descrição').fill('Descrição editada');
+  await editDialog.getByLabel('Local').fill('Local Editado');
+  await editDialog.getByLabel('Prioridade').click();
+  await page.getByRole('option', { name: 'Alta' }).first().click();
+
+  // Save changes
+  await editDialog.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(editDialog).toBeHidden();
+  await page.waitForTimeout(500);
+
+  // Verify edited event appears in calendar
+  await expect(page.getByText('Evento Editado E2E')).toBeVisible();
+  await expect(page.getByText('Evento Original E2E')).not.toBeVisible();
+});

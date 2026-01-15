@@ -533,6 +533,17 @@
       "medium": "Média",
       "high": "Alta",
       "critical": "Crítica"
+    },
+    "detail": {
+      "sheetDescription": "Detalhes de {type}",
+      "typeNames": {
+        "event": "Evento",
+        "task": "Tarefa"
+      },
+      "toLabel": "até",
+      "durationLabel": "Duração",
+      "allDayLabel": "Dia todo",
+      "daysLabel": "{count} dias"
     }
   },
   "eventForm": {

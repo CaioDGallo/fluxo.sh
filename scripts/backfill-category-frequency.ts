@@ -1,9 +1,12 @@
+#!/usr/bin/env tsx
+
 /**
  * Backfill script to populate category_frequency table from existing transactions and income
  *
  * Usage: tsx scripts/backfill-category-frequency.ts
  */
 
+import 'dotenv/config';
 import { db } from '@/lib/db';
 import { categoryFrequency } from '@/lib/schema';
 import { sql } from 'drizzle-orm';
@@ -68,7 +71,7 @@ async function backfillCategoryFrequency() {
           categoryId: row.category_id,
           type: 'expense',
           count: Number(row.count),
-          lastUsedAt: row.last_used_at,
+          lastUsedAt: new Date(row.last_used_at),
         })
         .onConflictDoUpdate({
           target: [
@@ -79,7 +82,7 @@ async function backfillCategoryFrequency() {
           ],
           set: {
             count: Number(row.count),
-            lastUsedAt: row.last_used_at,
+            lastUsedAt: new Date(row.last_used_at),
           },
         });
       expenseInserted++;
@@ -101,7 +104,7 @@ async function backfillCategoryFrequency() {
           categoryId: row.category_id,
           type: 'income',
           count: Number(row.count),
-          lastUsedAt: row.last_used_at,
+          lastUsedAt: new Date(row.last_used_at),
         })
         .onConflictDoUpdate({
           target: [
@@ -112,7 +115,7 @@ async function backfillCategoryFrequency() {
           ],
           set: {
             count: Number(row.count),
-            lastUsedAt: row.last_used_at,
+            lastUsedAt: new Date(row.last_used_at),
           },
         });
       incomeInserted++;

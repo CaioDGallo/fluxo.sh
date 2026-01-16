@@ -226,7 +226,7 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
 
           {/* Step 2: Upload File */}
           {step === 'upload' && selectedTemplate && (
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <button onClick={() => setStep('template')} className="hover:underline">
                   {t('templates')}

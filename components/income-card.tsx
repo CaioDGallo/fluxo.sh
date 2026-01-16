@@ -218,7 +218,7 @@ export function IncomeCard(props: IncomeCardProps) {
         {/* Swipe-to-delete background - revealed when swiping left */}
         {swipe.isSwiping && swipe.swipeOffset < 0 && !props.selectionMode && (
           <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-6 pointer-events-none">
-            <span className="text-white font-medium">{t('delete')}</span>
+            <span className="text-white font-medium">{tCommon('delete')}</span>
           </div>
         )}
 

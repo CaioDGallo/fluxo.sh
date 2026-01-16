@@ -8,14 +8,29 @@ import { useSelection } from '@/lib/hooks/use-selection';
 import { SelectionActionBar } from '@/components/selection-action-bar';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { toast } from 'sonner';
+import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
+import { usePullToRefresh } from '@/lib/hooks/use-pull-to-refresh';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export { IncomeListProvider };
 
 export function IncomeList() {
+  const t = useTranslations('expenses');
   const context = useIncomeContext();
   const { filteredIncome, accounts, categories, filters, searchQuery } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
+  const router = useRouter();
+
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      triggerHaptic(HapticPatterns.light);
+      router.refresh();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    },
+    disabled: selection.isSelectionMode,
+  });
 
   // Group by date (same logic as original page)
   const groupedByDate = filteredIncome.reduce(
@@ -83,6 +98,21 @@ export function IncomeList() {
 
   return (
     <div className="space-y-8">
+      {/* Pull-to-refresh indicator */}
+      {(pullToRefresh.isRefreshing || pullToRefresh.pullDistance > 0) && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex justify-center"
+          style={{
+            transform: `translateY(${Math.min(pullToRefresh.pullDistance, 80)}px)`,
+            transition: pullToRefresh.isRefreshing ? 'transform 0.3s ease-out' : 'none',
+          }}
+        >
+          <div className="bg-gray-900/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm">
+            {pullToRefresh.isRefreshing ? t('refreshing') : t('pullToRefresh')}
+          </div>
+        </div>
+      )}
+
       {dates.map((date) => (
         <div key={date}>
           <h2 className="mb-3 text-sm font-medium text-gray-500">

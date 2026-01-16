@@ -7,6 +7,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Upload02Icon } from '@hugeicons/core-free-icons';
 import { parserList, parsers, type ParserKey } from '@/lib/import/parsers';
 import type { ParseResult, ImportRowWithSuggestion } from '@/lib/import/types';
 import type { Account, Category } from '@/lib/schema';
@@ -19,10 +21,9 @@ type Step = 'template' | 'upload' | 'configure';
 type Props = {
   accounts: Account[];
   categories: Category[];
-  trigger: React.ReactNode;
 };
 
-export function ImportModal({ accounts, categories, trigger }: Props) {
+export function ImportModal({ accounts, categories }: Props) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<ParserKey | null>(null);
@@ -193,13 +194,18 @@ export function ImportModal({ accounts, categories, trigger }: Props) {
         if (!o) resetState();
       }}
     >
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetTrigger asChild>
+        <Button variant="hollow" size="sm">
+          <HugeiconsIcon icon={Upload02Icon} className="mr-2 size-4" />
+          {t('title')}
+        </Button>
+      </SheetTrigger>
       <SheetContent side="right" className="w-screen! md:max-w-3xl! overflow-y-auto p-2">
         <SheetHeader>
           <SheetTitle>{t('title')}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex mt-2 space-y-4">
+        <div className="flex mt-2 mb-6 space-y-4">
           {/* Step 1: Select Template */}
           {step === 'template' && (
             <div className="space-y-4">

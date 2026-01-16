@@ -91,7 +91,7 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
                   'hover:bg-muted/50 active:bg-muted',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   '[-webkit-tap-highlight-color:transparent]',
-                  isSelected && 'ring-2 ring-primary ring-offset-2',
+                  isSelected && 'bg-green-500/10 border-green-600/30',
                   rowWithSuggestion.isDuplicate && 'opacity-60'
                 )}
               >

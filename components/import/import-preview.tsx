@@ -65,116 +65,121 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
         </div>
       </div>
 
-      {/* Preview Table */}
+      {/* Preview Cards */}
       {displayRows.length > 0 && (
-        <div className="border dark:border-gray-800 rounded-lg overflow-hidden">
-          <div className="max-h-96 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
-                <tr>
-                  <th className="px-4 py-2 w-12"></th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Date</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Description</th>
-                  {hasSuggestions && (
-                    <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Category</th>
-                  )}
-                  <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-gray-400">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayRows.slice(0, 100).map((row) => {
-                  const rowWithSuggestion = row as ImportRowWithSuggestion;
-                  const isSelected = selectedRows.has(row.rowIndex);
-                  return (
-                    <tr key={row.rowIndex} className="border-t dark:border-gray-800">
-                      <td className="px-4 py-2">
-                        <button
-                          onClick={() => onToggleRow(row.rowIndex)}
-                          className="flex items-center justify-center"
-                        >
-                          <div
-                            className={cn(
-                              'size-6 rounded-full border-2 flex items-center justify-center transition-all',
-                              isSelected
-                                ? 'bg-primary/85 border-green-600'
-                                : 'bg-gray-100/70 dark:bg-gray-800/70 border-gray-400 dark:border-gray-600'
-                            )}
-                          >
-                            {isSelected && (
-                              <HugeiconsIcon icon={Tick02Icon} className="size-3 text-green-600" strokeWidth={4} />
-                            )}
-                          </div>
-                        </button>
-                      </td>
-                      <td className="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {displayRows.slice(0, 100).map((row) => {
+            const rowWithSuggestion = row as ImportRowWithSuggestion;
+            const isSelected = selectedRows.has(row.rowIndex);
+            return (
+              <div
+                key={row.rowIndex}
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={`${row.description}, ${centsToDisplay(row.amountCents)}`}
+                tabIndex={0}
+                onClick={() => onToggleRow(row.rowIndex)}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    onToggleRow(row.rowIndex);
+                  }
+                }}
+                style={{ touchAction: 'manipulation' }}
+                className={cn(
+                  'p-3 rounded-lg border dark:border-gray-800 cursor-pointer transition-all',
+                  'hover:bg-muted/50 active:bg-muted',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  '[-webkit-tap-highlight-color:transparent]',
+                  isSelected && 'ring-2 ring-primary ring-offset-2',
+                  rowWithSuggestion.isDuplicate && 'opacity-60'
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Selection indicator */}
+                  <div
+                    className={cn(
+                      'size-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all',
+                      isSelected
+                        ? 'bg-primary/85 border-green-600'
+                        : 'bg-muted border-muted-foreground/30'
+                    )}
+                  >
+                    {isSelected && (
+                      <HugeiconsIcon icon={Tick02Icon} className="size-3 text-green-600" strokeWidth={4} />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Date and Amount row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         {formatDate(row.date)}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <span>{row.description}</span>
-                          {row.type && (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                                row.type === 'income'
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                  : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              }`}
-                            >
-                              {row.type === 'income' ? 'Income' : 'Expense'}
-                            </span>
-                          )}
-                          {rowWithSuggestion.isDuplicate && (
-                            <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                              {t('alreadyImported')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      {hasSuggestions && (
-                        <td className="px-4 py-2">
-                          {rowWithSuggestion.suggestedCategory ? (
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
-                                style={{
-                                  backgroundColor: `${rowWithSuggestion.suggestedCategory.color}20`,
-                                  color: rowWithSuggestion.suggestedCategory.color,
-                                }}
-                              >
-                                {rowWithSuggestion.suggestedCategory.name}
-                              </span>
-                            </div>
-                          ) : row.type ? (
-                            <span className="text-xs text-gray-500">
-                              Default ({row.type === 'income' ? 'Income' : 'Expense'})
-                            </span>
-                          ) : null}
-                        </td>
-                      )}
-                      <td
-                        className={`px-4 py-2 text-right font-medium ${
+                      </span>
+                      <span
+                        className={cn(
+                          'font-medium',
                           row.type === 'income'
                             ? 'text-green-600 dark:text-green-400'
                             : row.type === 'expense'
                               ? 'text-red-600 dark:text-red-400'
                               : ''
-                        }`}
+                        )}
                       >
                         {centsToDisplay(row.amountCents)}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {displayRows.length > 100 && (
-                  <tr>
-                    <td colSpan={hasSuggestions ? 5 : 4} className="px-4 py-2 text-center text-gray-500 text-xs">
-                      ... and {displayRows.length - 100} more rows
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    <div className="font-medium truncate mt-0.5">{row.description}</div>
+
+                    {/* Badges row */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {/* Category badge */}
+                      {hasSuggestions && rowWithSuggestion.suggestedCategory && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
+                          style={{
+                            backgroundColor: `${rowWithSuggestion.suggestedCategory.color}20`,
+                            color: rowWithSuggestion.suggestedCategory.color,
+                          }}
+                        >
+                          {rowWithSuggestion.suggestedCategory.name}
+                        </span>
+                      )}
+
+                      {/* Type badge */}
+                      {row.type && (
+                        <span
+                          className={cn(
+                            'text-xs px-2 py-0.5 rounded-full whitespace-nowrap',
+                            row.type === 'income'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          )}
+                        >
+                          {row.type === 'income' ? 'Income' : 'Expense'}
+                        </span>
+                      )}
+
+                      {/* Duplicate warning */}
+                      {rowWithSuggestion.isDuplicate && (
+                        <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                          {t('alreadyImported')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {displayRows.length > 100 && (
+            <div className="px-4 py-2 text-center text-gray-500 text-xs">
+              ... and {displayRows.length - 100} more rows
+            </div>
+          )}
         </div>
       )}
 

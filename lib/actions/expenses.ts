@@ -12,6 +12,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
+import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
 
 type CreateExpenseData = {
   description: string;
@@ -123,6 +124,9 @@ export async function createExpense(data: CreateExpenseData) {
     }
 
     await syncAccountBalance(data.accountId);
+
+    // Track category frequency for auto-suggestions
+    await incrementCategoryFrequency(userId, data.description, data.categoryId, 'expense');
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -453,10 +457,29 @@ export async function updateTransactionCategory(transactionId: number, categoryI
   try {
     const userId = await getCurrentUserId();
 
+    // Get old category and description for frequency transfer
+    const [transaction] = await db
+      .select({ description: transactions.description, categoryId: transactions.categoryId })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
+
+    if (!transaction) {
+      throw new Error(await t('errors.transactionNotFound'));
+    }
+
     await db
       .update(transactions)
       .set({ categoryId })
       .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
+
+    // Transfer frequency from old to new category
+    await transferCategoryFrequency(
+      userId,
+      transaction.description,
+      transaction.categoryId,
+      categoryId,
+      'expense'
+    );
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -485,10 +508,21 @@ export async function bulkUpdateTransactionCategories(
       throw new Error(`Rate limited. Try again in ${rateLimit.retryAfter}s.`);
     }
 
+    // Get old categories and descriptions for frequency transfer
+    const oldTransactions = await db
+      .select({ id: transactions.id, description: transactions.description, categoryId: transactions.categoryId })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
+
     await db
       .update(transactions)
       .set({ categoryId })
       .where(and(eq(transactions.userId, userId), inArray(transactions.id, transactionIds)));
+
+    // Transfer frequency for each transaction
+    for (const txn of oldTransactions) {
+      await transferCategoryFrequency(userId, txn.description, txn.categoryId, categoryId, 'expense');
+    }
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');

@@ -174,6 +174,31 @@ export const income = pgTable('income', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Category Frequency table (for smart categorization suggestions)
+export const categoryFrequency = pgTable(
+  'category_frequency',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    descriptionNormalized: text('description_normalized').notNull(), // LOWER(TRIM(description))
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    type: categoryTypeEnum('type').notNull(), // 'expense' | 'income'
+    count: integer('count').notNull().default(1),
+    lastUsedAt: timestamp('last_used_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserDescCatType: unique().on(
+      table.userId,
+      table.descriptionNormalized,
+      table.categoryId,
+      table.type
+    ),
+    lookupIdx: sql`CREATE INDEX IF NOT EXISTS category_frequency_lookup_idx ON category_frequency (user_id, description_normalized, type)`,
+  })
+);
+
 // Calendar sources table (external iCal subscriptions)
 export const calendarSources = pgTable('calendar_sources', {
   id: serial('id').primaryKey(),
@@ -336,6 +361,9 @@ export type NewEntry = typeof entries.$inferInsert;
 export type Income = typeof income.$inferSelect;
 export type NewIncome = typeof income.$inferInsert;
 
+export type CategoryFrequency = typeof categoryFrequency.$inferSelect;
+export type NewCategoryFrequency = typeof categoryFrequency.$inferInsert;
+
 export type CalendarSource = typeof calendarSources.$inferSelect;
 export type NewCalendarSource = typeof calendarSources.$inferInsert;
 
@@ -408,6 +436,13 @@ export const incomeRelations = relations(income, ({ one }) => ({
   account: one(accounts, {
     fields: [income.accountId],
     references: [accounts.id],
+  }),
+}));
+
+export const categoryFrequencyRelations = relations(categoryFrequency, ({ one }) => ({
+  category: one(categories, {
+    fields: [categoryFrequency.categoryId],
+    references: [categories.id],
   }),
 }));
 

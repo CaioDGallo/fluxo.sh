@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { transactions, entries, accounts, categories, income, transfers } from '@/lib/schema';
+import { transactions, entries, accounts, categories, income, transfers, categoryFrequency } from '@/lib/schema';
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
@@ -13,6 +13,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
+import { bulkIncrementCategoryFrequency } from '@/lib/actions/category-frequency';
 
 type SuggestionsInput = {
   expenseDescriptions: string[];
@@ -65,28 +66,48 @@ export async function getCategorySuggestions(
   const expenseMap: Record<string, CategorySuggestion> = {};
   const incomeMap: Record<string, CategorySuggestion> = {};
 
+  // Helper to normalize descriptions
+  const normalizeDescription = (desc: string) => desc.trim().toLowerCase();
+
   if (expenseDescriptions.length > 0) {
-    const expenseHistory = await db
+    // Create map from normalized to original descriptions
+    const normalizedToOriginal = expenseDescriptions.reduce(
+      (acc, desc) => {
+        const normalized = normalizeDescription(desc);
+        if (!acc[normalized]) {
+          acc[normalized] = desc; // Keep first occurrence as canonical
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    const normalizedDescriptions = Object.keys(normalizedToOriginal);
+
+    const expenseFrequency = await db
       .select({
-        description: transactions.description,
-        categoryId: transactions.categoryId,
+        descriptionNormalized: categoryFrequency.descriptionNormalized,
+        categoryId: categoryFrequency.categoryId,
         categoryName: categories.name,
         categoryColor: categories.color,
-        createdAt: transactions.createdAt,
+        count: categoryFrequency.count,
+        lastUsedAt: categoryFrequency.lastUsedAt,
       })
-      .from(transactions)
-      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .from(categoryFrequency)
+      .innerJoin(categories, eq(categoryFrequency.categoryId, categories.id))
       .where(
         and(
-          eq(transactions.userId, userId),
-          inArray(transactions.description, expenseDescriptions)
+          eq(categoryFrequency.userId, userId),
+          eq(categoryFrequency.type, 'expense'),
+          inArray(categoryFrequency.descriptionNormalized, normalizedDescriptions)
         )
       )
-      .orderBy(desc(transactions.createdAt));
+      .orderBy(desc(categoryFrequency.count), desc(categoryFrequency.lastUsedAt));
 
-    for (const record of expenseHistory) {
-      if (!expenseMap[record.description]) {
-        expenseMap[record.description] = {
+    for (const record of expenseFrequency) {
+      const originalDescription = normalizedToOriginal[record.descriptionNormalized];
+      if (originalDescription && !expenseMap[originalDescription]) {
+        expenseMap[originalDescription] = {
           id: record.categoryId,
           name: record.categoryName,
           color: record.categoryColor,
@@ -96,27 +117,44 @@ export async function getCategorySuggestions(
   }
 
   if (incomeDescriptions.length > 0) {
-    const incomeHistory = await db
+    // Create map from normalized to original descriptions
+    const normalizedToOriginal = incomeDescriptions.reduce(
+      (acc, desc) => {
+        const normalized = normalizeDescription(desc);
+        if (!acc[normalized]) {
+          acc[normalized] = desc; // Keep first occurrence as canonical
+        }
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    const normalizedDescriptions = Object.keys(normalizedToOriginal);
+
+    const incomeFrequency = await db
       .select({
-        description: income.description,
-        categoryId: income.categoryId,
+        descriptionNormalized: categoryFrequency.descriptionNormalized,
+        categoryId: categoryFrequency.categoryId,
         categoryName: categories.name,
         categoryColor: categories.color,
-        createdAt: income.createdAt,
+        count: categoryFrequency.count,
+        lastUsedAt: categoryFrequency.lastUsedAt,
       })
-      .from(income)
-      .innerJoin(categories, eq(income.categoryId, categories.id))
+      .from(categoryFrequency)
+      .innerJoin(categories, eq(categoryFrequency.categoryId, categories.id))
       .where(
         and(
-          eq(income.userId, userId),
-          inArray(income.description, incomeDescriptions)
+          eq(categoryFrequency.userId, userId),
+          eq(categoryFrequency.type, 'income'),
+          inArray(categoryFrequency.descriptionNormalized, normalizedDescriptions)
         )
       )
-      .orderBy(desc(income.createdAt));
+      .orderBy(desc(categoryFrequency.count), desc(categoryFrequency.lastUsedAt));
 
-    for (const record of incomeHistory) {
-      if (!incomeMap[record.description]) {
-        incomeMap[record.description] = {
+    for (const record of incomeFrequency) {
+      const originalDescription = normalizedToOriginal[record.descriptionNormalized];
+      if (originalDescription && !incomeMap[originalDescription]) {
+        incomeMap[originalDescription] = {
           id: record.categoryId,
           name: record.categoryName,
           color: record.categoryColor,
@@ -686,6 +724,33 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
     }
 
     await syncAccountBalance(accountId);
+
+    // Track category frequencies for imported records
+    const frequencyItems: Array<{ description: string; categoryId: number; type: 'expense' | 'income' }> = [];
+
+    // Add all imported expenses
+    for (const row of newExpenses) {
+      const categoryId = categoryOverrides[row.rowIndex] ?? expenseCategoryId;
+      frequencyItems.push({
+        description: row.installmentInfo?.baseDescription ?? row.description,
+        categoryId,
+        type: 'expense',
+      });
+    }
+
+    // Add all imported income
+    for (const row of newIncome) {
+      const categoryId = categoryOverrides[row.rowIndex] ?? incomeCategoryId;
+      frequencyItems.push({
+        description: row.description,
+        categoryId,
+        type: 'income',
+      });
+    }
+
+    if (frequencyItems.length > 0) {
+      await bulkIncrementCategoryFrequency(userId, frequencyItems);
+    }
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');

@@ -10,6 +10,7 @@ import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { syncAccountBalance } from '@/lib/actions/accounts';
+import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
 
 export type CreateIncomeData = {
   description: string;
@@ -50,6 +51,9 @@ export async function createIncome(data: CreateIncomeData) {
     });
 
     await syncAccountBalance(data.accountId);
+
+    // Track category frequency for auto-suggestions
+    await incrementCategoryFrequency(userId, data.description.trim(), data.categoryId, 'income');
 
     revalidatePath('/income');
     revalidatePath('/dashboard');
@@ -285,10 +289,29 @@ export async function markIncomePending(incomeId: number) {
 export async function updateIncomeCategory(incomeId: number, categoryId: number) {
   const userId = await getCurrentUserId();
 
+  // Get old category and description for frequency transfer
+  const [incomeRecord] = await db
+    .select({ description: income.description, categoryId: income.categoryId })
+    .from(income)
+    .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
+
+  if (!incomeRecord) {
+    throw new Error(await t('errors.incomeNotFound'));
+  }
+
   await db
     .update(income)
     .set({ categoryId })
     .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
+
+  // Transfer frequency from old to new category
+  await transferCategoryFrequency(
+    userId,
+    incomeRecord.description,
+    incomeRecord.categoryId,
+    categoryId,
+    'income'
+  );
 
   revalidatePath('/income');
   revalidatePath('/dashboard');
@@ -313,10 +336,21 @@ export async function bulkUpdateIncomeCategories(
       throw new Error(`Rate limited. Try again in ${rateLimit.retryAfter}s.`);
     }
 
+    // Get old categories and descriptions for frequency transfer
+    const oldIncomes = await db
+      .select({ id: income.id, description: income.description, categoryId: income.categoryId })
+      .from(income)
+      .where(and(eq(income.userId, userId), inArray(income.id, incomeIds)));
+
     await db
       .update(income)
       .set({ categoryId })
       .where(and(eq(income.userId, userId), inArray(income.id, incomeIds)));
+
+    // Transfer frequency for each income record
+    for (const inc of oldIncomes) {
+      await transferCategoryFrequency(userId, inc.description, inc.categoryId, categoryId, 'income');
+    }
 
     revalidatePath('/income');
     revalidatePath('/dashboard');

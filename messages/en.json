@@ -213,6 +213,8 @@
     "budgetsDescription": "Set monthly budgets per category",
     "calendars": "Calendars",
     "calendarsDescription": "Sync external calendars (Google, Outlook, Apple)",
+    "data": "Settings",
+    "dataDescription": "Danger zone and irreversible actions",
     "language": "Language",
     "languageDescription": "Choose application language",
     "expenseCategories": "Expense Categories",
@@ -847,5 +849,18 @@
       "cash": "Cash",
       "credit_card": "Credit Card"
     }
+  },
+  "dataSettings": {
+    "title": "Settings",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDescription": "Irreversible actions that affect your data",
+    "resetTransactions": "Reset Transactions",
+    "resetTransactionsDescription": "Removes all expenses, income, and transfers. Budgets, accounts, categories, and auto-categorization will be preserved.",
+    "resetTransactionsButton": "Reset All Transactions",
+    "resetTransactionsConfirmTitle": "Reset all transactions?",
+    "resetTransactionsConfirmDescription": "This action will PERMANENTLY remove all your expenses, income, and transfers. Your budgets, accounts, and categories will be preserved. Auto-categorization will continue to work.",
+    "resetTransactionsConfirmButton": "Yes, reset everything",
+    "resetTransactionsSuccess": "Transactions removed successfully ({transactions} expenses, {entries} entries, {income} income)",
+    "resetting": "Resetting..."
   }
 }

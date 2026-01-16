@@ -45,6 +45,13 @@ export default async function SettingsPage() {
           <h2 className="font-semibold">{t('calendars')}</h2>
           <p className="text-sm text-gray-600">{t('calendarsDescription')}</p>
         </Link>
+        <Link
+          href="/settings/data"
+          className="block border border-destructive/50 p-4 hover:border-destructive bg-destructive/5"
+        >
+          <h2 className="font-semibold text-destructive">{t('data')}</h2>
+          <p className="text-sm text-muted-foreground">{t('dataDescription')}</p>
+        </Link>
         <div className="block border border-gray-300 p-4">
           <h2 className="font-semibold">{t('language')}</h2>
           <p className="text-sm text-gray-600">{t('languageDescription')}</p>

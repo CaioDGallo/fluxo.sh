@@ -213,6 +213,8 @@
     "budgetsDescription": "Definir orçamentos mensais por categoria",
     "calendars": "Calendários",
     "calendarsDescription": "Sincronizar calendários externos (Google, Outlook, Apple)",
+    "data": "Configurações",
+    "dataDescription": "Zona de perigo e ações irreversíveis",
     "language": "Idioma",
     "languageDescription": "Escolha o idioma do aplicativo",
     "expenseCategories": "Categorias de Despesa",
@@ -847,5 +849,18 @@
       "cash": "Dinheiro",
       "credit_card": "Cartão de Crédito"
     }
+  },
+  "dataSettings": {
+    "title": "Configurações",
+    "dangerZone": "Zona de Perigo",
+    "dangerZoneDescription": "Ações irreversíveis que afetam seus dados",
+    "resetTransactions": "Limpar Transações",
+    "resetTransactionsDescription": "Remove todas as despesas, receitas e transferências. Orçamentos, contas, categorias e auto-categorização serão mantidos.",
+    "resetTransactionsButton": "Limpar Todas as Transações",
+    "resetTransactionsConfirmTitle": "Limpar todas as transações?",
+    "resetTransactionsConfirmDescription": "Esta ação removerá PERMANENTEMENTE todas as suas despesas, receitas e transferências. Seus orçamentos, contas e categorias serão mantidos. A auto-categorização continuará funcionando.",
+    "resetTransactionsConfirmButton": "Sim, limpar tudo",
+    "resetTransactionsSuccess": "Transações removidas com sucesso ({transactions} despesas, {entries} parcelas, {income} receitas)",
+    "resetting": "Limpando..."
   }
 }

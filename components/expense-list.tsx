@@ -11,10 +11,12 @@ import { toast } from 'sonner';
 import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
 import { usePullToRefresh } from '@/lib/hooks/use-pull-to-refresh';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export { ExpenseListProvider };
 
 export function ExpenseList() {
+  const t = useTranslations('expenses');
   const context = useExpenseContext();
   const { expenses, filteredExpenses, accounts, categories, unpaidFaturas, filters, searchQuery } = context;
   const selection = useSelection();
@@ -92,9 +94,9 @@ export function ExpenseList() {
     // Provide detailed feedback based on what was skipped
     if (uniqueTransactionIds.length === 0) {
       if (skippedCount.optimistic > 0) {
-        toast.error('Cannot update pending items');
+        toast.error(t('cannotUpdatePendingItems'));
       } else {
-        toast.error('No valid items to update');
+        toast.error(t('noValidItemsToUpdate'));
         console.error('Selection failed:', skippedCount);
       }
       return;
@@ -122,15 +124,15 @@ export function ExpenseList() {
     if (searchQuery.trim()) {
       return (
         <div className="py-12 text-center">
-          <p className="text-gray-500">No expenses found matching &ldquo;{searchQuery}&rdquo;</p>
-          <p className="mt-2 text-sm text-gray-400">Try a different search term</p>
+          <p className="text-gray-500">{t('noExpensesFound', { query: searchQuery })}</p>
+          <p className="mt-2 text-sm text-gray-400">{t('tryDifferentSearch')}</p>
         </div>
       );
     }
     return (
       <div className="py-12 text-center">
-        <p className="text-gray-500">No expenses found for this period.</p>
-        <p className="mt-2 text-sm text-gray-400">Use the + button to add an expense</p>
+        <p className="text-gray-500">{t('noExpensesThisPeriod')}</p>
+        <p className="mt-2 text-sm text-gray-400">{t('useButtonToAdd')}</p>
       </div>
     );
   }
@@ -147,7 +149,7 @@ export function ExpenseList() {
           }}
         >
           <div className="bg-gray-900/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm">
-            {pullToRefresh.isRefreshing ? 'Refreshing...' : 'Pull to refresh'}
+            {pullToRefresh.isRefreshing ? t('refreshing') : t('pullToRefresh')}
           </div>
         </div>
       )}

@@ -81,6 +81,7 @@ export function IncomeCard(props: IncomeCardProps) {
 
   const t = useTranslations('income');
   const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
 
   const [optimisticCategory, setOptimisticCategory] = useOptimistic(
     { id: income.categoryId, color: income.categoryColor, icon: income.categoryIcon, name: income.categoryName },
@@ -136,7 +137,7 @@ export function IncomeCard(props: IncomeCardProps) {
     try {
       await updateIncomeCategory(income.id, categoryId);
     } catch {
-      toast.error('Failed to update category');
+      toast.error(tErrors('failedToUpdateCategory'));
     }
   };
 
@@ -163,11 +164,11 @@ export function IncomeCard(props: IncomeCardProps) {
         props.selectionMode && "cursor-pointer",
         props.selectionMode && props.isSelected && "ring-2 ring-primary ring-offset-2"
       )}>
-        <CardContent {...longPressHandlers} onClick={handleCardClick} className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+        <CardContent {...longPressHandlers} onClick={handleCardClick} className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 select-none touch-none">
           {/* Category icon - clickable */}
           <button
             type="button"
-            aria-label={props.selectionMode ? t('selected') : 'Alterar categoria'}
+            aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
             onClick={(e) => {
               e.stopPropagation();
               if (props.selectionMode) {

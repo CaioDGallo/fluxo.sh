@@ -103,7 +103,8 @@ export function ExpenseCard(props: ExpenseCardProps) {
       }
     },
     disabled: props.selectionMode || isOptimistic,
-    threshold: 80,
+    threshold: 50,
+    velocityThreshold: 0.15,
   });
 
   const t = useTranslations('expenses');
@@ -157,9 +158,9 @@ export function ExpenseCard(props: ExpenseCardProps) {
     }
 
     // Show undo toast
-    toast.success('Expense deleted', {
+    toast.success(t('expenseDeleted'), {
       action: {
-        label: 'Undo',
+        label: tCommon('undo'),
         onClick: () => {
           // Refresh the page to restore the deleted item
           window.location.reload();
@@ -191,6 +192,40 @@ export function ExpenseCard(props: ExpenseCardProps) {
     disabled: !props.selectionMode && !props.onLongPress,
   });
 
+  // Merge gesture handlers without override
+  const combinedHandlers = {
+    onPointerDown: (e: React.PointerEvent) => {
+      longPressHandlers.onPointerDown(e);
+      if (!props.selectionMode && !isOptimistic) {
+        swipe.handlers.onPointerDown(e);
+      }
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      longPressHandlers.onPointerMove(e);
+      if (!props.selectionMode && !isOptimistic) {
+        swipe.handlers.onPointerMove(e);
+      }
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      longPressHandlers.onPointerUp(e);
+      if (!props.selectionMode && !isOptimistic) {
+        swipe.handlers.onPointerUp(e);
+      }
+    },
+    onPointerCancel: () => {
+      longPressHandlers.onPointerCancel();
+      if (!props.selectionMode && !isOptimistic) {
+        swipe.handlers.onPointerCancel();
+      }
+    },
+    onPointerLeave: () => {
+      longPressHandlers.onPointerLeave();
+      if (!props.selectionMode && !isOptimistic) {
+        swipe.handlers.onPointerLeave();
+      }
+    },
+  };
+
   // Support Shift+Click to enter selection mode (keyboard accessible)
   const handleCardClick = (e: React.MouseEvent) => {
     if (!props.selectionMode && e.shiftKey && props.onLongPress) {
@@ -211,15 +246,14 @@ export function ExpenseCard(props: ExpenseCardProps) {
         {/* Delete background revealed on swipe */}
         {swipe.isSwiping && swipe.swipeOffset < 0 && (
           <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-4">
-            <span className="text-white font-medium">Delete</span>
+            <span className="text-white font-medium">{t('delete')}</span>
           </div>
         )}
 
         <CardContent
-          {...longPressHandlers}
-          {...swipe.handlers}
+          {...combinedHandlers}
           onClick={handleCardClick}
-          className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 relative bg-white"
+          className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 relative bg-white select-none touch-none"
           style={{
             transform: swipe.swipeOffset < 0 ? `translateX(${swipe.swipeOffset}px)` : undefined,
             transition: swipe.isSwiping ? 'none' : 'transform 0.2s ease-out',
@@ -228,7 +262,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
           {/* Category icon - clickable */}
           <button
             type="button"
-            aria-label={props.selectionMode ? t('selected') : 'Alterar categoria'}
+            aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();

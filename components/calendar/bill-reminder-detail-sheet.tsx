@@ -201,8 +201,8 @@ export function BillReminderDetailSheet({
         </div>
 
         {/* Info note */}
-        <div className="mt-6 rounded-lg bg-muted/50 p-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-6 rounded-lg bg-muted/50 mx-4">
+          <p className="text-xs text-muted-foreground p-4">
             {tDetail('infoNote')}
           </p>
         </div>

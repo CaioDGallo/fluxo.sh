@@ -5,7 +5,7 @@ import { transactions, entries, accounts, categories, income, transfers, categor
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
-import { computeFaturaWindowStart, getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { computeClosingDate, computeFaturaWindowStart, getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { addMonths } from '@/lib/utils';
 import { ensureFaturaExists, updateFaturaTotal } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
@@ -745,8 +745,42 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
     // Ensure faturas exist and update totals for credit cards
     if (hasBillingConfig && affectedFaturas.size > 0) {
-      for (const month of affectedFaturas) {
-        await ensureFaturaExists(accountId, month, faturaOverrides);
+      // Determine which fatura month the OFX represents (if any)
+      // The closingDate in faturaOverrides corresponds to a specific fatura month
+      // Only apply overrides to that specific month; other months use account defaults
+      const ofxFaturaMonth = faturaOverrides?.closingDate?.slice(0, 7);
+
+      // Sort faturas chronologically to process them in order
+      const sortedFaturas = Array.from(affectedFaturas).sort();
+
+      // Track the previous fatura's closing date for continuity
+      let previousClosingDate: string | undefined;
+
+      for (const month of sortedFaturas) {
+        // Only apply faturaOverrides to the fatura that the OFX file represents
+        let overridesForMonth: typeof faturaOverrides;
+
+        if (month === ofxFaturaMonth) {
+          // This is the OFX fatura - use provided overrides
+          overridesForMonth = faturaOverrides;
+          previousClosingDate = faturaOverrides?.closingDate;
+        } else if (previousClosingDate) {
+          // Subsequent fatura after one with custom dates
+          // Set startDate to be the day after previous fatura's closing date
+          const prevClosingDateObj = new Date(previousClosingDate + 'T00:00:00Z');
+          prevClosingDateObj.setUTCDate(prevClosingDateObj.getUTCDate() + 1);
+          const startDate = prevClosingDateObj.toISOString().split('T')[0];
+          overridesForMonth = { startDate };
+
+          // Update previousClosingDate for the next iteration
+          // Compute this fatura's closing date from account defaults
+          previousClosingDate = computeClosingDate(month, account[0].closingDay!);
+        } else {
+          // No previous custom dates - use account defaults
+          overridesForMonth = undefined;
+        }
+
+        await ensureFaturaExists(accountId, month, overridesForMonth);
         await updateFaturaTotal(accountId, month);
       }
     }

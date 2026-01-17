@@ -398,7 +398,7 @@ describe('Bill Reminders - Notification Processing', () => {
     vi.doMock('@/lib/db', () => ({ db }));
 
     vi.doMock('@/lib/i18n/server-errors', () => ({
-      translateWithLocale: vi.fn((locale: string, key: string, params?: any) => {
+      translateWithLocale: vi.fn((locale: string, key: string, params?: Record<string, unknown>) => {
         if (key === 'emails.billReminders.subject') {
           return `Bill Reminders for ${params?.date || 'date'}`;
         }

@@ -312,7 +312,7 @@ describe('Fatura Actions', () => {
         updateFaturaDates(999, {
           startDate: '2025-01-01',
         })
-      ).rejects.toThrow('Fatura not found');
+      ).rejects.toThrow('Bill not found');
     });
   });
 

@@ -401,6 +401,7 @@ describe('Account Actions', () => {
         userId: TEST_USER_ID,
         accountId: account.id,
         yearMonth: '2025-01',
+        closingDate: '2025-01-15',
         totalAmount: 0,
         dueDate: '2025-02-05',
         paidAt: null,

@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { formatFaturaMonth } from '@/lib/fatura-utils';
-import { getFaturaWithEntries, markFaturaUnpaid } from '@/lib/actions/faturas';
+import { getFaturaWithEntries, markFaturaUnpaid, updateFaturaDates } from '@/lib/actions/faturas';
 import { PayFaturaDialog } from '@/components/pay-fatura-dialog';
 import { CategoryIcon } from '@/components/icon-picker';
 import { toast } from 'sonner';
@@ -39,13 +40,23 @@ export function FaturaDetailSheet({
 }: FaturaDetailSheetProps) {
   const [fatura, setFatura] = useState<FaturaDetail | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [isEditingDates, setIsEditingDates] = useState(false);
+  const [editClosingDate, setEditClosingDate] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
   const [isPending, startTransition] = useTransition();
   const t = useTranslations('faturas');
   const tCommon = useTranslations('common');
 
   useEffect(() => {
     if (open) {
-      getFaturaWithEntries(faturaId).then(setFatura);
+      getFaturaWithEntries(faturaId).then((data) => {
+        setFatura(data);
+        if (data) {
+          setEditClosingDate(data.closingDate);
+          setEditDueDate(data.dueDate);
+        }
+      });
+      setIsEditingDates(false);
     }
   }, [faturaId, open]);
 
@@ -62,6 +73,37 @@ export function FaturaDetailSheet({
         console.error(error);
       }
     });
+  };
+
+  const handleSaveDates = async () => {
+    startTransition(async () => {
+      try {
+        await updateFaturaDates(faturaId, {
+          closingDate: editClosingDate,
+          dueDate: editDueDate,
+        });
+        toast.success(t('datesUpdated'));
+        // Refresh data
+        const updated = await getFaturaWithEntries(faturaId);
+        setFatura(updated);
+        if (updated) {
+          setEditClosingDate(updated.closingDate);
+          setEditDueDate(updated.dueDate);
+        }
+        setIsEditingDates(false);
+      } catch (error) {
+        toast.error(t('errorUpdatingDates'));
+        console.error(error);
+      }
+    });
+  };
+
+  const handleCancelEditDates = () => {
+    if (fatura) {
+      setEditClosingDate(fatura.closingDate);
+      setEditDueDate(fatura.dueDate);
+    }
+    setIsEditingDates(false);
   };
 
   if (!fatura) {
@@ -111,17 +153,76 @@ export function FaturaDetailSheet({
                   {formatCurrency(fatura.totalAmount)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">{t('dueDate')}</span>
-                <span>{formatDate(fatura.dueDate)}</span>
-              </div>
-              {isPaid && (
-                <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-gray-600">{t('paidOn')}</span>
-                  <span className="text-green-600">
-                    {formatDate(fatura.paidAt!)}
-                  </span>
+
+              {isEditingDates ? (
+                <div className="space-y-3 mt-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 min-w-24">{t('closingDate')}</label>
+                    <Input
+                      type="date"
+                      value={editClosingDate}
+                      onChange={(e) => setEditClosingDate(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 min-w-24">{t('dueDate')}</label>
+                    <Input
+                      type="date"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveDates}
+                      disabled={isPending}
+                      className="flex-1"
+                    >
+                      {tCommon('save')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelEditDates}
+                      disabled={isPending}
+                      className="flex-1"
+                    >
+                      {tCommon('cancel')}
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-sm mt-2">
+                    <span className="text-gray-600">{t('closingDate')}</span>
+                    <span>{formatDate(fatura.closingDate)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm mt-2">
+                    <span className="text-gray-600">{t('dueDate')}</span>
+                    <span>{formatDate(fatura.dueDate)}</span>
+                  </div>
+                  {!isPaid && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingDates(true)}
+                      className="mt-2 w-full"
+                    >
+                      {t('editDates')}
+                    </Button>
+                  )}
+                  {isPaid && (
+                    <div className="flex items-center justify-between text-sm mt-2">
+                      <span className="text-gray-600">{t('paidOn')}</span>
+                      <span className="text-green-600">
+                        {formatDate(fatura.paidAt!)}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

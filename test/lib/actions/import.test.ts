@@ -73,6 +73,7 @@ describe('Import Actions', () => {
         userId: TEST_USER_ID,
         accountId,
         yearMonth: faturaMonth,
+        closingDate: '2025-01-15',
         totalAmount: amount,
         dueDate,
         paidAt: null,

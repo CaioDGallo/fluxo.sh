@@ -1,5 +1,5 @@
 import type { ImportTemplate, ParseResult, ValidatedImportRow, ImportRowError } from '../types';
-import { parseOFXTransactions } from './ofx-parser';
+import { parseOFX } from './ofx-parser';
 import { simplifyDescription } from './nubank-extrato-simplify';
 
 export const nubankExtratoOfxParser: ImportTemplate = {
@@ -15,7 +15,7 @@ export const nubankExtratoOfxParser: ImportTemplate = {
     const errors: ImportRowError[] = [];
 
     try {
-      const transactions = parseOFXTransactions(content);
+      const { transactions, statementStart, statementEnd } = parseOFX(content);
 
       transactions.forEach((txn, index) => {
         // For checking account OFX: negative amount = expense, positive = income
@@ -43,6 +43,13 @@ export const nubankExtratoOfxParser: ImportTemplate = {
           rawValue: '',
         });
       }
+
+      return {
+        rows,
+        errors,
+        skipped: 0,
+        metadata: { statementStart, statementEnd },
+      };
     } catch (error) {
       errors.push({
         rowIndex: 1,

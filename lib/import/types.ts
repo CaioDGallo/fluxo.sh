@@ -26,6 +26,10 @@ export type ParseResult = {
   rows: ValidatedImportRow[];
   errors: ImportRowError[];
   skipped: number;
+  metadata?: {
+    statementStart?: string; // YYYY-MM-DD
+    statementEnd?: string; // YYYY-MM-DD (closing date)
+  };
 };
 
 export type ImportTemplate = {

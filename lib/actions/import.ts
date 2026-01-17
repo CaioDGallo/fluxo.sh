@@ -302,6 +302,7 @@ type ImportMixedData = {
   rows: ValidatedImportRow[];
   accountId: number;
   categoryOverrides?: Record<number, number>;
+  faturaOverrides?: { closingDate?: string; dueDate?: string };
 };
 
 type ImportMixedResult =
@@ -564,7 +565,7 @@ async function processInstallmentGroup(
 }
 
 export async function importMixed(data: ImportMixedData): Promise<ImportMixedResult> {
-  const { rows, accountId, categoryOverrides = {} } = data;
+  const { rows, accountId, categoryOverrides = {}, faturaOverrides } = data;
 
   if (rows.length === 0) {
     return { success: false, error: await t('errors.noValidRows') };
@@ -718,7 +719,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
     // Ensure faturas exist and update totals for credit cards
     if (hasBillingConfig && affectedFaturas.size > 0) {
       for (const month of affectedFaturas) {
-        await ensureFaturaExists(accountId, month);
+        await ensureFaturaExists(accountId, month, faturaOverrides);
         await updateFaturaTotal(accountId, month);
       }
     }

@@ -524,6 +524,7 @@ describe('Ignore Transactions', () => {
           userId: TEST_USER_ID,
           accountId: creditCard.id,
           yearMonth: '2025-01',
+          closingDate: '2025-01-15',
           totalAmount: 50000,
           dueDate: '2025-02-05',
           paidAt: new Date('2025-02-05'),

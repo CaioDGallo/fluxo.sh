@@ -2,7 +2,7 @@
 
 import { getCurrentUserId } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { computeClosingDate, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, transactions, transfers, type Fatura } from '@/lib/schema';
@@ -23,8 +23,16 @@ export type UnpaidFatura = {
 /**
  * Ensures a fatura exists for a given account and month.
  * Creates it if it doesn't exist.
+ *
+ * @param overrides - Optional custom dates (e.g., from OFX import)
+ *   - closingDate: Actual closing date (overrides computed from account default)
+ *   - dueDate: Actual due date (overrides computed from account default)
  */
-export async function ensureFaturaExists(accountId: number, yearMonth: string): Promise<Fatura> {
+export async function ensureFaturaExists(
+  accountId: number,
+  yearMonth: string,
+  overrides?: { closingDate?: string; dueDate?: string }
+): Promise<Fatura> {
   const userId = await getCurrentUserId();
 
   // Check if fatura exists
@@ -38,7 +46,7 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
     return existing[0];
   }
 
-  // Get account to compute due date
+  // Get account to compute dates
   const account = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.id, accountId))).limit(1);
 
   if (!account[0]) {
@@ -48,7 +56,10 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
   // For non-credit cards or cards without billing config, use first day of next month
   const paymentDueDay = account[0].paymentDueDay || 1;
   const closingDay = account[0].closingDay || 1;
-  const paymentDueDate = getFaturaPaymentDueDate(yearMonth, paymentDueDay, closingDay);
+
+  // Use overrides if provided, otherwise compute from account defaults
+  const closingDate = overrides?.closingDate ?? computeClosingDate(yearMonth, closingDay);
+  const paymentDueDate = overrides?.dueDate ?? getFaturaPaymentDueDate(yearMonth, paymentDueDay, closingDay);
 
   // Create fatura
   const [fatura] = await db
@@ -57,6 +68,7 @@ export async function ensureFaturaExists(accountId: number, yearMonth: string): 
       userId,
       accountId,
       yearMonth,
+      closingDate,
       totalAmount: 0,
       dueDate: paymentDueDate,
     })
@@ -86,6 +98,48 @@ export async function updateFaturaTotal(accountId: number, yearMonth: string): P
 }
 
 /**
+ * Updates the closing date and/or due date for a specific fatura.
+ * Used when actual billing dates differ from account defaults (e.g., weekend shifts).
+ */
+export async function updateFaturaDates(
+  faturaId: number,
+  data: { closingDate?: string; dueDate?: string }
+): Promise<void> {
+  if (!Number.isInteger(faturaId) || faturaId <= 0) {
+    throw new Error(await t('errors.invalidFaturaId'));
+  }
+
+  if (!data.closingDate && !data.dueDate) {
+    throw new Error('At least one date must be provided');
+  }
+
+  const userId = await getCurrentUserId();
+
+  // Verify fatura exists and belongs to user
+  const fatura = await db
+    .select()
+    .from(faturas)
+    .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
+    .limit(1);
+
+  if (!fatura[0]) {
+    throw new Error(await t('errors.faturaNotFound'));
+  }
+
+  // Update dates
+  const updates: { closingDate?: string; dueDate?: string } = {};
+  if (data.closingDate) updates.closingDate = data.closingDate;
+  if (data.dueDate) updates.dueDate = data.dueDate;
+
+  await db
+    .update(faturas)
+    .set(updates)
+    .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+
+  revalidatePath('/faturas');
+}
+
+/**
  * Gets all faturas for a specific account, ordered by month descending.
  */
 export const getFaturasByAccount = cache(async (accountId: number) => {
@@ -108,6 +162,7 @@ export const getFaturasByMonth = cache(async (yearMonth: string) => {
       accountId: faturas.accountId,
       accountName: accounts.name,
       yearMonth: faturas.yearMonth,
+      closingDate: faturas.closingDate,
       totalAmount: faturas.totalAmount,
       dueDate: faturas.dueDate,
       paidAt: sql<string | null>`${faturas.paidAt}::text`,

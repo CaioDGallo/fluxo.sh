@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Upload02Icon } from '@hugeicons/core-free-icons';
 import { parserList, parsers, type ParserKey } from '@/lib/import/parsers';
@@ -33,11 +34,20 @@ export function ImportModal({ accounts, categories }: Props) {
   const [categoryId, setCategoryId] = useState(categories[0]?.id?.toString() || '');
   const [isImporting, setIsImporting] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [closingDate, setClosingDate] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
 
   const t = useTranslations('import');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
   const tParsers = useTranslations('parsers');
+
+  // Initialize closing date from OFX metadata
+  useEffect(() => {
+    if (parseResult?.metadata?.statementEnd) {
+      setClosingDate(parseResult.metadata.statementEnd);
+    }
+  }, [parseResult]);
 
   // Determine accepted file extension based on parser type
   const getAcceptedFileType = (template: ParserKey | null): string => {
@@ -116,6 +126,7 @@ export function ImportModal({ accounts, categories }: Props) {
           rows: rowsToImport,
           accountId: parseInt(accountId),
           categoryOverrides,
+          faturaOverrides: closingDate || dueDate ? { closingDate, dueDate } : undefined,
         });
 
         if (result.success) {
@@ -191,6 +202,10 @@ export function ImportModal({ accounts, categories }: Props) {
   const handleDeselectAll = () => {
     setSelectedRows(new Set());
   };
+
+  // Check if selected account is a credit card
+  const selectedAccount = accounts.find((a) => a.id === parseInt(accountId));
+  const isCreditCardAccount = selectedAccount?.type === 'credit_card';
 
   return (
     <Sheet
@@ -322,6 +337,30 @@ export function ImportModal({ accounts, categories }: Props) {
                       </SelectContent>
                     </Select>
                   </Field>
+                )}
+
+                {/* Show date fields for credit card accounts */}
+                {isCreditCardAccount && (
+                  <>
+                    <Field>
+                      <FieldLabel htmlFor="closingDate">{t('closingDate')}</FieldLabel>
+                      <Input
+                        id="closingDate"
+                        type="date"
+                        value={closingDate}
+                        onChange={(e) => setClosingDate(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="dueDate">{t('dueDate')}</FieldLabel>
+                      <Input
+                        id="dueDate"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                    </Field>
+                  </>
                 )}
               </FieldGroup>
 

@@ -9,6 +9,7 @@ type FaturaListProps = {
     accountId: number;
     accountName: string;
     yearMonth: string;
+    closingDate: string;
     totalAmount: number;
     dueDate: string;
     paidAt: string | null;

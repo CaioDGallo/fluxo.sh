@@ -13,6 +13,7 @@ import type {
   NewTransfer,
   NewFatura,
   NewMonthlyBudget,
+  NewBillReminder,
 } from '@/lib/schema';
 
 export { expect } from '@playwright/test';
@@ -141,10 +142,13 @@ export function createTestTransfer(
 
 export function createTestFatura(overrides: Partial<NewFatura> = {}): NewFatura {
   const dueDate = new Date().toISOString().split('T')[0];
+  const yearMonth = dueDate.slice(0, 7);
+  const closingDate = `${yearMonth}-15`;
   return {
     userId: TEST_USER_ID,
     accountId: 1,
-    yearMonth: dueDate.slice(0, 7),
+    yearMonth,
+    closingDate,
     totalAmount: 20000, // R$ 200
     dueDate,
     ...overrides,
@@ -157,6 +161,22 @@ export function createTestMonthlyBudget(overrides: Partial<NewMonthlyBudget> = {
     userId: TEST_USER_ID,
     yearMonth,
     amount: 50000, // R$ 500
+    ...overrides,
+  };
+}
+
+export function createTestBillReminder(overrides: Partial<NewBillReminder> = {}): NewBillReminder {
+  const startMonth = new Date().toISOString().slice(0, 7);
+  return {
+    userId: TEST_USER_ID,
+    name: 'Test Bill Reminder',
+    dueDay: 15,
+    startMonth,
+    recurrenceType: 'monthly',
+    status: 'active',
+    notify2DaysBefore: true,
+    notify1DayBefore: true,
+    notifyOnDueDay: true,
     ...overrides,
   };
 }

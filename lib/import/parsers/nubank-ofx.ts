@@ -1,5 +1,5 @@
 import type { ImportTemplate, ParseResult, ValidatedImportRow, ImportRowError, InstallmentInfo } from '../types';
-import { parseOFXTransactions } from './ofx-parser';
+import { parseOFX } from './ofx-parser';
 
 const PARCELA_REGEX = /^(.+?)\s*-\s*Parcela\s+(\d+)\/(\d+)$/i;
 
@@ -34,7 +34,7 @@ export const nubankOfxParser: ImportTemplate = {
     const errors: ImportRowError[] = [];
 
     try {
-      const transactions = parseOFXTransactions(content);
+      const { transactions, statementStart, statementEnd } = parseOFX(content);
 
       transactions.forEach((txn, index) => {
         // For credit card: negative amount = expense (charge), positive = income (refund)
@@ -64,6 +64,13 @@ export const nubankOfxParser: ImportTemplate = {
           rawValue: '',
         });
       }
+
+      return {
+        rows,
+        errors,
+        skipped: 0,
+        metadata: { statementStart, statementEnd },
+      };
     } catch (error) {
       errors.push({
         rowIndex: 1,

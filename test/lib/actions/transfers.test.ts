@@ -235,6 +235,7 @@ describe('Transfer Actions', () => {
           userId: TEST_USER_ID,
           accountId: accountToId,
           yearMonth: '2026-01',
+          closingDate: '2026-01-15',
           totalAmount: 0,
           dueDate: '2026-02-01',
         })
@@ -368,6 +369,7 @@ describe('Transfer Actions', () => {
           userId: TEST_USER_ID,
           accountId: accountToId,
           yearMonth: '2026-01',
+          closingDate: '2026-01-15',
           totalAmount: 0,
           dueDate: '2026-02-01',
         })

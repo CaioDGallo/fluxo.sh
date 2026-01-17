@@ -17,6 +17,7 @@ type FaturaCardProps = {
     accountId: number;
     accountName: string;
     yearMonth: string;
+    closingDate: string;
     totalAmount: number;
     dueDate: string;
     paidAt: string | null;
@@ -66,13 +67,13 @@ export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
             <HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} size={20} />
           </div>
 
-          {/* Fatura month + due date */}
+          {/* Fatura month + dates */}
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm truncate capitalize">
               {formatFaturaMonth(fatura.yearMonth)}
             </h3>
             <p className="text-xs text-gray-500">
-              {t('dueDate')} {formatDate(fatura.dueDate)}
+              {t('closingDate')} {formatDate(fatura.closingDate)} | {t('dueDate')} {formatDate(fatura.dueDate)}
             </p>
           </div>
 

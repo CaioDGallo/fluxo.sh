@@ -11,6 +11,12 @@ export type OFXTransaction = {
   trnType: 'DEBIT' | 'CREDIT';
 };
 
+export type OFXParseResult = {
+  transactions: OFXTransaction[];
+  statementStart?: string; // DTSTART -> YYYY-MM-DD
+  statementEnd?: string; // DTEND -> YYYY-MM-DD (closing date)
+};
+
 /**
  * Parse OFX date format (YYYYMMDDHHMMSS[TZ]) to YYYY-MM-DD
  * Example: "20260116000000[-3:BRT]" -> "2026-01-16"
@@ -88,4 +94,20 @@ export function parseOFXTransactions(content: string): OFXTransaction[] {
   }
 
   return transactions;
+}
+
+/**
+ * Parse OFX content and extract transactions with statement metadata
+ * Returns transactions and statement date range (DTSTART, DTEND)
+ */
+export function parseOFX(content: string): OFXParseResult {
+  // Extract DTSTART and DTEND from <BANKTRANLIST>
+  const dtStartMatch = content.match(/<DTSTART>(\d{8})/);
+  const dtEndMatch = content.match(/<DTEND>(\d{8})/);
+
+  return {
+    transactions: parseOFXTransactions(content),
+    statementStart: dtStartMatch ? parseOFXDate(dtStartMatch[1]) ?? undefined : undefined,
+    statementEnd: dtEndMatch ? parseOFXDate(dtEndMatch[1]) ?? undefined : undefined,
+  };
 }

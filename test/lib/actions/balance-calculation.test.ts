@@ -370,6 +370,7 @@ describe('Balance Calculation', () => {
           userId: TEST_USER_ID,
           accountId: creditCard.id,
           yearMonth: '2025-01',
+          closingDate: '2025-01-15',
           totalAmount: 15000,
           dueDate: '2025-02-05',
         })

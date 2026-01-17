@@ -110,3 +110,62 @@ export function formatFaturaMonthWithLocale(yearMonth: string, locale: string): 
 export function getCurrentFaturaMonth(closingDay: number): string {
   return getFaturaMonth(new Date(), closingDay);
 }
+
+/**
+ * Computes the actual closing date for a given fatura month and closing day.
+ * Handles months with fewer than the specified closing day (e.g., Feb 30 → Feb 28).
+ *
+ * Example: computeClosingDate("2025-02", 30) → "2025-02-28"
+ * Example: computeClosingDate("2025-01", 15) → "2025-01-15"
+ *
+ * @param yearMonth - Fatura month in "YYYY-MM" format
+ * @param closingDay - Desired closing day (1-31)
+ * @returns Actual closing date in "YYYY-MM-DD" format
+ */
+export function computeClosingDate(yearMonth: string, closingDay: number): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+
+  // Get last day of the month
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+
+  // Use the lesser of closingDay and lastDayOfMonth
+  const actualDay = Math.min(closingDay, lastDayOfMonth);
+
+  // Create date in local time to avoid timezone issues
+  const date = new Date(year, month - 1, actualDay);
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Determines which fatura month a purchase belongs to based on the actual closing date.
+ * This is used when faturas have custom closing dates that differ from account defaults.
+ *
+ * Logic:
+ * - If purchase date <= closing date → belongs to the fatura's month
+ * - If purchase date > closing date → belongs to next month's fatura
+ *
+ * Example: closingDate = "2025-01-31"
+ * - Purchase on 2025-01-15 → "2025-01"
+ * - Purchase on 2025-02-01 → "2025-02"
+ *
+ * @param purchaseDate - When the purchase occurred
+ * @param closingDate - The actual closing date for a specific fatura
+ * @returns Fatura month in "YYYY-MM" format
+ */
+export function getFaturaMonthFromClosingDate(
+  purchaseDate: Date,
+  closingDate: Date
+): string {
+  // Compare dates using getTime() to handle timezone consistently
+  if (purchaseDate.getTime() <= closingDate.getTime()) {
+    // Purchase on/before closing → belongs to this fatura's month
+    const year = closingDate.getUTCFullYear();
+    const month = closingDate.getUTCMonth() + 1; // Convert 0-indexed to 1-indexed
+    return `${year}-${String(month).padStart(2, '0')}`;
+  } else {
+    // Purchase after closing → belongs to next month's fatura
+    const year = purchaseDate.getUTCFullYear();
+    const month = purchaseDate.getUTCMonth() + 1; // Already 1-indexed
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+}

@@ -108,11 +108,13 @@ async function fixFaturaMonths(): Promise<MigrationStats> {
       const paymentDueDay = account[0].paymentDueDay || 7;
       const closingDay = account[0].closingDay || 1;
       const dueDate = getFaturaPaymentDueDate(combo.faturaMonth, paymentDueDay, closingDay);
+      const closingDate = `${combo.faturaMonth}-${closingDay.toString().padStart(2, '0')}`;
 
       await db.insert(faturas).values({
         userId: '', // Old migration script - userId not available
         accountId: combo.accountId,
         yearMonth: combo.faturaMonth,
+        closingDate,
         totalAmount: 0,
         dueDate,
       });

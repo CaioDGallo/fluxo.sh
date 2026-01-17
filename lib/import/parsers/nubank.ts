@@ -42,6 +42,7 @@ export const nubankParser: ImportTemplate = {
   description: 'CSV format from Nubank credit card exports (date, title, amount)',
   nameKey: 'nubank.name',
   descriptionKey: 'nubank.description',
+  fileType: 'csv',
 
   parse(content: string): ParseResult {
     const rows: ValidatedImportRow[] = [];

@@ -34,6 +34,7 @@ export type ImportTemplate = {
   description: string;
   nameKey?: string;
   descriptionKey?: string;
+  fileType: 'csv' | 'ofx';
   parse: (content: string) => ParseResult;
 };
 

@@ -27,6 +27,7 @@ export const nubankOfxParser: ImportTemplate = {
   description: 'Importar fatura OFX do cartão Nubank',
   nameKey: 'nubank-ofx.name',
   descriptionKey: 'nubank-ofx.description',
+  fileType: 'ofx',
 
   parse(content: string): ParseResult {
     const rows: ValidatedImportRow[] = [];

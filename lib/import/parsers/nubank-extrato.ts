@@ -8,6 +8,7 @@ export const nubankExtratoParser: ImportTemplate = {
   description: 'Importar extrato da conta corrente Nubank (CSV)',
   nameKey: 'nubank-extrato.name',
   descriptionKey: 'nubank-extrato.description',
+  fileType: 'csv',
 
   parse(content: string): ParseResult {
     const rows: ValidatedImportRow[] = [];

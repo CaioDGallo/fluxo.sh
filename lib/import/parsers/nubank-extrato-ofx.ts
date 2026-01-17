@@ -8,6 +8,7 @@ export const nubankExtratoOfxParser: ImportTemplate = {
   description: 'Importar extrato OFX da conta corrente Nubank',
   nameKey: 'nubank-extrato-ofx.name',
   descriptionKey: 'nubank-extrato-ofx.description',
+  fileType: 'ofx',
 
   parse(content: string): ParseResult {
     const rows: ValidatedImportRow[] = [];

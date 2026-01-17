@@ -42,7 +42,7 @@ export function ImportModal({ accounts, categories }: Props) {
   // Determine accepted file extension based on parser type
   const getAcceptedFileType = (template: ParserKey | null): string => {
     if (!template) return '.csv,.ofx';
-    return template.endsWith('-ofx') ? '.ofx' : '.csv';
+    return parsers[template].fileType === 'ofx' ? '.ofx' : '.csv';
   };
 
   const handleFileSelect = async (content: string) => {
@@ -87,8 +87,8 @@ export function ImportModal({ accounts, categories }: Props) {
 
       setStep('configure');
     } catch (error) {
-      console.error('Failed to parse CSV:', error);
-      toast.error(tErrors('failedToParseCsv'));
+      console.error('Failed to parse file:', error);
+      toast.error(tErrors('failedToParseFile'));
     }
   };
 

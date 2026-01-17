@@ -63,7 +63,7 @@
     "invalidEntryId": "ID de entrada inválido",
     "invalidFaturaId": "ID de fatura inválido",
     "transactionIdsRequired": "Array de IDs de transação é obrigatório",
-    "failedToParseCsv": "Falha ao processar arquivo CSV. Verifique o formato e tente novamente.",
+    "failedToParseFile": "Falha ao processar arquivo. Verifique o formato e tente novamente.",
     "failedToBackfillFaturas": "Falha ao preencher faturas",
     "notAuthenticated": "Não autenticado",
     "passwordTooShort": "Senha deve ter no mínimo 8 caracteres",
@@ -377,11 +377,11 @@
   },
   "import": {
     "title": "Importar",
-    "selectFormat": "Selecione o formato do CSV para importar",
+    "selectFormat": "Selecione o formato para importar",
     "templates": "Modelos",
     "upload": "Upload",
     "filters": {
-      "uploadStep": "Fazer upload do CSV {parser}"
+      "uploadStep": "Fazer upload do arquivo {parser}"
     },
     "configure": "Configurar",
     "back": "Voltar",
@@ -512,9 +512,9 @@
     "saving": "Salvando..."
   },
   "fileDropzone": {
-    "invalidFileType": "Por favor selecione um arquivo CSV",
+    "invalidFileType": "Tipo de arquivo inválido. Por favor selecione um arquivo válido",
     "failedToRead": "Falha ao ler arquivo",
-    "dragAndDropText": "Arraste e solte o arquivo CSV aqui, ou clique para selecionar"
+    "dragAndDropText": "Arraste e solte o arquivo aqui, ou clique para selecionar"
   },
   "calendar": {
     "title": "Calendário",

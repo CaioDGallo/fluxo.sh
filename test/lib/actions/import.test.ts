@@ -982,6 +982,115 @@ describe('Import Actions', () => {
     });
   });
 
+  describe('Fatura Overrides', () => {
+    it('only applies faturaOverrides to the OFX fatura month, not subsequent installment months', async () => {
+      const creditCard = await seedAccount(testAccounts.creditCardWithBilling);
+      await seedCategory('expense');
+      await seedCategory('income');
+
+      // Import with faturaOverrides representing August 2026 fatura
+      // The OFX provides custom dates for the August fatura
+      const result = await importMixed({
+        accountId: creditCard.id,
+        rows: [
+          {
+            date: '2026-08-01',
+            description: 'Netflix - Parcela 1/3',
+            amountCents: 5000,
+            rowIndex: 0,
+            type: 'expense',
+            installmentInfo: {
+              current: 1,
+              total: 3,
+              baseDescription: 'Netflix',
+            },
+          },
+        ],
+        faturaOverrides: {
+          startDate: '2026-07-16',
+          closingDate: '2026-08-15',
+          dueDate: '2026-08-22',
+        },
+      });
+
+      expect(result.success).toBe(true);
+
+      // Get all faturas created
+      const allFaturas = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.accountId, creditCard.id));
+
+      // Should have created 3 faturas (Aug, Sep, Oct)
+      expect(allFaturas).toHaveLength(3);
+
+      const augustFatura = allFaturas.find((f) => f.yearMonth === '2026-08');
+      const septemberFatura = allFaturas.find((f) => f.yearMonth === '2026-09');
+      const octoberFatura = allFaturas.find((f) => f.yearMonth === '2026-10');
+
+      // August fatura should have the overridden dates from OFX
+      expect(augustFatura).toBeDefined();
+      expect(augustFatura?.startDate).toBe('2026-07-16');
+      expect(augustFatura?.closingDate).toBe('2026-08-15');
+      expect(augustFatura?.dueDate).toBe('2026-08-22');
+
+      // September fatura should have startDate based on August's closing + 1
+      // This ensures continuity between billing periods
+      expect(septemberFatura).toBeDefined();
+      expect(septemberFatura?.startDate).toBe('2026-08-16'); // Day after August's closingDate
+      expect(septemberFatura?.closingDate).toBe('2026-09-15'); // Computed from closingDay 15
+      // paymentDueDay is 5, closingDay is 15, so dueDate is next month (Oct)
+      expect(septemberFatura?.dueDate).toBe('2026-10-05');
+
+      // October fatura should also have startDate based on September's closing + 1
+      expect(octoberFatura).toBeDefined();
+      expect(octoberFatura?.startDate).toBe('2026-09-16'); // Day after September's closingDate
+      expect(octoberFatura?.closingDate).toBe('2026-10-15');
+      expect(octoberFatura?.dueDate).toBe('2026-11-05');
+    });
+
+    it('handles import without faturaOverrides correctly', async () => {
+      const creditCard = await seedAccount(testAccounts.creditCardWithBilling);
+      await seedCategory('expense');
+      await seedCategory('income');
+
+      // Import without faturaOverrides - all faturas should use defaults
+      const result = await importMixed({
+        accountId: creditCard.id,
+        rows: [
+          {
+            date: '2026-08-01',
+            description: 'Spotify - Parcela 1/2',
+            amountCents: 3000,
+            rowIndex: 0,
+            type: 'expense',
+            installmentInfo: {
+              current: 1,
+              total: 2,
+              baseDescription: 'Spotify',
+            },
+          },
+        ],
+        // No faturaOverrides
+      });
+
+      expect(result.success).toBe(true);
+
+      const allFaturas = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.accountId, creditCard.id));
+
+      expect(allFaturas).toHaveLength(2);
+
+      // Both faturas should have computed defaults
+      for (const fatura of allFaturas) {
+        expect(fatura.startDate).toBeNull(); // No startDate override
+        expect(fatura.closingDate).toContain('-15'); // closingDay 15
+      }
+    });
+  });
+
   describe('Installment Edge Cases', () => {
     it('imports parcela 3/5 only (creates entries 3,4,5)', async () => {
       const creditCard = await seedAccount(testAccounts.creditCardWithBilling);

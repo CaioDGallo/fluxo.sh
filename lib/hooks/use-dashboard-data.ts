@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useMonthStore } from '@/lib/stores/month-store';
-import { getDashboardData, type DashboardData } from '@/lib/actions/dashboard';
+import { type DashboardData } from '@/lib/actions/dashboard';
+import { fetchAndCache } from '@/lib/utils/month-fetcher';
 
 export function useDashboardData(month: string) {
   const getCachedData = useMonthStore((state) => state.getCachedData);
-  const setCachedData = useMonthStore((state) => state.setCachedData);
 
   const [data, setData] = useState<DashboardData | null>(() => getCachedData('dashboard', month));
   const [loading, setLoading] = useState(!getCachedData('dashboard', month));
@@ -22,14 +22,13 @@ export function useDashboardData(month: string) {
       return;
     }
 
-    // Fetch data if not cached
+    // Fetch data using centralized fetcher (with deduplication)
     setLoading(true);
     setError(null);
 
-    getDashboardData(month)
+    fetchAndCache('dashboard', month)
       .then((result) => {
-        setCachedData('dashboard', month, result);
-        setData(result);
+        setData(result as DashboardData);
         setLoading(false);
       })
       .catch((err) => {
@@ -37,7 +36,7 @@ export function useDashboardData(month: string) {
         setError(err);
         setLoading(false);
       });
-  }, [month, getCachedData, setCachedData]);
+  }, [month, getCachedData]);
 
   return { data, loading, error };
 }

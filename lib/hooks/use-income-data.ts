@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMonthStore } from '@/lib/stores/month-store';
 import { getIncome, type IncomeFilters } from '@/lib/actions/income';
+import { fetchAndCache } from '@/lib/utils/month-fetcher';
 
 type IncomeData = Awaited<ReturnType<typeof getIncome>>;
 
@@ -33,13 +34,20 @@ export function useIncomeData(filters: IncomeFilters = {}) {
     setLoading(true);
     setError(null);
 
-    getIncome(filters)
+    // Use centralized fetcher for month-only queries (with deduplication)
+    const fetchPromise = !hasAdditionalFilters && month
+      ? fetchAndCache('income', month)
+      : getIncome(filters).then((result) => {
+          // Cache if no additional filters
+          if (!hasAdditionalFilters && month) {
+            setCachedData('income', month, result);
+          }
+          return result;
+        });
+
+    fetchPromise
       .then((result) => {
-        // Only cache if no additional filters
-        if (!hasAdditionalFilters && month) {
-          setCachedData('income', month, result);
-        }
-        setData(result);
+        setData(result as IncomeData);
         setLoading(false);
       })
       .catch((err) => {

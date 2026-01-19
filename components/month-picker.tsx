@@ -1,19 +1,18 @@
 'use client';
 
-import { addMonths } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
-import { useMonthStore } from '@/lib/stores/month-store';
+import { ArrowLeft01Icon, ArrowRight01Icon, Loading03Icon } from '@hugeicons/core-free-icons';
+import { useMonthNavigation } from '@/lib/hooks/use-month-navigation';
+import type { PageType } from '@/lib/utils/month-fetcher';
+import { cn } from '@/lib/utils';
 
-export function MonthPicker() {
-  const currentMonth = useMonthStore((state) => state.currentMonth);
-  const setMonth = useMonthStore((state) => state.setMonth);
+interface MonthPickerProps {
+  pageType: PageType;
+}
 
-  function navigate(direction: -1 | 1) {
-    const newMonth = addMonths(currentMonth, direction);
-    setMonth(newMonth);
-  }
+export function MonthPicker({ pageType }: MonthPickerProps) {
+  const { navigateMonth, navigating, currentMonth } = useMonthNavigation({ pageType });
 
   const [year, month] = currentMonth.split('-');
   const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString(
@@ -24,19 +23,34 @@ export function MonthPicker() {
   return (
     <div className="flex items-center gap-3">
       <Button
-        onClick={() => navigate(-1)}
+        onClick={() => navigateMonth(-1)}
         variant="hollow"
         size="icon"
+        disabled={navigating}
       >
-        <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+        <HugeiconsIcon
+          icon={navigating ? Loading03Icon : ArrowLeft01Icon}
+          strokeWidth={2}
+          className={cn(navigating && 'animate-spin')}
+        />
       </Button>
-      <span className="min-w-48 text-center text-lg font-medium capitalize">{monthName}</span>
+      <span className={cn(
+        'min-w-48 text-center text-lg font-medium capitalize',
+        navigating && 'text-muted-foreground'
+      )}>
+        {monthName}
+      </span>
       <Button
-        onClick={() => navigate(1)}
+        onClick={() => navigateMonth(1)}
         variant="hollow"
         size="icon"
+        disabled={navigating}
       >
-        <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+        <HugeiconsIcon
+          icon={navigating ? Loading03Icon : ArrowRight01Icon}
+          strokeWidth={2}
+          className={cn(navigating && 'animate-spin')}
+        />
       </Button>
     </div>
   );

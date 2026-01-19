@@ -28,7 +28,7 @@ export default function DashboardPage() {
       <div>
         <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
           <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <MonthPicker />
+          <MonthPicker pageType="dashboard" />
         </div>
         <div className="flex items-center justify-center p-12">
           <div className="text-center">
@@ -45,7 +45,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <MonthPicker />
+        <MonthPicker pageType="dashboard" />
       </div>
 
       {hasNoBudgets ? (

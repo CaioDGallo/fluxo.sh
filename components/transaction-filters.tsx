@@ -19,9 +19,10 @@ import {
   SearchIcon,
   Cancel01Icon,
   FilterIcon,
+  Loading03Icon,
 } from '@hugeicons/core-free-icons';
-import { addMonths } from '@/lib/utils';
-import { useMonthStore } from '@/lib/stores/month-store';
+import { cn } from '@/lib/utils';
+import { useMonthNavigation } from '@/lib/hooks/use-month-navigation';
 import { ActiveFilterBadges } from '@/components/active-filter-badges';
 import type { Account, Category } from '@/lib/schema';
 
@@ -50,8 +51,9 @@ export function TransactionFilters({
   onAccountChange,
   onStatusChange,
 }: TransactionFiltersProps) {
-  const currentMonth = useMonthStore((state) => state.currentMonth);
-  const setMonth = useMonthStore((state) => state.setMonth);
+  const { navigateMonth, navigating, currentMonth } = useMonthNavigation({
+    pageType: variant === 'expense' ? 'expenses' : 'income',
+  });
   const locale = useLocale();
   const t = useTranslations('filters');
   const tTransaction = useTranslations(variant === 'expense' ? 'expenses' : 'income');
@@ -79,11 +81,6 @@ export function TransactionFilters({
       prevMonthRef.current = currentMonth;
     }
   }, [currentMonth]);
-
-  function navigateMonth(direction: -1 | 1) {
-    const newMonth = addMonths(currentMonth, direction);
-    setMonth(newMonth);
-  }
 
   function updateFilter(key: string, value: string) {
     const normalizedValue = value && value !== 'all' ? value : 'all';
@@ -170,14 +167,39 @@ export function TransactionFilters({
           // Month picker mode
           <>
             <div className="flex items-center gap-3">
-              <Button onClick={() => navigateMonth(-1)} variant="hollow" size="icon" className="touch-manipulation" aria-label="Mês anterior">
-                <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+              <Button
+                onClick={() => navigateMonth(-1)}
+                variant="hollow"
+                size="icon"
+                className="touch-manipulation"
+                aria-label="Mês anterior"
+                disabled={navigating}
+              >
+                <HugeiconsIcon
+                  icon={navigating ? Loading03Icon : ArrowLeft01Icon}
+                  strokeWidth={2}
+                  className={cn(navigating && 'animate-spin')}
+                />
               </Button>
-              <span className="min-w-48 text-center text-lg font-medium capitalize">
+              <span className={cn(
+                'min-w-48 text-center text-lg font-medium capitalize',
+                navigating && 'text-muted-foreground'
+              )}>
                 {monthName}
               </span>
-              <Button onClick={() => navigateMonth(1)} variant="hollow" size="icon" className="touch-manipulation" aria-label="Próximo mês">
-                <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
+              <Button
+                onClick={() => navigateMonth(1)}
+                variant="hollow"
+                size="icon"
+                className="touch-manipulation"
+                aria-label="Próximo mês"
+                disabled={navigating}
+              >
+                <HugeiconsIcon
+                  icon={navigating ? Loading03Icon : ArrowRight01Icon}
+                  strokeWidth={2}
+                  className={cn(navigating && 'animate-spin')}
+                />
               </Button>
             </div>
             <div className="flex items-center gap-1">

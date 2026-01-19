@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMonthStore } from '@/lib/stores/month-store';
 import { getExpenses, type ExpenseFilters } from '@/lib/actions/expenses';
+import { fetchAndCache } from '@/lib/utils/month-fetcher';
 
 type ExpenseData = Awaited<ReturnType<typeof getExpenses>>;
 
@@ -33,13 +34,20 @@ export function useExpensesData(filters: ExpenseFilters = {}) {
     setLoading(true);
     setError(null);
 
-    getExpenses(filters)
+    // Use centralized fetcher for month-only queries (with deduplication)
+    const fetchPromise = !hasAdditionalFilters && month
+      ? fetchAndCache('expenses', month)
+      : getExpenses(filters).then((result) => {
+          // Cache if no additional filters
+          if (!hasAdditionalFilters && month) {
+            setCachedData('expenses', month, result);
+          }
+          return result;
+        });
+
+    fetchPromise
       .then((result) => {
-        // Only cache if no additional filters
-        if (!hasAdditionalFilters && month) {
-          setCachedData('expenses', month, result);
-        }
-        setData(result);
+        setData(result as ExpenseData);
         setLoading(false);
       })
       .catch((err) => {

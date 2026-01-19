@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useMonthStore } from '@/lib/stores/month-store';
 import { getBudgetsWithSpending } from '@/lib/actions/budgets';
+import { fetchAndCache } from '@/lib/utils/month-fetcher';
 
 type BudgetData = Awaited<ReturnType<typeof getBudgetsWithSpending>>;
 
 export function useBudgetsData(month: string) {
   const getCachedData = useMonthStore((state) => state.getCachedData);
-  const setCachedData = useMonthStore((state) => state.setCachedData);
 
   const [data, setData] = useState<BudgetData | null>(() => getCachedData('budgets', month));
   const [loading, setLoading] = useState(!getCachedData('budgets', month));
@@ -24,14 +24,13 @@ export function useBudgetsData(month: string) {
       return;
     }
 
-    // Fetch data if not cached
+    // Fetch data using centralized fetcher (with deduplication)
     setLoading(true);
     setError(null);
 
-    getBudgetsWithSpending(month)
+    fetchAndCache('budgets', month)
       .then((result) => {
-        setCachedData('budgets', month, result);
-        setData(result);
+        setData(result as BudgetData);
         setLoading(false);
       })
       .catch((err) => {
@@ -39,7 +38,7 @@ export function useBudgetsData(month: string) {
         setError(err);
         setLoading(false);
       });
-  }, [month, getCachedData, setCachedData]);
+  }, [month, getCachedData]);
 
   return { data, loading, error };
 }

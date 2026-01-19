@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useMonthStore } from '@/lib/stores/month-store';
 import { getFaturasByMonth } from '@/lib/actions/faturas';
+import { fetchAndCache } from '@/lib/utils/month-fetcher';
 
 type FaturaData = Awaited<ReturnType<typeof getFaturasByMonth>>;
 
 export function useFaturasData(month: string) {
   const getCachedData = useMonthStore((state) => state.getCachedData);
-  const setCachedData = useMonthStore((state) => state.setCachedData);
 
   const [data, setData] = useState<FaturaData | null>(() => getCachedData('faturas', month));
   const [loading, setLoading] = useState(!getCachedData('faturas', month));
@@ -24,14 +24,13 @@ export function useFaturasData(month: string) {
       return;
     }
 
-    // Fetch data if not cached
+    // Fetch data using centralized fetcher (with deduplication)
     setLoading(true);
     setError(null);
 
-    getFaturasByMonth(month)
+    fetchAndCache('faturas', month)
       .then((result) => {
-        setCachedData('faturas', month, result);
-        setData(result);
+        setData(result as FaturaData);
         setLoading(false);
       })
       .catch((err) => {
@@ -39,7 +38,7 @@ export function useFaturasData(month: string) {
         setError(err);
         setLoading(false);
       });
-  }, [month, getCachedData, setCachedData]);
+  }, [month, getCachedData]);
 
   return { data, loading, error };
 }

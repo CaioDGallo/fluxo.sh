@@ -161,32 +161,38 @@ export function FaturaDetailSheet({
 
               {isEditingDates ? (
                 <div className="space-y-3 mt-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 min-w-24">{t('startDate')}</label>
-                    <Input
-                      type="date"
-                      value={editStartDate}
-                      onChange={(e) => setEditStartDate(e.target.value)}
-                      className="flex-1"
-                    />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <label className="text-sm text-gray-600 min-w-24 shrink-0">{t('startDate')}</label>
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 min-w-24">{t('closingDate')}</label>
-                    <Input
-                      type="date"
-                      value={editClosingDate}
-                      onChange={(e) => setEditClosingDate(e.target.value)}
-                      className="flex-1"
-                    />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <label className="text-sm text-gray-600 min-w-24 shrink-0">{t('closingDate')}</label>
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        type="date"
+                        value={editClosingDate}
+                        onChange={(e) => setEditClosingDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 min-w-24">{t('dueDate')}</label>
-                    <Input
-                      type="date"
-                      value={editDueDate}
-                      onChange={(e) => setEditDueDate(e.target.value)}
-                      className="flex-1"
-                    />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <label className="text-sm text-gray-600 min-w-24 shrink-0">{t('dueDate')}</label>
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        type="date"
+                        value={editDueDate}
+                        onChange={(e) => setEditDueDate(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button

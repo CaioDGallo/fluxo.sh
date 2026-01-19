@@ -29,6 +29,7 @@ export default async function RootLayout({
     <html lang={locale} className={jetbrainsMono.variable} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
         {/* Favicons */}
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />

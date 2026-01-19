@@ -216,7 +216,7 @@ test('edit expense', async ({ page }) => {
   // Create expense
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('15000'); // 15000 cents = R$ 150,00
   await dialog.getByLabel('Descrição').fill(ORIGINAL_DESC);
@@ -224,17 +224,20 @@ test('edit expense', async ({ page }) => {
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
   await dialog.getByLabel('Conta').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  // Find the expense card and open dropdown
+  // Find the expense card and tap to open detail sheet
   const expenseCard = page.locator('h3', { hasText: ORIGINAL_DESC }).first().locator('../../..');
-  await expenseCard.getByRole('button').last().click();
+  await expenseCard.click();
 
-  // Wait for dropdown menu to appear and click Edit option
-  const editMenuItem = page.getByRole('menuitem', { name: 'Editar' });
-  await expect(editMenuItem).toBeVisible();
-  await editMenuItem.click();
+  // Detail sheet should open
+  const sheet = page.locator('[role="dialog"]');
+  await expect(sheet).toBeVisible();
+
+  // Click the Edit button
+  await sheet.getByRole('button', { name: 'Editar' }).click();
 
   // Edit dialog should open
   const editDialog = page.getByRole('alertdialog');
@@ -265,7 +268,7 @@ test('delete expense', async ({ page }) => {
   // Create expense
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('10000'); // 10000 cents = R$ 100,00
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
@@ -273,17 +276,13 @@ test('delete expense', async ({ page }) => {
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
   await dialog.getByLabel('Conta').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  // Find the expense card and open dropdown
+  // Find the expense card and click the delete button (red, revealed by swipe)
   const expenseCard = page.locator('h3', { hasText: DESCRIPTION }).first().locator('../../..');
-  await expenseCard.getByRole('button').last().click();
-
-  // Wait for dropdown menu to appear and click Delete option
-  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir transação' });
-  await expect(deleteMenuItem).toBeVisible();
-  await deleteMenuItem.click();
+  await expenseCard.getByRole('button', { name: 'Excluir' }).click();
 
   // Confirmation dialog should appear
   const confirmDialog = page.getByRole('alertdialog');
@@ -313,7 +312,7 @@ test('edit income', async ({ page }) => {
   // Create income
   await page.goto('/income');
   await page.getByRole('button', { name: 'Adicionar Receita' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('200000'); // 200000 cents = R$ 2.000,00
   await dialog.getByLabel('Descrição').fill(ORIGINAL_DESC);
@@ -321,20 +320,23 @@ test('edit income', async ({ page }) => {
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
   await dialog.getByLabel('Conta').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  // Find the income card and open dropdown
+  // Find the income card and tap to open detail sheet
   const incomeCard = page.locator('h3', { hasText: ORIGINAL_DESC }).first().locator('../../..');
-  await incomeCard.getByRole('button').last().click();
+  await incomeCard.click();
 
-  // Wait for dropdown menu to appear and click Edit option
-  const editMenuItem = page.getByRole('menuitem', { name: 'Editar' });
-  await expect(editMenuItem).toBeVisible();
-  await editMenuItem.click();
+  // Detail sheet should open
+  const sheet = page.locator('[role="dialog"]');
+  await expect(sheet).toBeVisible();
+
+  // Click the Edit button
+  await sheet.getByRole('button', { name: 'Editar' }).click();
 
   // Edit dialog should open
-  const editDialog = page.getByRole('alertdialog');
+  const editDialog = page.getByRole('alertdialog', { name: 'Editar Receita' });
   await expect(editDialog).toBeVisible();
   await expect(editDialog.getByLabel('Descrição')).toHaveValue(ORIGINAL_DESC);
 
@@ -362,7 +364,7 @@ test('delete income', async ({ page }) => {
   // Create income
   await page.goto('/income');
   await page.getByRole('button', { name: 'Adicionar Receita' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('150000'); // 150000 cents = R$ 1.500,00
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
@@ -370,20 +372,16 @@ test('delete income', async ({ page }) => {
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
   await dialog.getByLabel('Conta').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  // Find the income card and open dropdown
+  // Find the income card and click the delete button (red, revealed by swipe)
   const incomeCard = page.locator('h3', { hasText: DESCRIPTION }).first().locator('../../..');
-  await incomeCard.getByRole('button').last().click();
-
-  // Wait for dropdown menu to appear and click Delete option
-  const deleteMenuItem = page.getByRole('menuitem', { name: 'Excluir Receita' });
-  await expect(deleteMenuItem).toBeVisible();
-  await deleteMenuItem.click();
+  await incomeCard.getByRole('button', { name: 'Excluir' }).click();
 
   // Confirmation dialog should appear
-  const confirmDialog = page.getByRole('alertdialog');
+  const confirmDialog = page.getByRole('alertdialog', { name: 'Excluir Receita' });
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
 
@@ -408,7 +406,7 @@ test('edit transfer', async ({ page }) => {
   // Create transfer
   await page.goto('/transfers');
   await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Transferência' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Tipo').click();
   await page.getByRole('option', { name: 'Depósito' }).first().click();
@@ -455,7 +453,7 @@ test('delete transfer', async ({ page }) => {
   // Create transfer
   await page.goto('/transfers');
   await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Transferência' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Tipo').click();
   await page.getByRole('option', { name: 'Depósito' }).first().click();
@@ -476,7 +474,7 @@ test('delete transfer', async ({ page }) => {
   await deleteMenuItem.click();
 
   // Confirmation dialog should appear
-  const confirmDialog = page.getByRole('alertdialog');
+  const confirmDialog = page.getByRole('alertdialog', { name: 'Excluir Transferência' });
   await expect(confirmDialog).toBeVisible();
   await expect(confirmDialog.getByText('Esta ação não pode ser desfeita.')).toBeVisible();
 

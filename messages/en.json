@@ -113,6 +113,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "loading": "Loading…",
     "noBudgets": "No budgets set for this month",
     "noBudgetsDescription": "Set up your monthly budgets to start tracking your spending.",
     "setBudgets": "Set Budgets",
@@ -236,6 +237,7 @@
     "title": "Budgets",
     "editBudgets": "Edit Budgets",
     "noBudgets": "No budgets set for this month",
+    "loading": "Loading…",
     "copyFrom": "Copy budgets from...",
     "setBudgets": "Set Budgets",
     "budgetByCategory": "Budget by Category",
@@ -362,6 +364,7 @@
   },
   "faturas": {
     "title": "Bills",
+    "loading": "Loading…",
     "total": "Total:",
     "startDate": "Starts:",
     "closingDate": "Closes:",

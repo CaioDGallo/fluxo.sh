@@ -127,6 +127,7 @@ test('create account, category, and expense installments', async ({ page }) => {
   await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
   await dialog.getByLabel('Conta').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await page.waitForTimeout(300);
 
   const slider = dialog.getByRole('slider');
   await slider.focus();
@@ -224,7 +225,7 @@ test('ignore expense removes it from totals', async ({ page }) => {
   // Create an expense
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('250');
   await dialog.getByLabel('Descrição').fill('Mercado Ignorar E2E');
@@ -244,11 +245,10 @@ test('ignore expense removes it from totals', async ({ page }) => {
     .first();
   await expect(expensesBlock).toContainText(/R\$\s*250,00/);
 
-  // Go to expenses page and ignore the expense
+  // Go to expenses page and click the ignore button (gray, revealed by swipe)
   await page.goto('/expenses');
   const expenseCard = page.locator('div').filter({ hasText: 'Mercado Ignorar E2E' }).filter({ has: page.locator('h3') }).first();
-  await expenseCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Ignorar nos cálculos' }).click();
+  await expenseCard.getByRole('button', { name: 'Ignorar nos cálculos' }).click();
 
   // Verify expense is still visible but dimmed
   await expect(page.getByRole('heading', { name: 'Mercado Ignorar E2E', level: 3 })).toBeVisible();
@@ -257,10 +257,9 @@ test('ignore expense removes it from totals', async ({ page }) => {
   await page.goto(`/dashboard?month=${currentMonth}`);
   await expect(expensesBlock).toContainText(/R\$\s*0,00/);
 
-  // Un-ignore the expense
+  // Un-ignore the expense by clicking the include button (blue)
   await page.goto('/expenses');
-  await expenseCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await expenseCard.getByRole('button', { name: 'Incluir nos cálculos' }).click();
   await page.waitForTimeout(300);
 
   // Verify expense is back in totals
@@ -279,7 +278,7 @@ test('ignore income removes it from totals', async ({ page }) => {
   // Create an income
   await page.goto('/income');
   await page.getByRole('button', { name: 'Adicionar Receita' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('800');
   await dialog.getByLabel('Descrição').fill('Freelance Ignorar E2E');
@@ -299,11 +298,10 @@ test('ignore income removes it from totals', async ({ page }) => {
     .first();
   await expect(netBlock).toContainText(/R\$\s*800,00/);
 
-  // Ignore the income
+  // Click the ignore button (gray, revealed by swipe)
   await page.goto('/income');
   const incomeCard = page.locator('div').filter({ hasText: 'Freelance Ignorar E2E' }).filter({ has: page.locator('h3') }).first();
-  await incomeCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Ignorar nos cálculos' }).click();
+  await incomeCard.getByRole('button', { name: 'Ignorar nos cálculos' }).click();
 
   // Verify income is still visible but dimmed
   await expect(page.getByRole('heading', { name: 'Freelance Ignorar E2E', level: 3 })).toBeVisible();
@@ -312,10 +310,9 @@ test('ignore income removes it from totals', async ({ page }) => {
   await page.goto(`/dashboard?month=${currentMonth}`);
   await expect(netBlock).toContainText(/R\$\s*0,00/);
 
-  // Un-ignore the income
+  // Un-ignore the income by clicking the include button (blue)
   await page.goto('/income');
-  await incomeCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await incomeCard.getByRole('button', { name: 'Incluir nos cálculos' }).click();
 
   // Verify income is back in net balance
   await page.goto(`/dashboard?month=${currentMonth}`);
@@ -332,7 +329,7 @@ test('ignore transfer removes it from cash flow', async ({ page }) => {
   // Create a transfer
   await page.goto('/transfers');
   await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Transferência' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Tipo').click();
   await page.getByRole('option', { name: 'Depósito' }).first().click();
@@ -381,7 +378,7 @@ test('view fatura details and pay it', async ({ page }) => {
   // Create credit card account
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog');
+  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
   await expect(accountDialog).toBeVisible();
   await accountDialog.getByLabel('Nome').fill('Cartão E2E');
   await accountDialog.getByLabel('Tipo').click();
@@ -416,7 +413,7 @@ test('view fatura details and pay it', async ({ page }) => {
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('500');
   await dialog.getByLabel('Descrição').fill('Compra E2E');
@@ -453,7 +450,7 @@ test('view fatura details and pay it', async ({ page }) => {
 
   // Pay the fatura
   await sheet.getByRole('button', { name: 'Pagar fatura' }).click();
-  const payDialog = page.getByRole('alertdialog');
+  const payDialog = page.getByRole('alertdialog', { name: 'Pagar Fatura' });
   await expect(payDialog).toBeVisible();
   await payDialog.getByLabel('Pagar com conta:').click();
   await page.getByRole('option', { name: 'Conta Corrente E2E' }).first().click();
@@ -471,7 +468,7 @@ test('revert fatura payment', async ({ page }) => {
   // Create credit card account
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog');
+  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
   await expect(accountDialog).toBeVisible();
   await accountDialog.getByLabel('Nome').fill('Cartão E2E');
   await accountDialog.getByLabel('Tipo').click();
@@ -506,7 +503,7 @@ test('revert fatura payment', async ({ page }) => {
   // Create expense on credit card
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('300');
   await dialog.getByLabel('Descrição').fill('Compra Revert E2E');
@@ -532,12 +529,12 @@ test('revert fatura payment', async ({ page }) => {
   const sheet = page.locator('[role="dialog"]');
   await expect(sheet).toBeVisible();
   await sheet.getByRole('button', { name: 'Pagar fatura' }).click();
-  const payDialog = page.getByRole('alertdialog');
-  await expect(payDialog).toBeVisible();
-  await payDialog.getByLabel('Pagar com conta:').click();
+  const payDialog2 = page.getByRole('alertdialog', { name: 'Pagar Fatura' });
+  await expect(payDialog2).toBeVisible();
+  await payDialog2.getByLabel('Pagar com conta:').click();
   await page.getByRole('option', { name: 'Conta Corrente E2E' }).first().click();
-  await payDialog.getByRole('button', { name: 'Confirmar pagamento' }).click();
-  await expect(payDialog).toBeHidden();
+  await payDialog2.getByRole('button', { name: 'Confirmar pagamento' }).click();
+  await expect(payDialog2).toBeHidden();
 
   // Verify it's paid
   await expect(sheet.getByText('Pago em')).toBeVisible();
@@ -568,7 +565,7 @@ test('convert expense to fatura payment', async ({ page }) => {
   // Create credit card account
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog');
+  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
   await expect(accountDialog).toBeVisible();
   await accountDialog.getByLabel('Nome').fill('Cartão Convert E2E');
   await accountDialog.getByLabel('Tipo').click();
@@ -603,7 +600,7 @@ test('convert expense to fatura payment', async ({ page }) => {
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
-  const expenseDialog = page.getByRole('alertdialog');
+  const expenseDialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(expenseDialog).toBeVisible();
   await expenseDialog.getByLabel('Valor').fill('500');
   await expenseDialog.getByLabel('Descrição').fill('Compra Cartão E2E');
@@ -629,18 +626,20 @@ test('convert expense to fatura payment', async ({ page }) => {
   // Wait for expenses to load
   await page.waitForTimeout(500);
 
-  // Find the checking account expense card and open its dropdown menu
+  // Find the checking account expense card and tap to open detail sheet
   const checkingExpenseCard = page.locator('h3', { hasText: 'Pagamento Fatura Manual' }).locator('..').locator('..').locator('..');
   await expect(checkingExpenseCard).toBeVisible();
+  await checkingExpenseCard.click();
 
-  // Click the dropdown menu button (⋮)
-  await checkingExpenseCard.getByRole('button').last().click();
+  // Detail sheet should open
+  const sheet = page.locator('[role="dialog"]');
+  await expect(sheet).toBeVisible();
 
   // Click "Converter em pagamento de fatura"
-  await page.getByRole('menuitem', { name: 'Converter em pagamento de fatura' }).click();
+  await sheet.getByRole('button', { name: 'Converter em pagamento de fatura' }).click();
 
   // Convert dialog should open
-  const convertDialog = page.getByRole('alertdialog');
+  const convertDialog = page.getByRole('alertdialog', { name: 'Converter em pagamento de fatura' });
   await expect(convertDialog).toBeVisible();
   await expect(convertDialog.getByRole('heading', { name: 'Converter em pagamento de fatura' })).toBeVisible();
 
@@ -676,7 +675,7 @@ test('create calendar event', async ({ page }) => {
 
   // Click add event button
   await page.getByRole('button', { name: 'Adicionar Evento' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Evento' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Adicionar Evento' })).toBeVisible();
 
@@ -708,7 +707,7 @@ test('create calendar task', async ({ page }) => {
 
   // Click add task button
   await page.getByRole('button', { name: 'Adicionar Tarefa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Tarefa' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Adicionar Tarefa' })).toBeVisible();
 
@@ -744,7 +743,7 @@ test('edit calendar event', async ({ page }) => {
 
   // Create an event first
   await page.getByRole('button', { name: 'Adicionar Evento' }).click();
-  const createDialog = page.getByRole('alertdialog');
+  const createDialog = page.getByRole('alertdialog', { name: 'Adicionar Evento' });
   await expect(createDialog).toBeVisible();
   await createDialog.getByLabel('Título').fill('Evento Original E2E');
   await createDialog.getByLabel('Descrição').fill('Descrição original');
@@ -765,7 +764,7 @@ test('edit calendar event', async ({ page }) => {
   await sheet.getByRole('button', { name: 'Editar' }).click();
 
   // Edit dialog should open
-  const editDialog = page.getByRole('alertdialog').filter({ hasText: 'Editar Evento' });
+  const editDialog = page.getByRole('alertdialog', { name: 'Editar Evento' });
   await expect(editDialog).toBeVisible();
 
   // Modify event details

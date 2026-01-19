@@ -113,6 +113,7 @@
   },
   "dashboard": {
     "title": "Visão Geral",
+    "loading": "Carregando…",
     "noBudgets": "Nenhum orçamento definido para este mês",
     "noBudgetsDescription": "Configure seus orçamentos mensais para começar a acompanhar seus gastos.",
     "setBudgets": "Definir Orçamentos",
@@ -235,6 +236,7 @@
   "budgets": {
     "title": "Orçamentos",
     "editBudgets": "Editar Orçamentos",
+    "loading": "Carregando…",
     "noBudgets": "Nenhum orçamento definido para este mês",
     "copyFrom": "Copiar orçamentos de...",
     "setBudgets": "Definir Orçamentos",
@@ -362,6 +364,7 @@
   },
   "faturas": {
     "title": "Faturas",
+    "loading": "Carregando…",
     "total": "Total:",
     "startDate": "Início:",
     "closingDate": "Fecha:",

@@ -9,6 +9,7 @@ import { activeTransactionCondition, activeIncomeCondition, activeTransferCondit
 
 export type DashboardData = {
   totalSpent: number;
+  totalReplenished: number;
   totalBudget: number;
   totalIncome: number;
   netBalance: number;
@@ -21,6 +22,7 @@ export type DashboardData = {
     categoryColor: string;
     categoryIcon: string | null;
     spent: number;
+    replenished: number;
     budget: number;
   }[];
   recentExpenses: {
@@ -90,13 +92,38 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     spendingMap.set(s.categoryId, s.spent);
   }
 
-  // 3. Merge budgets and spending
+  // 2b. Get replenishments by expense category for the month
+  const replenishments = await db
+    .select({
+      categoryId: income.replenishCategoryId,
+      replenished: sql<number>`CAST(SUM(${income.amount}) AS INTEGER)`,
+    })
+    .from(income)
+    .where(and(
+      eq(income.userId, userId),
+      gte(income.receivedDate, startDate),
+      lte(income.receivedDate, endDate),
+      isNotNull(income.replenishCategoryId),
+      eq(income.ignored, false)
+    ))
+    .groupBy(income.replenishCategoryId);
+
+  const replenishmentsMap = new Map<number, number>();
+  for (const r of replenishments) {
+    if (!r.categoryId) {
+      continue
+    }
+    replenishmentsMap.set(r.categoryId, r.replenished);
+  }
+
+  // 3. Merge budgets, spending, and replenishments
   const categoryBreakdown = monthBudgets.map((budget) => ({
     categoryId: budget.categoryId,
     categoryName: budget.categoryName,
     categoryColor: budget.categoryColor,
     categoryIcon: budget.categoryIcon,
     spent: spendingMap.get(budget.categoryId) || 0,
+    replenished: replenishmentsMap.get(budget.categoryId) || 0,
     budget: budget.budget,
   }));
 
@@ -145,6 +172,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
   // 6. Calculate totals
   const totalBudget = categoryBreakdown.reduce((sum, cat) => sum + cat.budget, 0);
   const totalSpent = Array.from(spendingMap.values()).reduce((sum, spent) => sum + spent, 0);
+  const totalReplenished = Array.from(replenishmentsMap.values()).reduce((sum, rep) => sum + rep, 0);
   const netBalance = totalIncome - totalSpent;
   const cashFlowNet = totalIncome + totalTransfersIn - totalSpent - totalTransfersOut;
 
@@ -200,6 +228,7 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
 
   return {
     totalSpent,
+    totalReplenished,
     totalBudget,
     totalIncome,
     netBalance,

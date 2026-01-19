@@ -1,19 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/icon-picker';
+import { ReplenishmentPicker } from '@/components/replenishment-picker';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { getReplenishableCategories, setIncomeReplenishment } from '@/lib/actions/income';
 import type { ExpenseEntry } from '@/lib/contexts/expense-context';
 import type { IncomeEntry } from '@/lib/contexts/income-context';
 import type { Account, Category } from '@/lib/schema';
 import type { UnpaidFatura } from '@/lib/actions/faturas';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 type TransactionDetailSheetProps = {
   expense?: ExpenseEntry;
@@ -29,9 +33,14 @@ type TransactionDetailSheetProps = {
 
 export function TransactionDetailSheet({ expense, income, accounts, categories, open, onOpenChange, canConvertToFatura, onConvertToFatura }: TransactionDetailSheetProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [replenishPickerOpen, setReplenishPickerOpen] = useState(false);
+  const [replenishCategories, setReplenishCategories] = useState<{ id: number; name: string; color: string; icon: string | null }[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const isExpense = !!expense;
   const data = expense || income;
   const t = useTranslations('transactionDetail');
+  const tIncome = useTranslations('income');
 
   if (!data) return null;
 
@@ -42,6 +51,23 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
 
   const dateLabel = isExpense ? t('dueDate') : t('receivedDate');
   const dateValue = isExpense ? expense.dueDate : income?.receivedDate;
+
+  const handleOpenReplenishPicker = async () => {
+    if (!income?.receivedDate) return;
+    const cats = await getReplenishableCategories();
+    setReplenishCategories(cats);
+    setReplenishPickerOpen(true);
+  };
+
+  const handleReplenishmentChange = async (categoryId: number | null) => {
+    if (!income) return;
+    setReplenishPickerOpen(false);
+    startTransition(async () => {
+      await setIncomeReplenishment(income.id, categoryId);
+      router.refresh();
+      toast.success(tIncome('replenishmentUpdated'));
+    });
+  };
 
   return (
     <>
@@ -181,6 +207,18 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
               </Button>
             )}
 
+            {/* Replenish budget button - only for received income */}
+            {!isExpense && income?.receivedAt && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleOpenReplenishPicker}
+                disabled={isPending}
+              >
+                {tIncome('replenishBudget')}
+              </Button>
+            )}
+
             {/* Edit button */}
             {accounts && categories && (
               <Button
@@ -207,6 +245,17 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
           categories={categories}
           open={editOpen}
           onOpenChange={setEditOpen}
+        />
+      )}
+
+      {!isExpense && income && (
+        <ReplenishmentPicker
+          categories={replenishCategories}
+          currentCategoryId={income.replenishCategoryId}
+          open={replenishPickerOpen}
+          onOpenChange={setReplenishPickerOpen}
+          onSelect={handleReplenishmentChange}
+          isUpdating={isPending}
         />
       )}
     </>

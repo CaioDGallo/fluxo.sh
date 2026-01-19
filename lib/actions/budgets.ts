@@ -2,8 +2,8 @@
 
 import { cache } from 'react';
 import { db } from '@/lib/db';
-import { budgets, categories, entries, transactions, monthlyBudgets } from '@/lib/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { budgets, categories, entries, transactions, monthlyBudgets, income } from '@/lib/schema';
+import { eq, and, gte, lte, sql, isNotNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -145,6 +145,8 @@ export type BudgetWithSpending = {
   categoryColor: string;
   categoryIcon: string | null;
   spent: number;
+  replenished: number;
+  netSpent: number;
   budget: number;
 };
 
@@ -158,6 +160,8 @@ export type UnbudgetedSpending = {
 
 export type BudgetsPageData = {
   totalSpent: number;
+  totalReplenished: number;
+  totalNetSpent: number;
   totalBudget: number;
   budgets: BudgetWithSpending[];
   unbudgeted: UnbudgetedSpending[];
@@ -214,15 +218,36 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       ))
       .groupBy(transactions.categoryId);
 
-    // 3. Merge budgets and spending
+    // 2b. Get replenishments by expense category for the month
+    const replenishments = await db
+      .select({
+        categoryId: income.replenishCategoryId,
+        replenished: sql<number>`CAST(SUM(${income.amount}) AS INTEGER)`,
+      })
+      .from(income)
+      .where(and(
+        eq(income.userId, userId),
+        gte(income.receivedDate, startDate),
+        lte(income.receivedDate, endDate),
+        isNotNull(income.replenishCategoryId),
+        eq(income.ignored, false)
+      ))
+      .groupBy(income.replenishCategoryId);
+
+    // 3. Merge budgets, spending, and replenishments
     const budgetsWithSpending = monthBudgets.map((budget) => {
       const spentData = spending.find((s) => s.categoryId === budget.categoryId);
+      const replenishedData = replenishments.find((r) => r.categoryId === budget.categoryId);
+      const spent = spentData?.spent || 0;
+      const replenished = replenishedData?.replenished || 0;
       return {
         categoryId: budget.categoryId,
         categoryName: budget.categoryName,
         categoryColor: budget.categoryColor,
         categoryIcon: budget.categoryIcon,
-        spent: spentData?.spent || 0,
+        spent,
+        replenished,
+        netSpent: spent - replenished,
         budget: budget.budget,
       };
     });
@@ -262,10 +287,14 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
     // 5. Calculate totals
     const totalBudget = budgetsWithSpending.reduce((sum, cat) => sum + cat.budget, 0);
     const totalSpent = budgetsWithSpending.reduce((sum, cat) => sum + cat.spent, 0);
+    const totalReplenished = budgetsWithSpending.reduce((sum, cat) => sum + cat.replenished, 0);
+    const totalNetSpent = budgetsWithSpending.reduce((sum, cat) => sum + cat.netSpent, 0);
     const totalUnbudgetedSpent = unbudgeted.reduce((sum, cat) => sum + cat.spent, 0);
 
     return {
       totalSpent,
+      totalReplenished,
+      totalNetSpent,
       totalBudget,
       budgets: budgetsWithSpending,
       unbudgeted,

@@ -31,6 +31,9 @@ export type IncomeEntry = {
   accountName: string;
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
   ignored: boolean;
+  replenishCategoryId: number | null;
+  replenishCategoryName: string | null;
+  replenishCategoryColor: string | null;
 };
 
 // Optimistic item wrapper
@@ -159,6 +162,9 @@ function generateOptimisticIncome(input: CreateIncomeInput, tempId: string): Opt
     accountName: input.accountName,
     accountType: input.accountType,
     ignored: false,
+    replenishCategoryId: null,
+    replenishCategoryName: null,
+    replenishCategoryColor: null,
     _optimistic: true,
     _tempId: tempId,
   };

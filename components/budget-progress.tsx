@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { CategoryIcon } from '@/components/icon-picker';
@@ -7,6 +10,7 @@ type BudgetProgressProps = {
   categoryColor: string;
   categoryIcon: string | null;
   spent: number; // cents
+  replenished: number; // cents
   budget: number; // cents
 };
 
@@ -15,9 +19,12 @@ export function BudgetProgress({
   categoryColor,
   categoryIcon,
   spent,
+  replenished,
   budget,
 }: BudgetProgressProps) {
-  const percentage = budget > 0 ? (spent / budget) * 100 : 0;
+  const t = useTranslations('budgets');
+  const netSpent = spent - replenished;
+  const percentage = budget > 0 ? (netSpent / budget) * 100 : 0;
   const isOverBudget = percentage > 100;
   const isWarning = percentage >= 80 && percentage <= 100;
 
@@ -48,8 +55,13 @@ export function BudgetProgress({
           </div>
           <div className="text-right">
             <div className={`text-sm font-medium ${textColor}`}>
-              {formatCurrency(spent)} / {formatCurrency(budget)}
+              {formatCurrency(netSpent)} / {formatCurrency(budget)}
             </div>
+            {replenished > 0 && (
+              <div className="text-xs text-gray-500">
+                {t('spent')}: {formatCurrency(spent)} • {t('replenished')}: -{formatCurrency(replenished)}
+              </div>
+            )}
             <div className="text-xs text-gray-500">{percentage.toFixed(0)}%</div>
           </div>
         </div>

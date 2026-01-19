@@ -83,7 +83,7 @@ export default function DashboardPage() {
               transfersOut={data.totalTransfersOut}
               net={data.cashFlowNet}
             />
-            <SummaryCard spent={data.totalSpent} budget={data.totalBudget} />
+            <SummaryCard spent={data.totalSpent} replenished={data.totalReplenished} budget={data.totalBudget} />
             <RecentExpenses expenses={data.recentExpenses} />
           </div>
 
@@ -98,6 +98,7 @@ export default function DashboardPage() {
                   categoryColor={category.categoryColor}
                   categoryIcon={category.categoryIcon}
                   spent={category.spent}
+                  replenished={category.replenished}
                   budget={category.budget}
                 />
               ))}

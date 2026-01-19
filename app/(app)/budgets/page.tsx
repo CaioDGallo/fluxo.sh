@@ -73,7 +73,7 @@ export default function BudgetsPage() {
       ) : (
         <div className="space-y-6">
           {/* Summary Card */}
-          <SummaryCard spent={data.totalSpent} budget={data.totalBudget} />
+          <SummaryCard spent={data.totalSpent} replenished={data.totalReplenished} budget={data.totalBudget} />
 
           {/* Budget Progress List */}
           <div>
@@ -86,6 +86,7 @@ export default function BudgetsPage() {
                   categoryColor={budget.categoryColor}
                   categoryIcon={budget.categoryIcon}
                   spent={budget.spent}
+                  replenished={budget.replenished}
                   budget={budget.budget}
                 />
               ))}

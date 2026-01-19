@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useLongPress } from '@/lib/hooks/use-long-press';
 import { useSwipe } from '@/lib/hooks/use-swipe';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
 import { Card, CardContent } from '@/components/ui/card';
 import { CategoryIcon } from '@/components/icon-picker';
-import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory, toggleIgnoreIncome } from '@/lib/actions/income';
+import { markIncomeReceived, markIncomePending, deleteIncome, updateIncomeCategory, toggleIgnoreIncome, setIncomeReplenishment, getReplenishableCategories } from '@/lib/actions/income';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { ReplenishmentPicker } from '@/components/replenishment-picker';
 import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { SwipeActions } from '@/components/swipe-actions';
@@ -46,6 +46,9 @@ type IncomeCardBaseProps = {
     accountName: string;
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
     ignored: boolean;
+    replenishCategoryId: number | null;
+    replenishCategoryName: string | null;
+    replenishCategoryColor: string | null;
   };
   categories: Category[];
   accounts: Account[];
@@ -73,6 +76,8 @@ export function IncomeCard(props: IncomeCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [replenishPickerOpen, setReplenishPickerOpen] = useState(false);
+  const [replenishCategories, setReplenishCategories] = useState<{ id: number; name: string; color: string; icon: string | null }[]>([]);
   const [isPending, startTransition] = useTransition();
   const context = useIncomeContextOptional();
   const router = useRouter();
@@ -143,6 +148,19 @@ export function IncomeCard(props: IncomeCardProps) {
     } catch {
       toast.error(tErrors('failedToUpdateCategory'));
     }
+  };
+
+  const handleOpenReplenishPicker = async () => {
+    const cats = await getReplenishableCategories();
+    setReplenishCategories(cats);
+    setReplenishPickerOpen(true);
+  };
+
+  const handleReplenishmentChange = async (categoryId: number | null) => {
+    setReplenishPickerOpen(false);
+    await setIncomeReplenishment(income.id, categoryId);
+    router.refresh();
+    toast.success(t('replenishmentUpdated'));
   };
 
   const longPressHandlers = useLongPress({
@@ -302,6 +320,19 @@ export function IncomeCard(props: IncomeCardProps) {
           {/* Description + mobile date */}
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm truncate">{income.description}</h3>
+            {/* Replenishment indicator */}
+            {income.replenishCategoryId && income.replenishCategoryName && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenReplenishPicker();
+                }}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors mt-1"
+              >
+                <span>↻ {t('replenishes')}: {income.replenishCategoryName}</span>
+              </button>
+            )}
             {/* Mobile only: short date */}
             <div className="text-xs text-gray-500 md:hidden">
               {formatDate(income.receivedDate, { day: '2-digit', month: 'short' })}
@@ -377,6 +408,15 @@ export function IncomeCard(props: IncomeCardProps) {
         categories={categories}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <ReplenishmentPicker
+        categories={replenishCategories}
+        currentCategoryId={income.replenishCategoryId}
+        open={replenishPickerOpen}
+        onOpenChange={setReplenishPickerOpen}
+        onSelect={handleReplenishmentChange}
+        isUpdating={isPending}
       />
 
       {/* Swipe-to-delete confirmation dialog */}

@@ -6,13 +6,16 @@ import { useTranslations } from 'next-intl';
 
 type SummaryCardProps = {
   spent: number; // cents
+  replenished: number; // cents
   budget: number; // cents
 };
 
-export function SummaryCard({ spent, budget }: SummaryCardProps) {
+export function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
   const t = useTranslations('summary');
-  const percentage = budget > 0 ? (spent / budget) * 100 : 0;
-  const remaining = budget - spent;
+  const tBudgets = useTranslations('budgets');
+  const netSpent = spent - replenished;
+  const percentage = budget > 0 ? (netSpent / budget) * 100 : 0;
+  const remaining = budget - netSpent;
   const noBudget = budget === 0;
   const isOverBudget = !noBudget && remaining < 0;
 
@@ -24,7 +27,12 @@ export function SummaryCard({ spent, budget }: SummaryCardProps) {
       <CardContent className="space-y-4">
         <div>
           <div className="text-xs text-gray-500">{t('totalSpent')}</div>
-          <div className="text-3xl font-bold">{formatCurrency(spent)}</div>
+          <div className="text-3xl font-bold">{formatCurrency(netSpent)}</div>
+          {replenished > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              {tBudgets('spent')}: {formatCurrency(spent)} • {tBudgets('replenished')}: -{formatCurrency(replenished)}
+            </div>
+          )}
         </div>
 
         <div>

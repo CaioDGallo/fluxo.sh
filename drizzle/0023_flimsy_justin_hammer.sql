@@ -1,0 +1,2 @@
+ALTER TABLE "income" ADD COLUMN "replenish_category_id" integer;--> statement-breakpoint
+ALTER TABLE "income" ADD CONSTRAINT "income_replenish_category_id_categories_id_fk" FOREIGN KEY ("replenish_category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;

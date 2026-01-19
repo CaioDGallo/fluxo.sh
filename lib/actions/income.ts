@@ -208,10 +208,17 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       accountId: accounts.id,
       accountName: accounts.name,
       accountType: accounts.type,
+      replenishCategoryId: income.replenishCategoryId,
+      replenishCategoryName: sql<string | null>`replenish_cat.name`,
+      replenishCategoryColor: sql<string | null>`replenish_cat.color`,
     })
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))
     .innerJoin(accounts, eq(income.accountId, accounts.id))
+    .leftJoin(
+      sql`categories AS replenish_cat`,
+      sql`${income.replenishCategoryId} = replenish_cat.id`
+    )
     .where(and(...conditions))
     .orderBy(desc(income.receivedDate), desc(income.createdAt));
 
@@ -391,6 +398,7 @@ export async function toggleIgnoreIncome(incomeId: number) {
     await syncAccountBalance(record.accountId);
 
     revalidatePath('/income');
+    revalidatePath('/budgets');
     revalidatePath('/dashboard');
   } catch (error) {
     console.error('Failed to toggle ignore income:', error);
@@ -398,5 +406,87 @@ export async function toggleIgnoreIncome(incomeId: number) {
       throw error;
     }
     throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
+  }
+}
+
+export async function setIncomeReplenishment(
+  incomeId: number,
+  replenishCategoryId: number | null
+) {
+  if (!Number.isInteger(incomeId) || incomeId <= 0) {
+    throw new Error(await t('errors.invalidIncomeId'));
+  }
+  if (replenishCategoryId !== null && (!Number.isInteger(replenishCategoryId) || replenishCategoryId <= 0)) {
+    throw new Error(await t('errors.invalidCategoryId'));
+  }
+
+  try {
+    const userId = await getCurrentUserId();
+
+    // Validate income exists and belongs to user
+    const [incomeRecord] = await db
+      .select({ id: income.id })
+      .from(income)
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)))
+      .limit(1);
+
+    if (!incomeRecord) {
+      throw new Error(await t('errors.invalidIncomeId'));
+    }
+
+    // If setting a category, validate it's an expense category
+    if (replenishCategoryId !== null) {
+      const [category] = await db
+        .select({ id: categories.id, type: categories.type })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.id, replenishCategoryId)))
+        .limit(1);
+
+      if (!category) {
+        throw new Error(await t('errors.invalidCategoryId'));
+      }
+      if (category.type !== 'expense') {
+        throw new Error('Replenishment category must be an expense category');
+      }
+    }
+
+    // Update income record
+    await db
+      .update(income)
+      .set({ replenishCategoryId })
+      .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
+
+    revalidatePath('/income');
+    revalidatePath('/budgets');
+    revalidatePath('/dashboard');
+  } catch (error) {
+    console.error('Failed to set income replenishment:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(await handleDbError(error, 'errors.failedToUpdate'));
+  }
+}
+
+export async function getReplenishableCategories() {
+  try {
+    const userId = await getCurrentUserId();
+
+    // Return all expense categories for the user
+    const expenseCategories = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        color: categories.color,
+        icon: categories.icon,
+      })
+      .from(categories)
+      .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')))
+      .orderBy(categories.name);
+
+    return expenseCategories;
+  } catch (error) {
+    console.error('Failed to get replenishable categories:', error);
+    throw new Error(await handleDbError(error, 'errors.failedToLoad'));
   }
 }

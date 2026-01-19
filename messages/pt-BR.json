@@ -178,7 +178,13 @@
     "hideFromTotals": "Ignorar nos cálculos",
     "showInTotals": "Incluir nos cálculos",
     "changeCategory": "Alterar categoria",
-    "selected": "selecionados"
+    "selected": "selecionados",
+    "replenishBudget": "Repor Orçamento",
+    "replenishes": "Repõe",
+    "noReplenishment": "Nenhum",
+    "selectReplenishCategory": "Selecionar categoria",
+    "replenishmentUpdated": "Reposição de orçamento atualizada",
+    "incomeDeleted": "Receita excluída"
   },
   "transfers": {
     "title": "Transferências",
@@ -256,7 +262,10 @@
     "copiedBudgetsPartial": "Copiados {copied} orçamentos ({skipped} já existiam)",
     "failedToCopy": "Falha ao copiar orçamentos. Tente novamente.",
     "expensesWithoutBudget": "Despesas sem orçamento",
-    "addBudget": "Definir orçamento"
+    "addBudget": "Definir orçamento",
+    "spent": "Gasto",
+    "replenished": "Reposto",
+    "netSpent": "Gasto Líquido"
   },
   "form": {
     "amount": "Valor",

@@ -173,6 +173,9 @@ export const income = pgTable('income', {
   receivedAt: timestamp('received_at'), // null = pending, timestamp = received
   externalId: text('external_id'), // UUID from bank statement for idempotency
   ignored: boolean('ignored').notNull().default(false),
+  // Optional link to expense category for budget replenishment
+  replenishCategoryId: integer('replenish_category_id')
+    .references(() => categories.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -438,6 +441,10 @@ export const incomeRelations = relations(income, ({ one }) => ({
   account: one(accounts, {
     fields: [income.accountId],
     references: [accounts.id],
+  }),
+  replenishCategory: one(categories, {
+    fields: [income.replenishCategoryId],
+    references: [categories.id],
   }),
 }));
 

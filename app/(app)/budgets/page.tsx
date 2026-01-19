@@ -1,22 +1,39 @@
-import { getTranslations } from 'next-intl/server';
-import { getBudgetsWithSpending } from '@/lib/actions/budgets';
-import { getCurrentYearMonth } from '@/lib/utils';
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { MonthPicker } from '@/components/month-picker';
 import { SummaryCard } from '@/components/summary-card';
 import { BudgetProgress } from '@/components/budget-progress';
 import { UnbudgetedSpending } from '@/components/unbudgeted-spending';
 import { CopyBudgetsButton } from '@/components/copy-budgets-button';
+import { useMonthStore } from '@/lib/stores/month-store';
+import { useBudgetsData } from '@/lib/hooks/use-budgets-data';
+import { usePrefetchMonths } from '@/lib/hooks/use-prefetch-months';
 import Link from 'next/link';
 
-type PageProps = {
-  searchParams: Promise<{ month?: string }>;
-};
+export default function BudgetsPage() {
+  const t = useTranslations('budgets');
+  const yearMonth = useMonthStore((state) => state.currentMonth);
+  const { data, loading } = useBudgetsData(yearMonth);
 
-export default async function BudgetsPage({ searchParams }: PageProps) {
-  const t = await getTranslations('budgets');
-  const params = await searchParams;
-  const yearMonth = params.month || getCurrentYearMonth();
-  const data = await getBudgetsWithSpending(yearMonth);
+  // Prefetch adjacent months
+  usePrefetchMonths('budgets');
+
+  if (loading || !data) {
+    return (
+      <div>
+        <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <MonthPicker />
+        </div>
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <div className="text-lg">{t('loading', { default: 'Carregando...' })}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const hasNoBudgets = data.budgets.length === 0;
 
@@ -24,14 +41,14 @@ export default async function BudgetsPage({ searchParams }: PageProps) {
     <div>
       <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <MonthPicker currentMonth={yearMonth} />
+        <MonthPicker />
       </div>
 
       {/* Actions row */}
       <div className="mb-6 flex items-center justify-between">
         <CopyBudgetsButton currentMonth={yearMonth} />
         <Link
-          href={`/settings/budgets?month=${yearMonth}`}
+          href="/settings/budgets"
           className="text-sm text-blue-600 hover:underline"
         >
           {t('editBudgets')}
@@ -46,7 +63,7 @@ export default async function BudgetsPage({ searchParams }: PageProps) {
           </p>
           <div className="flex justify-center gap-4">
             <Link
-              href={`/settings/budgets?month=${yearMonth}`}
+              href="/settings/budgets"
               className="inline-block rounded-none bg-blue-600 px-6 py-3 text-sm text-white hover:bg-blue-700"
             >
               {t('setBudgets')}

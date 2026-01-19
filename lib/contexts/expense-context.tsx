@@ -14,7 +14,8 @@ import {
   toggleIgnoreTransaction as serverToggleIgnoreTransaction,
   type ExpenseFilters,
 } from '@/lib/actions/expenses';
-import { centsToDisplay } from '@/lib/utils';
+import { centsToDisplay, getCurrentYearMonth, addMonths } from '@/lib/utils';
+import { useMonthStore } from '@/lib/stores/month-store';
 
 // Expense entry shape (from getExpenses return type)
 export type ExpenseEntry = {
@@ -246,6 +247,16 @@ export function ExpenseListProvider({
         accountId: input.accountId,
         purchaseDate: input.purchaseDate,
         installments: input.installments,
+      }).then(() => {
+        // Clear cache for affected months
+        const purchaseMonth = input.purchaseDate.slice(0, 7);
+        const { clearMonthRange } = useMonthStore.getState();
+        if (input.installments > 1) {
+          const endMonth = addMonths(purchaseMonth, input.installments - 1);
+          clearMonthRange(purchaseMonth, endMonth);
+        } else {
+          useMonthStore.getState().clearMonthCache(purchaseMonth);
+        }
       }).catch(() => {
         toast.error('Failed to create expense');
         router.refresh(); // Revert optimistic state
@@ -265,10 +276,12 @@ export function ExpenseListProvider({
 
       try {
         if (currentPaidAt) {
-          await serverMarkEntryPending(id);
-        } else {
           await serverMarkEntryPaid(id);
+        } else {
+          await serverMarkEntryPending(id);
         }
+        // Clear current month cache
+        useMonthStore.getState().clearMonthCache(getCurrentYearMonth());
       } catch {
         toast.error('Failed to update status');
       }
@@ -285,6 +298,8 @@ export function ExpenseListProvider({
 
       try {
         await serverDeleteExpense(transactionId);
+        // Clear all caches since we don't know which months the transaction spans
+        useMonthStore.getState().clearAllCache();
       } catch {
         toast.error('Failed to delete expense');
       }
@@ -308,6 +323,8 @@ export function ExpenseListProvider({
 
       try {
         await serverBulkUpdateTransactionCategories(transactionIds, categoryId);
+        // Clear all caches since we don't know which months the transactions span
+        useMonthStore.getState().clearAllCache();
         toast.success(`Updated ${transactionIds.length} item${transactionIds.length > 1 ? 's' : ''}`);
       } catch (error) {
         console.error('Failed to bulk update categories:', error);
@@ -327,6 +344,8 @@ export function ExpenseListProvider({
 
       try {
         await serverToggleIgnoreTransaction(transactionId);
+        // Clear all caches since we don't know which months the transaction spans
+        useMonthStore.getState().clearAllCache();
       } catch {
         toast.error('Failed to update ignore status');
       }

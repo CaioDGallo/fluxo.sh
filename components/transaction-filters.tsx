@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +21,7 @@ import {
   FilterIcon,
 } from '@hugeicons/core-free-icons';
 import { addMonths } from '@/lib/utils';
+import { useMonthStore } from '@/lib/stores/month-store';
 import { ActiveFilterBadges } from '@/components/active-filter-badges';
 import type { Account, Category } from '@/lib/schema';
 
@@ -29,19 +29,29 @@ type TransactionFiltersProps = {
   variant: 'expense' | 'income';
   accounts: Account[];
   categories: Category[];
-  currentMonth: string;
   setSearchQuery: (query: string) => void;
+  categoryFilter: string;
+  accountFilter: string;
+  statusFilter: string;
+  onCategoryChange: (value: string) => void;
+  onAccountChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
 };
 
 export function TransactionFilters({
   variant,
   accounts,
   categories,
-  currentMonth,
   setSearchQuery,
+  categoryFilter,
+  accountFilter,
+  statusFilter,
+  onCategoryChange,
+  onAccountChange,
+  onStatusChange,
 }: TransactionFiltersProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const currentMonth = useMonthStore((state) => state.currentMonth);
+  const setMonth = useMonthStore((state) => state.setMonth);
   const locale = useLocale();
   const t = useTranslations('filters');
   const tTransaction = useTranslations(variant === 'expense' ? 'expenses' : 'income');
@@ -72,21 +82,18 @@ export function TransactionFilters({
 
   function navigateMonth(direction: -1 | 1) {
     const newMonth = addMonths(currentMonth, direction);
-    const params = new URLSearchParams(searchParams);
-    params.set('month', newMonth);
-    const route = variant === 'expense' ? '/expenses' : '/income';
-    router.push(`${route}?${params.toString()}`);
+    setMonth(newMonth);
   }
 
   function updateFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== 'all') {
-      params.set(key, value);
-    } else {
-      params.delete(key);
+    const normalizedValue = value && value !== 'all' ? value : 'all';
+    if (key === 'category') {
+      onCategoryChange(normalizedValue);
+    } else if (key === 'account') {
+      onAccountChange(normalizedValue);
+    } else if (key === 'status') {
+      onStatusChange(normalizedValue);
     }
-    const route = variant === 'expense' ? '/expenses' : '/income';
-    router.push(`${route}?${params.toString()}`);
   }
 
   function handleSearchOpen() {
@@ -105,22 +112,20 @@ export function TransactionFilters({
   });
 
   // Get active filter data for badges
-  const categoryId = searchParams.get('category');
-  const accountId = searchParams.get('account');
-  const statusValue = searchParams.get('status');
-
-  const activeCategory = categoryId
-    ? categories.find((c) => c.id.toString() === categoryId) || null
-    : null;
-  const activeAccount = accountId
-    ? accounts.find((a) => a.id.toString() === accountId) || null
-    : null;
+  const activeCategory =
+    categoryFilter && categoryFilter !== 'all'
+      ? categories.find((c) => c.id.toString() === categoryFilter) || null
+      : null;
+  const activeAccount =
+    accountFilter && accountFilter !== 'all'
+      ? accounts.find((a) => a.id.toString() === accountFilter) || null
+      : null;
   const activeStatus =
-    statusValue && statusValue !== 'all'
+    statusFilter && statusFilter !== 'all'
       ? {
-        value: statusValue,
+        value: statusFilter,
         label:
-          statusValue === 'pending'
+          statusFilter === 'pending'
             ? tTransaction('pending')
             : variant === 'expense'
               ? tTransaction('paid')
@@ -200,7 +205,7 @@ export function TransactionFilters({
           <div className="flex items-center justify-between gap-3">
             <Label className="shrink-0 text-sm">{t('category')}</Label>
             <Select
-              value={searchParams.get('category') || 'all'}
+              value={categoryFilter || 'all'}
               onValueChange={(value) => updateFilter('category', value)}
             >
               <SelectTrigger className="w-48">
@@ -220,7 +225,7 @@ export function TransactionFilters({
           <div className="flex items-center justify-between gap-3">
             <Label className="shrink-0 text-sm">{t('account')}</Label>
             <Select
-              value={searchParams.get('account') || 'all'}
+              value={accountFilter || 'all'}
               onValueChange={(value) => updateFilter('account', value)}
             >
               <SelectTrigger className="w-48">
@@ -240,7 +245,7 @@ export function TransactionFilters({
           <div className="flex items-center justify-between gap-3">
             <Label className="shrink-0 text-sm">{t('status')}</Label>
             <Select
-              value={searchParams.get('status') || 'all'}
+              value={statusFilter || 'all'}
               onValueChange={(value) => updateFilter('status', value)}
             >
               <SelectTrigger className="w-32">

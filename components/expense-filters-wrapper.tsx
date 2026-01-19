@@ -7,13 +7,23 @@ import type { Account, Category } from '@/lib/schema';
 type ExpenseFiltersWrapperProps = {
   accounts: Account[];
   categories: Category[];
-  currentMonth: string;
+  categoryFilter: string;
+  accountFilter: string;
+  statusFilter: string;
+  onCategoryChange: (value: string) => void;
+  onAccountChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
 };
 
 export function ExpenseFiltersWrapper({
   accounts,
   categories,
-  currentMonth,
+  categoryFilter,
+  accountFilter,
+  statusFilter,
+  onCategoryChange,
+  onAccountChange,
+  onStatusChange,
 }: ExpenseFiltersWrapperProps) {
   const { setSearchQuery } = useExpenseContext();
 
@@ -22,8 +32,13 @@ export function ExpenseFiltersWrapper({
       variant="expense"
       accounts={accounts}
       categories={categories}
-      currentMonth={currentMonth}
       setSearchQuery={setSearchQuery}
+      categoryFilter={categoryFilter}
+      accountFilter={accountFilter}
+      statusFilter={statusFilter}
+      onCategoryChange={onCategoryChange}
+      onAccountChange={onAccountChange}
+      onStatusChange={onStatusChange}
     />
   );
 }

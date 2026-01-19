@@ -1,6 +1,6 @@
-import { getTranslations } from 'next-intl/server';
-import { getDashboardData, getNetWorth } from '@/lib/actions/dashboard';
-import { getCurrentYearMonth } from '@/lib/utils';
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { MonthPicker } from '@/components/month-picker';
 import { SummaryCard } from '@/components/summary-card';
 import { BalanceSummary } from '@/components/balance-summary';
@@ -8,18 +8,36 @@ import { CashFlowReport } from '@/components/cash-flow-report';
 import { BudgetProgress } from '@/components/budget-progress';
 import { RecentExpenses } from '@/components/recent-expenses';
 import { NetWorthSummary } from '@/components/net-worth-summary';
+import { useMonthStore } from '@/lib/stores/month-store';
+import { useDashboardData } from '@/lib/hooks/use-dashboard-data';
+import { useNetWorth } from '@/lib/hooks/use-net-worth';
+import { usePrefetchMonths } from '@/lib/hooks/use-prefetch-months';
 import Link from 'next/link';
 
-type PageProps = {
-  searchParams: Promise<{ month?: string }>;
-};
+export default function DashboardPage() {
+  const t = useTranslations('dashboard');
+  const currentMonth = useMonthStore((state) => state.currentMonth);
+  const { data, loading } = useDashboardData(currentMonth);
+  const { data: netWorth } = useNetWorth();
 
-export default async function DashboardPage({ searchParams }: PageProps) {
-  const t = await getTranslations('dashboard');
-  const params = await searchParams;
-  const yearMonth = params.month || getCurrentYearMonth();
-  const data = await getDashboardData(yearMonth);
-  const netWorth = await getNetWorth();
+  // Prefetch adjacent months in background
+  usePrefetchMonths('dashboard');
+
+  if (loading || !data || !netWorth) {
+    return (
+      <div>
+        <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <MonthPicker />
+        </div>
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <div className="text-lg">{t('loading', { default: 'Carregando...' })}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const hasNoBudgets = data.categoryBreakdown.length === 0;
 
@@ -27,7 +45,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div>
       <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <MonthPicker currentMonth={yearMonth} />
+        <MonthPicker />
       </div>
 
       {hasNoBudgets ? (

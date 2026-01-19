@@ -13,7 +13,8 @@ import {
   toggleIgnoreIncome as serverToggleIgnoreIncome,
   type IncomeFilters,
 } from '@/lib/actions/income';
-import { centsToDisplay } from '@/lib/utils';
+import { centsToDisplay, getCurrentYearMonth } from '@/lib/utils';
+import { useMonthStore } from '@/lib/stores/month-store';
 
 // Income entry shape (from getIncome return type)
 export type IncomeEntry = {
@@ -206,6 +207,10 @@ export function IncomeListProvider({
         categoryId: input.categoryId,
         accountId: input.accountId,
         receivedDate: input.receivedDate,
+      }).then(() => {
+        // Clear cache for the received month
+        const receivedMonth = input.receivedDate.slice(0, 7);
+        useMonthStore.getState().clearMonthCache(receivedMonth);
       }).catch(() => {
         toast.error('Failed to create income');
         router.refresh(); // Revert optimistic state
@@ -229,6 +234,8 @@ export function IncomeListProvider({
         } else {
           await serverMarkIncomeReceived(id);
         }
+        // Clear current month cache
+        useMonthStore.getState().clearMonthCache(getCurrentYearMonth());
       } catch {
         toast.error('Failed to update status');
       }
@@ -245,6 +252,8 @@ export function IncomeListProvider({
 
       try {
         await serverDeleteIncome(id);
+        // Clear all caches since we don't know which month the income was in
+        useMonthStore.getState().clearAllCache();
       } catch {
         toast.error('Failed to delete income');
       }
@@ -268,6 +277,8 @@ export function IncomeListProvider({
 
       try {
         await serverBulkUpdateIncomeCategories(incomeIds, categoryId);
+        // Clear all caches since we don't know which months the income spans
+        useMonthStore.getState().clearAllCache();
         toast.success(`Updated ${incomeIds.length} item${incomeIds.length > 1 ? 's' : ''}`);
       } catch (error) {
         console.error('Failed to bulk update categories:', error);
@@ -287,6 +298,8 @@ export function IncomeListProvider({
 
       try {
         await serverToggleIgnoreIncome(id);
+        // Clear all caches since we don't know which month the income was in
+        useMonthStore.getState().clearAllCache();
       } catch {
         toast.error('Failed to update ignore status');
       }

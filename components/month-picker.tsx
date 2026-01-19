@@ -1,31 +1,18 @@
 'use client';
 
 import { addMonths } from '@/lib/utils';
-import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
-import { useEffect } from 'react';
+import { useMonthStore } from '@/lib/stores/month-store';
 
-type MonthPickerProps = {
-  currentMonth: string;
-};
-
-export function MonthPicker({ currentMonth }: MonthPickerProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Prefetch adjacent months for instant navigation
-  useEffect(() => {
-    const prevMonth = addMonths(currentMonth, -1);
-    const nextMonth = addMonths(currentMonth, 1);
-    router.prefetch(`${pathname}?month=${prevMonth}`);
-    router.prefetch(`${pathname}?month=${nextMonth}`);
-  }, [currentMonth, pathname, router]);
+export function MonthPicker() {
+  const currentMonth = useMonthStore((state) => state.currentMonth);
+  const setMonth = useMonthStore((state) => state.setMonth);
 
   function navigate(direction: -1 | 1) {
     const newMonth = addMonths(currentMonth, direction);
-    router.push(`${pathname}?month=${newMonth}`);
+    setMonth(newMonth);
   }
 
   const [year, month] = currentMonth.split('-');

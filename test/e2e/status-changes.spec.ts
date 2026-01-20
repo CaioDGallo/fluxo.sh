@@ -92,7 +92,7 @@ test('mark expense as paid', async ({ page }) => {
 
   // Create expense (not paid by default)
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').click();
@@ -130,7 +130,7 @@ test('mark expense as pending (unpay)', async ({ page }) => {
 
   // Create expense
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('100');
@@ -171,7 +171,7 @@ test('mark income as received', async ({ page }) => {
 
   // Create income (not received by default)
   await page.goto('/income');
-  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('2000');
@@ -208,7 +208,7 @@ test('mark income as pending (unreceive)', async ({ page }) => {
 
   // Create income
   await page.goto('/income');
-  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('1500');

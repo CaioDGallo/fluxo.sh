@@ -72,7 +72,18 @@ export default function AccountsPage() {
 
       <div className="space-y-8">
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <div className="animate-pulse space-y-6">
+            {Array.from({ length: 3 }).map((_, sectionIndex) => (
+              <div key={sectionIndex} className="space-y-3">
+                <div className="h-4 w-40 bg-muted rounded" />
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, itemIndex) => (
+                    <div key={itemIndex} className="h-20 bg-muted rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <>
             {/* Credit Card Accounts */}

@@ -118,7 +118,7 @@ test('create account, category, and expense installments', async ({ page }) => {
   await setCategoryBudget(page, EXPENSE_CATEGORY, '1000');
 
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('300');
@@ -162,7 +162,7 @@ test('create income updates dashboard net balance', async ({ page }) => {
   await setCategoryBudget(page, EXPENSE_CATEGORY, '2000');
 
   await page.goto('/income');
-  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('500');
@@ -224,7 +224,7 @@ test('ignore expense removes it from totals', async ({ page }) => {
 
   // Create an expense
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').fill('250');
@@ -277,10 +277,10 @@ test('ignore income removes it from totals', async ({ page }) => {
 
   // Create an income
   await page.goto('/income');
-  await page.getByRole('button', { name: 'Adicionar Receita' }).click();
+  await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('800');
+  await dialog.getByLabel('Valor').pressSequentially('800');
   await dialog.getByLabel('Descrição').fill('Freelance Ignorar E2E');
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: INCOME_CATEGORY }).first().click();
@@ -333,7 +333,7 @@ test('ignore transfer removes it from cash flow', async ({ page }) => {
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Tipo').click();
   await page.getByRole('option', { name: 'Depósito' }).first().click();
-  await dialog.getByLabel('Valor').fill('150');
+  await dialog.getByLabel('Valor').pressSequentially('150');
   await dialog.getByLabel('Descrição').fill('Depósito Ignorar E2E');
   await dialog.getByLabel('Conta de destino').click();
   await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
@@ -412,10 +412,10 @@ test('view fatura details and pay it', async ({ page }) => {
 
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('500');
+  await dialog.getByLabel('Valor').pressSequentially('500');
   await dialog.getByLabel('Descrição').fill('Compra E2E');
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
@@ -502,10 +502,10 @@ test('revert fatura payment', async ({ page }) => {
 
   // Create expense on credit card
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('300');
+  await dialog.getByLabel('Valor').pressSequentially('300');
   await dialog.getByLabel('Descrição').fill('Compra Revert E2E');
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
@@ -599,10 +599,10 @@ test('convert expense to fatura payment', async ({ page }) => {
 
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   const expenseDialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(expenseDialog).toBeVisible();
-  await expenseDialog.getByLabel('Valor').fill('500');
+  await expenseDialog.getByLabel('Valor').pressSequentially('500');
   await expenseDialog.getByLabel('Descrição').fill('Compra Cartão E2E');
   await expenseDialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
@@ -612,9 +612,9 @@ test('convert expense to fatura payment', async ({ page }) => {
   await expect(expenseDialog).toBeHidden();
 
   // Create expense on checking account (same amount as fatura)
-  await page.getByRole('button', { name: 'Adicionar Despesa' }).click();
+  await page.getByRole('button', { name: 'Despesa' }).click();
   await expect(expenseDialog).toBeVisible();
-  await expenseDialog.getByLabel('Valor').fill('500');
+  await expenseDialog.getByLabel('Valor').pressSequentially('500');
   await expenseDialog.getByLabel('Descrição').fill('Pagamento Fatura Manual');
   await expenseDialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();

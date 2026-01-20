@@ -25,6 +25,7 @@ type CreateExpenseData = {
 };
 
 export async function createExpense(data: CreateExpenseData) {
+  console.log('data', data);
   // Validate inputs
   if (!data.description?.trim()) {
     throw new Error(await t('errors.descriptionRequired'));
@@ -388,55 +389,55 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
     async () => {
       const conditions = [eq(entries.userId, userId)];
 
-  // Filter ignored transactions (they should still appear but won't affect calculations)
-  // Note: We don't filter them out, allowing them to be visible but dimmed in UI
+      // Filter ignored transactions (they should still appear but won't affect calculations)
+      // Note: We don't filter them out, allowing them to be visible but dimmed in UI
 
-  // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
-  if (yearMonth) {
-    conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
-  }
+      // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
+      if (yearMonth) {
+        conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
+      }
 
-  if (categoryId) {
-    conditions.push(eq(transactions.categoryId, categoryId));
-  }
+      if (categoryId) {
+        conditions.push(eq(transactions.categoryId, categoryId));
+      }
 
-  if (accountId) {
-    conditions.push(eq(entries.accountId, accountId));
-  }
+      if (accountId) {
+        conditions.push(eq(entries.accountId, accountId));
+      }
 
-  if (status === 'pending') {
-    conditions.push(isNull(entries.paidAt));
-  } else if (status === 'paid') {
-    conditions.push(isNotNull(entries.paidAt));
-  }
+      if (status === 'pending') {
+        conditions.push(isNull(entries.paidAt));
+      } else if (status === 'paid') {
+        conditions.push(isNotNull(entries.paidAt));
+      }
 
-  const results = await db
-    .select({
-      id: entries.id,
-      amount: entries.amount,
-      purchaseDate: entries.purchaseDate,
-      faturaMonth: entries.faturaMonth,
-      dueDate: entries.dueDate,
-      paidAt: sql<string | null>`${entries.paidAt}::text`,
-      installmentNumber: entries.installmentNumber,
-      transactionId: transactions.id,
-      description: transactions.description,
-      totalInstallments: transactions.totalInstallments,
-      ignored: transactions.ignored,
-      categoryId: categories.id,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      categoryIcon: categories.icon,
-      accountId: accounts.id,
-      accountName: accounts.name,
-      accountType: accounts.type,
-    })
-    .from(entries)
-    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .innerJoin(accounts, eq(entries.accountId, accounts.id))
-      .where(and(...conditions))
-      .orderBy(desc(entries.dueDate));
+      const results = await db
+        .select({
+          id: entries.id,
+          amount: entries.amount,
+          purchaseDate: entries.purchaseDate,
+          faturaMonth: entries.faturaMonth,
+          dueDate: entries.dueDate,
+          paidAt: sql<string | null>`${entries.paidAt}::text`,
+          installmentNumber: entries.installmentNumber,
+          transactionId: transactions.id,
+          description: transactions.description,
+          totalInstallments: transactions.totalInstallments,
+          ignored: transactions.ignored,
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categoryColor: categories.color,
+          categoryIcon: categories.icon,
+          accountId: accounts.id,
+          accountName: accounts.name,
+          accountType: accounts.type,
+        })
+        .from(entries)
+        .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+        .innerJoin(categories, eq(transactions.categoryId, categories.id))
+        .innerJoin(accounts, eq(entries.accountId, accounts.id))
+        .where(and(...conditions))
+        .orderBy(desc(entries.dueDate));
 
       return results;
     },

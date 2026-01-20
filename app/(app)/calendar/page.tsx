@@ -646,7 +646,7 @@ export default function CalendarPage() {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-6 flex-col md:flex-row space-y-4 md:space-y-0">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <h1 className="text-2xl font-bold hidden md:flex">{t('title')}</h1>
         <div className="flex gap-2 w-full justify-start md:justify-end flex-col md:flex-row">
           <QuickAddTask defaultType="event" onSuccess={loadData} />
 
@@ -735,11 +735,8 @@ export default function CalendarPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-background rounded-lg border border-border p-4 flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-500"></div>
-            <p className="mt-4 text-sm text-muted-foreground">{t('loading')}</p>
-          </div>
+        <div className="bg-background rounded-lg border border-border p-4 animate-pulse">
+          <div className="h-[520px] bg-muted rounded-lg" />
         </div>
       ) : (
         <div className="bg-background border border-border -mx-4">

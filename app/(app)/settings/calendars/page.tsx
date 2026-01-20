@@ -55,7 +55,11 @@ export default function CalendarsPage() {
 
       <div className="space-y-3">
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <div className="animate-pulse space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-16 bg-muted rounded-lg" />
+            ))}
+          </div>
         ) : sources.length > 0 ? (
           sources.map((source) => (
             <CalendarSourceCard key={source.id} source={source} />

@@ -238,6 +238,7 @@ test('create transfer updates cash flow report', async ({ page }) => {
     .locator('[data-slot="cash-flow-report"]')
     .locator('div', { hasText: 'Transferências de entrada' })
     .first();
+  await page.mouse.wheel(0, 500);
   await expect(transfersBlock).toContainText(/R\$\s*200,00/);
 });
 
@@ -288,6 +289,7 @@ test('ignore expense removes it from totals', async ({ page }) => {
   await page.goto('/expenses');
   await expenseCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
   await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
 
   // Verify expense is back in totals
@@ -343,6 +345,7 @@ test('ignore income removes it from totals', async ({ page }) => {
   await page.goto('/income');
   await incomeCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
   await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await page.waitForLoadState("networkidle");
 
   // Verify income is back in net balance
   await page.goto(`/dashboard?month=${currentMonth}`);
@@ -396,9 +399,11 @@ test('ignore transfer removes it from cash flow', async ({ page }) => {
   await page.goto('/transfers');
   await transferCard.getByRole('button').last().click();
   await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await page.waitForLoadState("networkidle");
 
   // Verify transfer is back in cash flow
   await page.goto(`/dashboard?month=${currentMonth}`);
+  await page.mouse.wheel(0, 500);
   await expect(transfersBlock).toContainText(/R\$\s*150,00/);
 });
 

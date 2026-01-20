@@ -50,7 +50,7 @@ async function createAccount(
   }
 
   // Fill initial balance (required for all account types)
-  await dialog.getByLabel('Saldo Inicial').fill(initialBalance);
+  await dialog.getByLabel('Saldo Inicial').pressSequentially(initialBalance);
 
   // Fill credit card specific fields if type is credit_card
   if (type === 'credit_card') {
@@ -59,7 +59,7 @@ async function createAccount(
     await page.getByRole('option', { name: closingDay }).first().click();
     await dialog.getByLabel('Dia do Vencimento (1-28)').click();
     await page.getByRole('option', { name: paymentDueDay }).first().click();
-    await dialog.getByLabel('Limite de Crédito').fill(creditLimit);
+    await dialog.getByLabel('Limite de Crédito').pressSequentially(creditLimit);
   }
 
   await dialog.getByRole('button', { name: 'Criar' }).click();
@@ -96,7 +96,7 @@ test('mark expense as paid', async ({ page }) => {
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').click();
-  await dialog.getByLabel('Valor').fill('100');
+  await dialog.getByLabel('Valor').pressSequentially('100');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
@@ -135,7 +135,7 @@ test('mark expense as pending (unpay)', async ({ page }) => {
   await page.getByRole('button', { name: 'Despesa' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('100');
+  await dialog.getByLabel('Valor').pressSequentially('100');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
@@ -179,7 +179,7 @@ test('mark income as received', async ({ page }) => {
   await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('2000');
+  await dialog.getByLabel('Valor').pressSequentially('2000');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
@@ -218,7 +218,7 @@ test('mark income as pending (unreceive)', async ({ page }) => {
   await page.getByRole('button', { name: 'Receita' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Valor').fill('1500');
+  await dialog.getByLabel('Valor').pressSequentially('1500');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
   await page.getByRole('option', { name: CATEGORY_NAME }).first().click();

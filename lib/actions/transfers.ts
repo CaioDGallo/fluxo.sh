@@ -6,7 +6,7 @@ import { accounts, faturas, transfers } from '@/lib/schema';
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 
 export type CreateTransferData = {
@@ -395,6 +395,7 @@ export async function toggleIgnoreTransfer(transferId: number) {
       await syncAccountBalance(record.toAccountId);
     }
 
+    revalidateTag(`user-${userId}`, {});
     revalidatePath('/transfers');
     revalidatePath('/dashboard');
   } catch (error) {

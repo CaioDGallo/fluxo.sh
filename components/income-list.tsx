@@ -97,7 +97,7 @@ export function IncomeList() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Pull-to-refresh indicator */}
       {(pullToRefresh.isRefreshing || pullToRefresh.pullDistance > 0) && (
         <div
@@ -115,7 +115,7 @@ export function IncomeList() {
 
       {dates.map((date) => (
         <div key={date}>
-          <h2 className="mb-3 text-sm font-medium text-gray-500">
+          <h2 className="mb-2 text-sm font-medium text-gray-500">
             {formatDate(date, {
               weekday: 'long',
               day: 'numeric',
@@ -123,7 +123,7 @@ export function IncomeList() {
               year: 'numeric',
             })}
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {groupedByDate[date].map((inc) =>
               selection.isSelectionMode ? (
                 <IncomeCard

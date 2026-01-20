@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 
 type IncomeCardBaseProps = {
@@ -295,6 +295,7 @@ export function IncomeCard(props: IncomeCardProps) {
             className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
+            <span className='size-16 absolute' />
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (
@@ -328,9 +329,16 @@ export function IncomeCard(props: IncomeCardProps) {
                   e.stopPropagation();
                   handleOpenReplenishPicker();
                 }}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors mt-1"
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex items-center py-1 gap-1 text-blue-600 hover:text-blue-700 transition-colors"
               >
-                <span>↻ {t('replenishes')}: {income.replenishCategoryName}</span>
+                <div className='flex flex-row gap-1 items-center p-1 px-2 bg-blue-100'>
+                  <HugeiconsIcon
+                    icon={ArrowReloadHorizontalIcon}
+                    className="size-3 text-blue-700"
+                    strokeWidth={4}
+                  />
+                  {income.replenishCategoryName}</div>
               </button>
             )}
             {/* Mobile only: short date */}

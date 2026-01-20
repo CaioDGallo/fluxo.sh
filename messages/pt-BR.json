@@ -121,6 +121,7 @@
   },
   "expenses": {
     "title": "Despesas",
+    "expense": "Despesa",
     "addExpense": "Adicionar Despesa",
     "editExpense": "Editar Despesa",
     "import": "Importar",
@@ -162,6 +163,7 @@
   },
   "income": {
     "title": "Receitas",
+    "income": "Receita",
     "addIncome": "Adicionar Receita",
     "editIncome": "Editar Receita",
     "loading": "Carregando…",
@@ -311,6 +313,8 @@
     "expenseCategories": "Categorias de Despesa",
     "incomeCategories": "Categorias de Receita",
     "add": "Adicionar",
+    "addExpenseCategory": "Adicionar categoria de despesa",
+    "addIncomeCategory": "Adicionar categoria de receita",
     "noExpenseCategoriesYet": "Nenhuma categoria de despesa ainda.",
     "noIncomeCategoriesYet": "Nenhuma categoria de receita ainda.",
     "importDefault": "Padrão para importação",

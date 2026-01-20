@@ -302,6 +302,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
             className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
+            <span className='size-16 absolute' />
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (

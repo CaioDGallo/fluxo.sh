@@ -138,7 +138,7 @@ export function ExpenseList() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Pull-to-refresh indicator */}
       {(pullToRefresh.isRefreshing || pullToRefresh.pullDistance > 0) && (
         <div
@@ -156,7 +156,7 @@ export function ExpenseList() {
 
       {dates.map((date) => (
         <div key={date}>
-          <h2 className="mb-3 text-sm font-medium text-gray-500">
+          <h2 className="mb-2 text-sm font-medium text-gray-500">
             {formatDate(date, {
               weekday: 'long',
               day: 'numeric',
@@ -164,7 +164,7 @@ export function ExpenseList() {
               year: 'numeric',
             })}
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-1">
             {groupedByDate[date].map((expense) =>
               selection.isSelectionMode ? (
                 <ExpenseCard

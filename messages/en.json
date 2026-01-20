@@ -121,6 +121,7 @@
   },
   "expenses": {
     "title": "Expenses",
+    "expense": "Expense",
     "addExpense": "Add Expense",
     "editExpense": "Edit Expense",
     "import": "Import",
@@ -162,6 +163,7 @@
   },
   "income": {
     "title": "Income",
+    "income": "Income",
     "addIncome": "Add Income",
     "editIncome": "Edit Income",
     "import": "Import",
@@ -302,6 +304,8 @@
     "expenseCategories": "Expense Categories",
     "incomeCategories": "Income Categories",
     "add": "Add",
+    "addExpenseCategory": "Add expense category",
+    "addIncomeCategory": "Add income category",
     "noExpenseCategoriesYet": "No expense categories yet.",
     "noIncomeCategoriesYet": "No income categories yet.",
     "importDefault": "Import default",

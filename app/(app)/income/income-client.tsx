@@ -69,12 +69,12 @@ export function IncomeClient({
 
   return (
     <div>
-      <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+      <div className="mb-3 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
+        {/* <h1 className="text-2xl font-bold">{t('title')}</h1> */}
         <MonthPicker currentMonth={currentMonth} />
       </div>
 
-      <div className="mb-6 flex gap-2 justify-end">
+      <div className="mb-3 flex gap-2 justify-end">
         <ImportModal accounts={accounts} categories={categories} />
         <AddIncomeButton accounts={accounts} categories={categories} />
       </div>

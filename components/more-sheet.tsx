@@ -27,6 +27,7 @@ import { LanguageToggleRow } from './language-toggle-row';
 import { LogoutButton } from './logout-button';
 
 const moreItems = [
+  { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
   { key: 'income', href: '/income', icon: ArrowUp01Icon },

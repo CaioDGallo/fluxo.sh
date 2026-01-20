@@ -2,11 +2,11 @@
 
 import { cn } from '@/lib/utils';
 import {
-  CalendarIcon,
+  ArrowDownBigIcon,
+  ArrowUpBigIcon,
   Home01Icon,
   Invoice03Icon,
-  MoreHorizontalIcon,
-  Wallet01Icon
+  MoreHorizontalIcon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
@@ -24,8 +24,8 @@ type TabItem = {
 const tabs: TabItem[] = [
   { key: 'dashboard', href: '/dashboard', icon: Home01Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
-  { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
-  { key: 'calendar', href: '/calendar', icon: CalendarIcon },
+  { key: 'expenses', href: '/expenses', icon: ArrowDownBigIcon },
+  { key: 'income', href: '/income', icon: ArrowUpBigIcon },
   { key: 'more', href: null, icon: MoreHorizontalIcon },
 ];
 
@@ -76,7 +76,7 @@ export function BottomTabBar() {
 
   const isActive = (href: string | null) => href ? pathname === href : false;
   const isMoreActive =
-    pathname.startsWith('/income') ||
+    pathname.startsWith('/calendar') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/faturas') ||
     pathname.startsWith('/transfers') ||

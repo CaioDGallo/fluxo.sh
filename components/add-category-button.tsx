@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useTranslations } from 'next-intl';
 
 type AddCategoryButtonProps = {
   type?: 'expense' | 'income';
@@ -18,13 +19,14 @@ type AddCategoryButtonProps = {
 
 export function AddCategoryButton({ type = 'expense', children }: AddCategoryButtonProps) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations('categories');
 
-  const title = type === 'expense' ? 'Add Expense Category' : 'Add Income Category';
+  const title = type === 'expense' ? t('addExpenseCategory') : t('addIncomeCategory');
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={'hollow'}>{children || 'Add Category'}</Button>
+        <Button variant={'hollow'}>{children || t('add')}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent closeOnBackdropClick>
         <AlertDialogHeader>

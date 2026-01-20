@@ -28,7 +28,7 @@ export default async function DashboardPage({
   return (
     <div>
       <div className="mb-6 flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        {/* <h1 className="text-2xl font-bold">{t('title')}</h1> */}
         <MonthPicker currentMonth={currentMonth} />
       </div>
 

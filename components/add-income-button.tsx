@@ -28,7 +28,7 @@ export function AddIncomeButton({ accounts, categories }: AddIncomeButtonProps) 
       trigger={
         <Button variant="hollow" size="sm">
           <HugeiconsIcon icon={Add01Icon} className="mr-2 size-4" />
-          {t('addIncome')}
+          {t('income')}
         </Button>
       }
     />

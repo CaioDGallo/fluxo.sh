@@ -25,7 +25,7 @@ export default async function Home() {
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur text-foreground">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center border-2 border-foreground bg-background text-xs font-bold">FX</div>
+            <div className="flex h-10 w-10 items-center justify-center border-2 border-foreground bg-background text-xs font-bold">FX$H</div>
             <div className="leading-tight">
               <p className="text-sm font-semibold">Fluxo</p>
               <p className="text-xs text-foreground/80">fluxo.sh</p>
@@ -39,6 +39,7 @@ export default async function Home() {
           <div className="hidden items-center gap-3 md:flex">
             <ThemeToggleRow
               showLabel={false}
+              iconOnly
               className="h-9 w-auto border border-foreground px-3 py-0"
               labelClassName="text-[11px]"
             />
@@ -49,6 +50,7 @@ export default async function Home() {
           <div className="flex items-center gap-3 md:hidden">
             <ThemeToggleRow
               showLabel={false}
+              iconOnly
               className="h-9 w-auto border border-foreground px-3 py-0"
               labelClassName="text-[11px]"
             />

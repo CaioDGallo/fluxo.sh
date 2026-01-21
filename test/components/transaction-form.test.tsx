@@ -208,7 +208,7 @@ describe('TransactionForm', () => {
         description: 'Coffee',
         totalAmount: 12345,
         categoryId: 10,
-        accountId: 1,
+        accountId: 2,
         purchaseDate: '2026-01-10',
         installments: 1,
       });
@@ -290,7 +290,7 @@ describe('TransactionForm', () => {
         description: 'Bonus',
         amount: 50000,
         categoryId: 10,
-        accountId: 1,
+        accountId: 2,
         receivedDate: '2026-01-11',
       });
     });

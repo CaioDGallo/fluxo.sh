@@ -5,8 +5,8 @@ import { db } from '@/lib/db';
 import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { accounts, categories, entries, faturas, transactions, transfers, type Fatura } from '@/lib/schema';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { accounts, categories, entries, faturas, income, transactions, transfers, type Fatura } from '@/lib/schema';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
 import { cache } from 'react';
 import { syncAccountBalance } from '@/lib/actions/accounts';
@@ -98,12 +98,33 @@ export async function updateFaturaTotal(accountId: number, yearMonth: string): P
   const userId = await getCurrentUserId();
 
   // Sum all entries for this fatura
-  const result = await db
+  const entriesResult = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
     .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId), eq(entries.faturaMonth, yearMonth)));
 
-  const totalAmount = result[0]?.total || 0;
+  const entriesTotal = entriesResult[0]?.total || 0;
+
+  // Sum all refunds for this fatura (income records linked to transactions)
+  // Refunds are stored with the month they credit the fatura, not the original transaction month
+  const refundsResult = await db
+    .select({ total: sql<number>`COALESCE(SUM(${income.amount}), 0)` })
+    .from(income)
+    .innerJoin(entries, eq(entries.transactionId, income.refundOfTransactionId))
+    .where(
+      and(
+        eq(income.userId, userId),
+        eq(income.accountId, accountId),
+        isNotNull(income.refundOfTransactionId),
+        // Match refunds by the received date month, not the original transaction
+        sql`to_char(${income.receivedDate}, 'YYYY-MM') = ${yearMonth}`
+      )
+    );
+
+  const refundsTotal = refundsResult[0]?.total || 0;
+
+  // Net total = entries - refunds
+  const totalAmount = entriesTotal - refundsTotal;
 
   await db
     .update(faturas)
@@ -418,9 +439,36 @@ export const getFaturaWithEntries = cache(async (faturaId: number) => {
         )
         .orderBy(desc(entries.purchaseDate));
 
+      // Get refunds for this fatura
+      const faturaRefunds = await db
+        .select({
+          id: income.id,
+          description: income.description,
+          amount: income.amount,
+          receivedDate: income.receivedDate,
+          receivedAt: sql<string | null>`${income.receivedAt}::text`,
+          transactionId: income.refundOfTransactionId,
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categoryColor: categories.color,
+          categoryIcon: categories.icon,
+        })
+        .from(income)
+        .leftJoin(categories, eq(income.categoryId, categories.id))
+        .where(
+          and(
+            eq(income.userId, userId),
+            eq(income.accountId, fatura[0].accountId),
+            isNotNull(income.refundOfTransactionId),
+            sql`to_char(${income.receivedDate}, 'YYYY-MM') = ${fatura[0].yearMonth}`
+          )
+        )
+        .orderBy(desc(income.receivedDate));
+
       return {
         ...fatura[0],
         entries: faturaEntries,
+        refunds: faturaRefunds,
       };
     },
     ['fatura-details', userId, String(faturaId)],

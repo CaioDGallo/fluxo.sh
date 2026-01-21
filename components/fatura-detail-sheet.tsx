@@ -306,6 +306,46 @@ export function FaturaDetailSheet({
                 ))}
               </div>
             )}
+
+            {/* Credits/Refunds section */}
+            {fatura.refunds && fatura.refunds.length > 0 && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium text-green-600 mb-3">
+                  {t('credits')}
+                </h3>
+                <div className="space-y-2">
+                  {fatura.refunds.map((refund) => (
+                    <div
+                      key={refund.id}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted"
+                    >
+                      {/* Category icon */}
+                      <div
+                        className="size-8 shrink-0 rounded-full flex items-center justify-center text-white"
+                        style={{ backgroundColor: refund.categoryColor || '#10b981' }}
+                      >
+                        <CategoryIcon icon={refund.categoryIcon} className="size-4" />
+                      </div>
+
+                      {/* Description + date */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {refund.description}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(refund.receivedDate)}
+                        </p>
+                      </div>
+
+                      {/* Amount (negative) */}
+                      <div className="text-sm font-semibold text-green-600 shrink-0">
+                        -{formatCurrency(refund.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}

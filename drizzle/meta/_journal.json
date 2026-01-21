@@ -176,6 +176,13 @@
       "when": 1768990944031,
       "tag": "0024_fair_bruce_banner",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1769032339173,
+      "tag": "0025_bright_mandroid",
+      "breakpoints": true
     }
   ]
 }

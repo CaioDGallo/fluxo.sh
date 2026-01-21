@@ -97,6 +97,7 @@ export const transactions = pgTable('transactions', {
     .references(() => categories.id, { onDelete: 'restrict' }),
   externalId: text('external_id'), // UUID from bank statement for idempotency
   ignored: boolean('ignored').notNull().default(false),
+  refundedAmount: integer('refunded_amount').default(0), // cached sum of refunds (cents)
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -177,6 +178,9 @@ export const income = pgTable('income', {
   // Optional link to expense category for budget replenishment
   replenishCategoryId: integer('replenish_category_id')
     .references(() => categories.id, { onDelete: 'set null' }),
+  // Optional link to transaction for credit card refunds
+  refundOfTransactionId: integer('refund_of_transaction_id')
+    .references(() => transactions.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -409,6 +413,7 @@ export const transactionsRelations = relations(transactions, ({ many, one }) => 
     fields: [transactions.categoryId],
     references: [categories.id],
   }),
+  refunds: many(income),
 }));
 
 export const entriesRelations = relations(entries, ({ one }) => ({
@@ -446,6 +451,10 @@ export const incomeRelations = relations(income, ({ one }) => ({
   replenishCategory: one(categories, {
     fields: [income.replenishCategoryId],
     references: [categories.id],
+  }),
+  refundOfTransaction: one(transactions, {
+    fields: [income.refundOfTransactionId],
+    references: [transactions.id],
   }),
 }));
 

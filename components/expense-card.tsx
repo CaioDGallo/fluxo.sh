@@ -55,6 +55,7 @@ type ExpenseCardBaseProps = {
     transactionId: number;
     description: string;
     totalInstallments: number;
+    totalAmount: number;
     categoryId: number;
     categoryName: string;
     categoryColor: string;
@@ -64,6 +65,8 @@ type ExpenseCardBaseProps = {
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
     bankLogo: string | null;
     ignored: boolean;
+    refundedAmount?: number | null;
+    isFullyRefunded?: boolean;
   };
   categories: Category[];
   accounts: Account[];
@@ -343,10 +346,25 @@ export function ExpenseCard(props: ExpenseCardProps) {
           {/* Description + installment badge + mobile date */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="font-medium text-sm truncate">{entry.description}</h3>
+              <h3 className={cn(
+                "font-medium text-sm truncate",
+                entry.isFullyRefunded && "line-through text-muted-foreground"
+              )}>
+                {entry.description}
+              </h3>
               {entry.totalInstallments > 1 && (
                 <Badge variant="secondary" className="shrink-0">
                   {entry.installmentNumber}/{entry.totalInstallments}
+                </Badge>
+              )}
+              {entry.isFullyRefunded && (
+                <Badge variant="secondary" className="shrink-0 text-green-600">
+                  {t('refunded')}
+                </Badge>
+              )}
+              {!entry.isFullyRefunded && (entry.refundedAmount ?? 0) > 0 && (
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  {t('partialRefund')}
                 </Badge>
               )}
             </div>

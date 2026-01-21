@@ -3,6 +3,17 @@ import { parseOFX } from './ofx-parser';
 
 const PARCELA_REGEX = /^(.+?)\s*-\s*Parcela\s+(\d+)\/(\d+)$/i;
 
+// Patterns that indicate a transaction is a refund
+const REFUND_PATTERNS = [
+  /^estorno/i,
+  /^cancelamento/i,
+  /^devolução/i,
+  /^devolu[cç][aã]o/i, // handles devolução/devoluçao/devolucao
+  /^cr[eé]dito\s+(?:loja|estorno)/i,
+  /chargeback/i,
+  /^reembolso/i,
+];
+
 function parseInstallmentInfo(description: string): InstallmentInfo | null {
   const match = description.match(PARCELA_REGEX);
   if (!match) return null;
@@ -19,6 +30,10 @@ function parseInstallmentInfo(description: string): InstallmentInfo | null {
     total,
     baseDescription: baseDescription.trim(),
   };
+}
+
+function isRefundCandidate(description: string): boolean {
+  return REFUND_PATTERNS.some(pattern => pattern.test(description));
 }
 
 export const nubankOfxParser: ImportTemplate = {
@@ -51,6 +66,7 @@ export const nubankOfxParser: ImportTemplate = {
           type: isIncome ? 'income' : 'expense',
           externalId: txn.externalId,
           installmentInfo: installmentInfo ?? undefined,
+          isRefundCandidate: isIncome ? isRefundCandidate(txn.description) : undefined,
         });
       });
 

@@ -161,7 +161,9 @@
     "noExpensesFound": "No expenses found matching \"{query}\"",
     "tryDifferentSearch": "Try a different search term",
     "noExpensesThisPeriod": "No expenses found for this period.",
-    "useButtonToAdd": "Use the + button to add an expense"
+    "useButtonToAdd": "Use the + button to add an expense",
+    "refunded": "Refunded",
+    "partialRefund": "Partial refund"
   },
   "income": {
     "title": "Income",
@@ -375,7 +377,11 @@
     "received": "Received",
     "edit": "Edit",
     "viewAllInstallments": "View All {count} Installments",
-    "convertToFatura": "Convert to bill payment"
+    "convertToFatura": "Convert to bill payment",
+    "registerRefund": "Register Refund",
+    "refunded": "Refunded",
+    "fullyRefunded": "Fully Refunded",
+    "partialRefund": "Partial Refund"
   },
   "faturas": {
     "title": "Bills",
@@ -404,7 +410,33 @@
     "faturaPaidSuccess": "Bill paid successfully!",
     "selectAccountError": "Select an account for payment",
     "errorPayingFatura": "Error paying bill",
-    "errorRevertingPayment": "Error reverting payment"
+    "errorRevertingPayment": "Error reverting payment",
+    "credits": "Credits"
+  },
+  "refunds": {
+    "registerRefund": "Register Refund",
+    "refundAmount": "Refund amount",
+    "refundDate": "Refund date",
+    "fullRefund": "Full refund",
+    "partialRefund": "Partial refund",
+    "refunded": "Refunded",
+    "credits": "Credits",
+    "netTotal": "Net total",
+    "potentialRefund": "Potential refund",
+    "linkToExpense": "Link to expense",
+    "notARefund": "Not a refund",
+    "refundCreated": "Refund registered",
+    "refundDeleted": "Refund deleted",
+    "searchExpense": "Search expense to link",
+    "maxAmount": "Max amount",
+    "creditIn": "Credit in bill",
+    "partialRefundWarning": "This is a partial refund. The total transaction amount will not be fully refunded.",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating…",
+    "amountRequired": "Refund amount is required",
+    "amountExceedsRemaining": "Refund amount exceeds remaining amount",
+    "createFailed": "Failed to create refund"
   },
   "import": {
     "title": "Import",

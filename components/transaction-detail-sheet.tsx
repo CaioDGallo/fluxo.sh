@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CategoryIcon } from '@/components/icon-picker';
 import { ReplenishmentPicker } from '@/components/replenishment-picker';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
+import { RefundDialog } from '@/components/refund-dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
@@ -33,6 +34,7 @@ type TransactionDetailSheetProps = {
 
 export function TransactionDetailSheet({ expense, income, accounts, categories, open, onOpenChange, canConvertToFatura, onConvertToFatura }: TransactionDetailSheetProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [replenishPickerOpen, setReplenishPickerOpen] = useState(false);
   const [replenishCategories, setReplenishCategories] = useState<{ id: number; name: string; color: string; icon: string | null }[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -172,6 +174,30 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
                       }
                     />
                   )}
+
+                  {/* Refund info */}
+                  {(expense.refundedAmount ?? 0) > 0 && (
+                    <DetailRow
+                      label={t('refunded')}
+                      value={
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-green-600 font-semibold">
+                            {formatCurrency(expense.refundedAmount ?? 0)}
+                          </span>
+                          {expense.isFullyRefunded && (
+                            <Badge variant="secondary" className="text-green-600">
+                              {t('fullyRefunded')}
+                            </Badge>
+                          )}
+                          {!expense.isFullyRefunded && (
+                            <Badge variant="outline">
+                              {t('partialRefund')}
+                            </Badge>
+                          )}
+                        </div>
+                      }
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -204,6 +230,17 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
                 }}
               >
                 {t('convertToFatura')}
+              </Button>
+            )}
+
+            {/* Register refund button - only for credit card expenses */}
+            {isExpense && expense && expense.accountType === 'credit_card' && !expense.ignored && !expense.isFullyRefunded && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setRefundDialogOpen(true)}
+              >
+                {t('registerRefund')}
               </Button>
             )}
 
@@ -245,6 +282,20 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
           categories={categories}
           open={editOpen}
           onOpenChange={setEditOpen}
+        />
+      )}
+
+      {isExpense && expense && accounts && (
+        <RefundDialog
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          transactionId={expense.transactionId}
+          transactionDescription={expense.description}
+          totalAmount={expense.totalAmount ?? 0}
+          refundedAmount={expense.refundedAmount ?? 0}
+          accountType={expense.accountType}
+          closingDay={accounts.find((a) => a.id === expense.accountId)?.closingDay}
+          paymentDueDay={accounts.find((a) => a.id === expense.accountId)?.paymentDueDay}
         />
       )}
 

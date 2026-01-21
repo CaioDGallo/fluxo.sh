@@ -37,6 +37,9 @@ export type ExpenseEntry = {
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
   bankLogo: string | null;
   ignored: boolean;
+  totalAmount: number; // Total amount of the transaction (cents)
+  refundedAmount?: number | null; // Total refunded amount (cents)
+  isFullyRefunded?: boolean; // True if completely refunded
 };
 
 // Optimistic item wrapper
@@ -187,6 +190,7 @@ function generateOptimisticEntries(
       transactionId: tempTransactionId,
       description: input.description,
       totalInstallments: input.installments,
+      totalAmount: input.totalAmount,
       categoryId: input.categoryId,
       categoryName: input.categoryName,
       categoryColor: input.categoryColor,

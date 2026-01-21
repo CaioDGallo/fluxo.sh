@@ -12,6 +12,7 @@ export type ValidatedImportRow = {
   externalId?: string; // UUID from bank statement for idempotency
   type?: 'expense' | 'income'; // Determined from amount sign
   installmentInfo?: InstallmentInfo; // Parsed installment data if present
+  isRefundCandidate?: boolean; // True if description matches refund patterns
 };
 
 export type ImportRowError = {

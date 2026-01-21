@@ -161,7 +161,9 @@
     "noExpensesFound": "Nenhuma despesa encontrada com \"{query}\"",
     "tryDifferentSearch": "Tente um termo de busca diferente",
     "noExpensesThisPeriod": "Nenhuma despesa neste período.",
-    "useButtonToAdd": "Use o botão + para adicionar uma despesa"
+    "useButtonToAdd": "Use o botão + para adicionar uma despesa",
+    "refunded": "Estornado",
+    "partialRefund": "Estorno parcial"
   },
   "income": {
     "title": "Receitas",
@@ -384,7 +386,11 @@
     "received": "Recebido",
     "edit": "Editar",
     "viewAllInstallments": "Ver Todas as {count} Parcelas",
-    "convertToFatura": "Converter em pagamento de fatura"
+    "convertToFatura": "Converter em pagamento de fatura",
+    "registerRefund": "Registrar Estorno",
+    "refunded": "Estornado",
+    "fullyRefunded": "Totalmente Estornado",
+    "partialRefund": "Estorno Parcial"
   },
   "faturas": {
     "title": "Faturas",
@@ -413,7 +419,33 @@
     "faturaPaidSuccess": "Fatura paga com sucesso!",
     "selectAccountError": "Selecione uma conta para pagamento",
     "errorPayingFatura": "Erro ao pagar fatura",
-    "errorRevertingPayment": "Erro ao reverter pagamento"
+    "errorRevertingPayment": "Erro ao reverter pagamento",
+    "credits": "Créditos"
+  },
+  "refunds": {
+    "registerRefund": "Registrar Estorno",
+    "refundAmount": "Valor do estorno",
+    "refundDate": "Data do estorno",
+    "fullRefund": "Estorno total",
+    "partialRefund": "Estorno parcial",
+    "refunded": "Estornado",
+    "credits": "Créditos",
+    "netTotal": "Total líquido",
+    "potentialRefund": "Possível estorno",
+    "linkToExpense": "Vincular a despesa",
+    "notARefund": "Não é estorno",
+    "refundCreated": "Estorno registrado",
+    "refundDeleted": "Estorno excluído",
+    "searchExpense": "Buscar despesa para vincular",
+    "maxAmount": "Valor máximo",
+    "creditIn": "Crédito na fatura",
+    "partialRefundWarning": "Este é um estorno parcial. O valor total da transação não será totalmente estornado.",
+    "cancel": "Cancelar",
+    "create": "Criar",
+    "creating": "Criando…",
+    "amountRequired": "Valor do estorno é obrigatório",
+    "amountExceedsRemaining": "Valor do estorno excede o valor restante",
+    "createFailed": "Falha ao criar estorno"
   },
   "import": {
     "title": "Importar",

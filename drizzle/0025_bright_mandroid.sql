@@ -1,0 +1,3 @@
+ALTER TABLE "income" ADD COLUMN "refund_of_transaction_id" integer;--> statement-breakpoint
+ALTER TABLE "transactions" ADD COLUMN "refunded_amount" integer DEFAULT 0;--> statement-breakpoint
+ALTER TABLE "income" ADD CONSTRAINT "income_refund_of_transaction_id_transactions_id_fk" FOREIGN KEY ("refund_of_transaction_id") REFERENCES "public"."transactions"("id") ON DELETE set null ON UPDATE no action;

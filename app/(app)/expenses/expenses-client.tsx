@@ -13,12 +13,14 @@ import type { Account, Category } from '@/lib/schema';
 import type { UnpaidFatura } from '@/lib/actions/faturas';
 import type { ExpenseEntry } from '@/lib/contexts/expense-context';
 import type { RecentAccount } from '@/lib/actions/accounts';
+import type { RecentCategory } from '@/lib/actions/categories';
 
 type ExpensesClientProps = {
   initialExpenses: ExpenseEntry[];
   accounts: Account[];
   recentAccounts: RecentAccount[];
   categories: Category[];
+  recentCategories: RecentCategory[];
   unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFiltersType;
   currentMonth: string;
@@ -29,6 +31,7 @@ export function ExpensesClient({
   accounts,
   recentAccounts,
   categories,
+  recentCategories,
   unpaidFaturas,
   filters,
   currentMonth,
@@ -82,7 +85,7 @@ export function ExpensesClient({
 
       <div className="mb-3 flex gap-2 justify-end">
         <ImportModal accounts={accounts} categories={categories} />
-        <AddExpenseButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} />
+        <AddExpenseButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} recentCategories={recentCategories} />
       </div>
 
       <ExpenseListProvider

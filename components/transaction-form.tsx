@@ -9,6 +9,7 @@ import { useIncomeContextOptional } from '@/lib/contexts/income-context';
 import { formatCurrency } from '@/lib/utils';
 import type { Account, Category, Transaction, Entry, Income } from '@/lib/schema';
 import type { RecentAccount } from '@/lib/actions/accounts';
+import type { RecentCategory } from '@/lib/actions/categories';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ import {
 } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { CurrencyInputGroupInput } from '@/components/ui/currency-input';
-import { CategorySelect } from '@/components/category-select';
+import { CategoryPicker } from '@/components/category-picker';
 import { AccountPicker } from '@/components/account-picker';
 
 type TransactionFormProps = {
@@ -32,6 +33,7 @@ type TransactionFormProps = {
   accounts: Account[];
   recentAccounts: RecentAccount[];
   categories: Category[];
+  recentCategories: RecentCategory[];
   transaction?: Transaction & { entries: Entry[] };
   income?: Pick<Income, 'id' | 'description' | 'amount' | 'categoryId' | 'accountId' | 'receivedDate'>;
   trigger?: React.ReactNode;
@@ -45,6 +47,7 @@ export function TransactionForm({
   accounts,
   recentAccounts,
   categories,
+  recentCategories,
   transaction,
   income,
   trigger,
@@ -73,7 +76,7 @@ export function TransactionForm({
   );
   const [description, setDescription] = useState(existingData?.description || '');
   const [categoryId, setCategoryId] = useState<number>(
-    existingData?.categoryId || categories[0]?.id || 0
+    existingData?.categoryId || recentCategories[0]?.id || categories[0]?.id || 0
   );
   const defaultAccountId = mode === 'expense'
     ? (transaction?.entries[0]?.accountId || 0)
@@ -177,7 +180,7 @@ export function TransactionForm({
       if (!existingData) {
         setAmountCents(0);
         setDescription('');
-        setCategoryId(categories[0]?.id || 0);
+        setCategoryId(recentCategories[0]?.id || categories[0]?.id || 0);
         setAccountId(recentAccounts[0]?.id || accounts[0]?.id || 0);
         setDate(new Date().toISOString().split('T')[0]);
         if (mode === 'expense') {
@@ -283,8 +286,9 @@ export function TransactionForm({
               <Field>
                 <FieldLabel htmlFor="category">{t('category')}</FieldLabel>
                 {hasCategories ? (
-                  <CategorySelect
+                  <CategoryPicker
                     categories={categories}
+                    recentCategories={recentCategories}
                     value={categoryId}
                     onChange={setCategoryId}
                     triggerId="category"

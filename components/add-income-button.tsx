@@ -8,14 +8,16 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon } from '@hugeicons/core-free-icons';
 import type { Account, Category } from '@/lib/schema';
 import type { RecentAccount } from '@/lib/actions/accounts';
+import type { RecentCategory } from '@/lib/actions/categories';
 
 type AddIncomeButtonProps = {
   accounts: Account[];
   categories: Category[];
   recentAccounts: RecentAccount[];
+  recentCategories: RecentCategory[];
 };
 
-export function AddIncomeButton({ accounts, categories, recentAccounts }: AddIncomeButtonProps) {
+export function AddIncomeButton({ accounts, categories, recentAccounts, recentCategories }: AddIncomeButtonProps) {
   const [open, setOpen] = useState(false);
   const t = useTranslations('income');
 
@@ -25,6 +27,7 @@ export function AddIncomeButton({ accounts, categories, recentAccounts }: AddInc
       accounts={accounts}
       recentAccounts={recentAccounts}
       categories={categories}
+      recentCategories={recentCategories}
       open={open}
       onOpenChange={setOpen}
       onSuccess={() => setOpen(false)}

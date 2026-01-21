@@ -12,12 +12,14 @@ import { AddIncomeButton } from '@/components/add-income-button';
 import type { Account, Category } from '@/lib/schema';
 import type { IncomeEntry } from '@/lib/contexts/income-context';
 import type { RecentAccount } from '@/lib/actions/accounts';
+import type { RecentCategory } from '@/lib/actions/categories';
 
 type IncomeClientProps = {
   initialIncome: IncomeEntry[];
   accounts: Account[];
   recentAccounts: RecentAccount[];
   categories: Category[];
+  recentCategories: RecentCategory[];
   filters: IncomeFiltersType;
   currentMonth: string;
 };
@@ -27,6 +29,7 @@ export function IncomeClient({
   accounts,
   recentAccounts,
   categories,
+  recentCategories,
   filters,
   currentMonth,
 }: IncomeClientProps) {
@@ -79,7 +82,7 @@ export function IncomeClient({
 
       <div className="mb-3 flex gap-2 justify-end">
         <ImportModal accounts={accounts} categories={categories} />
-        <AddIncomeButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} />
+        <AddIncomeButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} recentCategories={recentCategories} />
       </div>
 
       <IncomeListProvider

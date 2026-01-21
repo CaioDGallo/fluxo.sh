@@ -69,6 +69,15 @@ const baseRecentAccounts = [
   },
 ];
 
+const baseRecentCategories = [
+  {
+    id: 10,
+    name: 'Groceries',
+    color: '#ef4444',
+    icon: 'Restaurant01Icon',
+  },
+];
+
 const baseCategories: Category[] = [
   {
     id: 10,
@@ -140,6 +149,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         transaction={baseTransaction}
         open
         onOpenChange={() => { }}
@@ -158,6 +168,7 @@ describe('TransactionForm', () => {
         accounts={[]}
         recentAccounts={[]}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         open
         onOpenChange={() => { }}
       />
@@ -171,6 +182,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={[]}
+        recentCategories={[]}
         open
         onOpenChange={() => { }}
       />
@@ -189,6 +201,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         open
         onOpenChange={() => { }} />
     );
@@ -225,6 +238,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         transaction={baseTransaction}
         open
         onOpenChange={() => { }}
@@ -268,6 +282,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         open
         onOpenChange={() => { }}
       />
@@ -305,6 +320,7 @@ describe('TransactionForm', () => {
         accounts={baseAccounts}
         recentAccounts={baseRecentAccounts}
         categories={baseCategories}
+        recentCategories={baseRecentCategories}
         income={baseIncome}
         open
         onOpenChange={() => { }}

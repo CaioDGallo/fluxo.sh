@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { categories, transactions, income, type NewCategory } from '@/lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -25,6 +25,54 @@ export async function getCategoriesByUser(userId: string, type?: 'expense' | 'in
     return await db.select().from(categories).where(and(eq(categories.userId, userId), eq(categories.type, type))).orderBy(categories.name);
   }
   return await db.select().from(categories).where(eq(categories.userId, userId)).orderBy(categories.name);
+}
+
+export type RecentCategory = Pick<
+  typeof categories.$inferSelect,
+  'id' | 'name' | 'color' | 'icon'
+>;
+
+export async function getRecentCategories(
+  type: 'expense' | 'income',
+  limit = 3
+): Promise<RecentCategory[]> {
+  const userId = await getCurrentUserId();
+
+  const sqlQuery = type === 'expense'
+    ? sql<RecentCategory>`
+      SELECT DISTINCT ON (category_id)
+        ${categories.id} AS id,
+        ${categories.name} AS name,
+        ${categories.color} AS color,
+        ${categories.icon} AS icon,
+        ${transactions.createdAt} AS created_at
+      FROM ${transactions}
+      INNER JOIN ${categories}
+        ON ${transactions.categoryId} = ${categories.id}
+      WHERE ${transactions.userId} = ${userId}
+        AND ${transactions.ignored} = false
+      ORDER BY category_id, created_at DESC
+      LIMIT ${limit}
+    `
+    : sql<RecentCategory>`
+      SELECT DISTINCT ON (category_id)
+        ${categories.id} AS id,
+        ${categories.name} AS name,
+        ${categories.color} AS color,
+        ${categories.icon} AS icon,
+        ${income.createdAt} AS created_at
+      FROM ${income}
+      INNER JOIN ${categories}
+        ON ${income.categoryId} = ${categories.id}
+      WHERE ${income.userId} = ${userId}
+        AND ${income.ignored} = false
+      ORDER BY category_id, created_at DESC
+      LIMIT ${limit}
+    `;
+
+  const results = await db.execute(sqlQuery);
+
+  return results.rows as RecentCategory[];
 }
 
 export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {

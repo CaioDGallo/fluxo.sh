@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { setupTestDb, teardownTestDb, clearAllTables, getTestDb } from '@/test/db-utils';
 import * as schema from '@/lib/schema';
 import { TEST_USER_ID, testAccounts, testCategories } from '@/test/fixtures';
 import { eq } from 'drizzle-orm';
+
+const OTHER_USER_ID = 'other-user-id';
 
 type ExpenseActions = typeof import('@/lib/actions/expenses');
 type IncomeActions = typeof import('@/lib/actions/income');
@@ -14,6 +16,7 @@ type AccountActions = typeof import('@/lib/actions/accounts');
 type DbClient = ReturnType<typeof getTestDb>;
 
 describe('Ignore Transactions', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let db: DbClient;
 
   let toggleIgnoreTransaction: ExpenseActions['toggleIgnoreTransaction'];
@@ -27,6 +30,11 @@ describe('Ignore Transactions', () => {
 
   const seedAccount = async (values: typeof schema.accounts.$inferInsert) => {
     const [account] = await db.insert(schema.accounts).values(values).returning();
+    return account;
+  };
+
+  const seedOtherAccount = async (values: typeof schema.accounts.$inferInsert) => {
+    const [account] = await db.insert(schema.accounts).values({ ...values, userId: OTHER_USER_ID }).returning();
     return account;
   };
 
@@ -77,7 +85,7 @@ describe('Ignore Transactions', () => {
       })
       .returning();
 
-    await syncAccountBalance(accountId, db, TEST_USER_ID);
+    await syncAccountBalance(accountId);
 
     return { transaction, entry };
   };
@@ -96,7 +104,7 @@ describe('Ignore Transactions', () => {
       })
       .returning();
 
-    await syncAccountBalance(accountId, db, TEST_USER_ID);
+    await syncAccountBalance(accountId);
 
     return incomeRecord;
   };
@@ -124,27 +132,16 @@ describe('Ignore Transactions', () => {
       .returning();
 
     if (fromAccountId) {
-      await syncAccountBalance(fromAccountId, db, TEST_USER_ID);
+      await syncAccountBalance(fromAccountId);
     }
     if (toAccountId) {
-      await syncAccountBalance(toAccountId, db, TEST_USER_ID);
+      await syncAccountBalance(toAccountId);
     }
 
     return transfer;
   };
 
-  beforeAll(async () => {
-    db = await setupTestDb();
-
-    vi.doMock('@/lib/db', () => ({
-      db,
-    }));
-
-    getCurrentUserIdMock = vi.fn().mockResolvedValue(TEST_USER_ID);
-    vi.doMock('@/lib/auth', () => ({
-      getCurrentUserId: getCurrentUserIdMock,
-    }));
-
+  const loadActions = async () => {
     const expenseActions = await import('@/lib/actions/expenses');
     toggleIgnoreTransaction = expenseActions.toggleIgnoreTransaction;
 
@@ -162,6 +159,21 @@ describe('Ignore Transactions', () => {
 
     const accountActions = await import('@/lib/actions/accounts');
     syncAccountBalance = accountActions.syncAccountBalance;
+  };
+
+  beforeAll(async () => {
+    db = await setupTestDb();
+
+    vi.doMock('@/lib/db', () => ({
+      db,
+    }));
+
+    getCurrentUserIdMock = vi.fn().mockResolvedValue(TEST_USER_ID);
+    vi.doMock('@/lib/auth', () => ({
+      getCurrentUserId: getCurrentUserIdMock,
+    }));
+
+    await loadActions();
   });
 
   afterAll(async () => {
@@ -170,9 +182,157 @@ describe('Ignore Transactions', () => {
 
   beforeEach(async () => {
     await clearAllTables();
+    vi.resetModules();
+    vi.doMock('@/lib/db', () => ({
+      db,
+    }));
+    getCurrentUserIdMock = vi.fn().mockResolvedValue(TEST_USER_ID);
+    vi.doMock('@/lib/auth', () => ({
+      getCurrentUserId: getCurrentUserIdMock,
+    }));
+    await loadActions();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('Toggle Operations', () => {
+    it('rejects not authenticated for expenses', async () => {
+      getCurrentUserIdMock.mockResolvedValueOnce('');
+      await expect(toggleIgnoreTransaction(1)).rejects.toThrow();
+    });
+
+    it('rejects not authenticated for income', async () => {
+      getCurrentUserIdMock.mockResolvedValueOnce('');
+      await expect(toggleIgnoreIncome(1)).rejects.toThrow();
+    });
+
+    it('rejects not authenticated for transfers', async () => {
+      getCurrentUserIdMock.mockResolvedValueOnce('');
+      await expect(toggleIgnoreTransfer(1)).rejects.toThrow();
+    });
+
+    it('rejects invalid expense id', async () => {
+      await expect(toggleIgnoreTransaction(0)).rejects.toThrow();
+    });
+
+    it('rejects invalid income id', async () => {
+      await expect(toggleIgnoreIncome(-1)).rejects.toThrow();
+    });
+
+    it('rejects invalid transfer id', async () => {
+      await expect(toggleIgnoreTransfer(0)).rejects.toThrow();
+    });
+
+    it('rejects missing expense records', async () => {
+      await expect(toggleIgnoreTransaction(999999)).rejects.toThrow();
+    });
+
+    it('rejects missing income records', async () => {
+      await expect(toggleIgnoreIncome(999999)).rejects.toThrow();
+    });
+
+    it('rejects missing transfer records', async () => {
+      await expect(toggleIgnoreTransfer(999999)).rejects.toThrow();
+    });
+
+    it('blocks toggling transactions from other users', async () => {
+      const category = await seedCategory('expense');
+      const otherAccount = await seedOtherAccount({ ...testAccounts.checking, name: 'Other Account' });
+
+      const [otherTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: OTHER_USER_ID,
+          description: 'Other Txn',
+          totalAmount: 12000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: OTHER_USER_ID,
+        transactionId: otherTransaction.id,
+        accountId: otherAccount.id,
+        amount: 12000,
+        purchaseDate: '2025-01-12',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-12',
+        installmentNumber: 1,
+        paidAt: null,
+      });
+
+      await expect(toggleIgnoreTransaction(otherTransaction.id)).rejects.toThrow();
+
+      const [record] = await db
+        .select()
+        .from(schema.transactions)
+        .where(eq(schema.transactions.id, otherTransaction.id));
+      expect(record.ignored).toBe(false);
+    });
+
+    it('blocks toggling income from other users', async () => {
+      const otherAccount = await seedOtherAccount({ ...testAccounts.checking, name: 'Other Income Account' });
+      const category = await seedCategory('income');
+
+      const [otherIncome] = await db
+        .insert(schema.income)
+        .values({
+          userId: OTHER_USER_ID,
+          description: 'Other Income',
+          amount: 22000,
+          categoryId: category.id,
+          accountId: otherAccount.id,
+          receivedDate: '2025-01-15',
+          receivedAt: new Date('2025-01-15'),
+        })
+        .returning();
+
+      await expect(toggleIgnoreIncome(otherIncome.id)).rejects.toThrow();
+
+      const [record] = await db
+        .select()
+        .from(schema.income)
+        .where(eq(schema.income.id, otherIncome.id));
+      expect(record.ignored).toBe(false);
+
+      const dashboard = await getDashboardData('2025-01');
+      expect(dashboard.totalIncome).toBe(0);
+    });
+
+    it('blocks toggling transfers from other users', async () => {
+      const otherFrom = await seedOtherAccount({ ...testAccounts.checking, name: 'Other From' });
+      const otherTo = await seedOtherAccount({ ...testAccounts.checking, name: 'Other To' });
+
+      const [otherTransfer] = await db
+        .insert(schema.transfers)
+        .values({
+          userId: OTHER_USER_ID,
+          fromAccountId: otherFrom.id,
+          toAccountId: otherTo.id,
+          amount: 30000,
+          date: '2025-01-20',
+          type: 'internal_transfer',
+          description: 'Other Transfer',
+        })
+        .returning();
+
+      await expect(toggleIgnoreTransfer(otherTransfer.id)).rejects.toThrow();
+
+      const [record] = await db
+        .select()
+        .from(schema.transfers)
+        .where(eq(schema.transfers.id, otherTransfer.id));
+      expect(record.ignored).toBe(false);
+
+      const dashboard = await getDashboardData('2025-01');
+      expect(dashboard.totalTransfersIn).toBe(0);
+      expect(dashboard.totalTransfersOut).toBe(0);
+    });
+
     it('toggleIgnoreTransaction flips ignored state for expenses', async () => {
       const account = await seedAccount(testAccounts.checking);
       const category = await seedCategory('expense');
@@ -608,7 +768,7 @@ describe('Ignore Transactions', () => {
         installmentNumber: 1,
         paidAt: null,
       });
-      await syncAccountBalance(account1.id, db, TEST_USER_ID);
+      await syncAccountBalance(account1.id);
 
       // Entry 2 on account2
       await db.insert(schema.entries).values({
@@ -622,7 +782,7 @@ describe('Ignore Transactions', () => {
         installmentNumber: 2,
         paidAt: null,
       });
-      await syncAccountBalance(account2.id, db, TEST_USER_ID);
+      await syncAccountBalance(account2.id);
 
       // Both accounts should have negative balance
       let [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));

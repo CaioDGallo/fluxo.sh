@@ -123,12 +123,14 @@ describe('Bill Reminders - CRUD Operations', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data?.id).toBeDefined();
+    if (!result.success || !result.data?.id) {
+      throw new Error('Expected reminder creation to succeed');
+    }
 
     const [created] = await db
       .select()
       .from(schema.billReminders)
-      .where(eq(schema.billReminders.id, result.data!.id));
+      .where(eq(schema.billReminders.id, result.data.id));
 
     expect(created).toMatchObject({
       userId: TEST_USER_ID,
@@ -216,6 +218,119 @@ describe('Bill Reminders - CRUD Operations', () => {
 
     // Timezone is America/Sao_Paulo (UTC-3), so 2026-02-15 10:00 UTC = 2026-02-15 07:00 local
     expect(updated.lastAcknowledgedMonth).toBe('2026-02');
+
+    vi.useRealTimers();
+  });
+});
+
+describe('Bill Reminders - Pending Reminders', () => {
+  let db: ReturnType<typeof getTestDb>;
+  let getPendingBillReminders: BillReminderActions['getPendingBillReminders'];
+  let acknowledgeBillReminder: BillReminderActions['acknowledgeBillReminder'];
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  const loadActions = async () => {
+    const actions = await import('@/lib/actions/bill-reminders');
+    getPendingBillReminders = actions.getPendingBillReminders;
+    acknowledgeBillReminder = actions.acknowledgeBillReminder;
+  };
+
+  beforeAll(async () => {
+    db = await setupTestDb();
+    vi.doMock('@/lib/db', () => ({ db }));
+    mockAuth();
+
+    vi.doMock('@/lib/i18n/server-errors', () => ({
+      t: vi.fn(async (key: string) => key),
+      translateWithLocale: vi.fn(async (_locale: string, key: string) => key),
+    }));
+
+    const getUserSettingsMock = vi.fn().mockResolvedValue({
+      timezone: 'America/Sao_Paulo',
+      locale: 'pt-BR',
+    });
+    vi.doMock('@/lib/actions/user-settings', () => ({
+      getUserSettings: getUserSettingsMock,
+    }));
+
+    await loadActions();
+  });
+
+  afterAll(async () => {
+    await teardownTestDb();
+  });
+
+  beforeEach(async () => {
+    await clearAllTables();
+    vi.resetModules();
+    vi.doMock('@/lib/db', () => ({ db }));
+    mockAuth();
+    vi.doMock('@/lib/i18n/server-errors', () => ({
+      t: vi.fn(async (key: string) => key),
+      translateWithLocale: vi.fn(async (_locale: string, key: string) => key),
+    }));
+    const getUserSettingsMock = vi.fn().mockResolvedValue({
+      timezone: 'America/Sao_Paulo',
+      locale: 'pt-BR',
+    });
+    vi.doMock('@/lib/actions/user-settings', () => ({
+      getUserSettings: getUserSettingsMock,
+    }));
+    await loadActions();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('returns only active reminders due within 3 days and not acknowledged', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-10T12:00:00Z'));
+
+    await db.insert(schema.billReminders).values([
+      createTestBillReminder({ name: 'Due Soon', dueDay: 12, startMonth: '2026-02' }),
+      createTestBillReminder({ name: 'Too Far', dueDay: 20, startMonth: '2026-02' }),
+      createTestBillReminder({ name: 'Paused', dueDay: 12, startMonth: '2026-02', status: 'paused' }),
+      createTestBillReminder({
+        name: 'Acknowledged',
+        dueDay: 12,
+        startMonth: '2026-02',
+        lastAcknowledgedMonth: '2026-02',
+      }),
+    ]);
+
+    const reminders = await getPendingBillReminders();
+
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0]?.name).toBe('Due Soon');
+
+    vi.useRealTimers();
+  });
+
+  it('acknowledgeBillReminder updates lastAcknowledgedMonth and removes from pending list', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-10T12:00:00Z'));
+
+    const [reminder] = await db
+      .insert(schema.billReminders)
+      .values(createTestBillReminder({ name: 'Internet', dueDay: 12, startMonth: '2026-02' }))
+      .returning();
+
+    let pending = await getPendingBillReminders();
+    expect(pending).toHaveLength(1);
+
+    const result = await acknowledgeBillReminder(reminder.id);
+    expect(result).toEqual({ success: true });
+
+    const [updated] = await db
+      .select()
+      .from(schema.billReminders)
+      .where(eq(schema.billReminders.id, reminder.id));
+    expect(updated.lastAcknowledgedMonth).toBe('2026-02');
+
+    pending = await getPendingBillReminders();
+    expect(pending).toHaveLength(0);
 
     vi.useRealTimers();
   });

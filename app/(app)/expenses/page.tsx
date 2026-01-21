@@ -1,5 +1,5 @@
 import { getExpenses, type ExpenseFilters as ExpenseFiltersType } from '@/lib/actions/expenses';
-import { getAccounts } from '@/lib/actions/accounts';
+import { getAccounts, getRecentAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
 import { getUnpaidFaturas } from '@/lib/actions/faturas';
 import { getCurrentYearMonth } from '@/lib/utils';
@@ -22,9 +22,10 @@ export default async function ExpensesPage({
   };
 
   // Fetch all data in parallel
-  const [expenses, accounts, categories, unpaidFaturas] = await Promise.all([
+  const [expenses, accounts, recentAccounts, categories, unpaidFaturas] = await Promise.all([
     getExpenses(filters),
     getAccounts(),
+    getRecentAccounts(),
     getCategories('expense'),
     getUnpaidFaturas(),
   ]);
@@ -33,6 +34,7 @@ export default async function ExpensesPage({
     <ExpensesClient
       initialExpenses={expenses}
       accounts={accounts}
+      recentAccounts={recentAccounts}
       categories={categories}
       unpaidFaturas={unpaidFaturas}
       filters={filters}

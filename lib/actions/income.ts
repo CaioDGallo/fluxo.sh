@@ -212,12 +212,14 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       categoryColor: categories.color,
       categoryIcon: categories.icon,
       accountId: accounts.id,
-      accountName: accounts.name,
-      accountType: accounts.type,
-      replenishCategoryId: income.replenishCategoryId,
-      replenishCategoryName: sql<string | null>`replenish_cat.name`,
-      replenishCategoryColor: sql<string | null>`replenish_cat.color`,
-    })
+    accountName: accounts.name,
+    accountType: accounts.type,
+    bankLogo: accounts.bankLogo,
+    replenishCategoryId: income.replenishCategoryId,
+    replenishCategoryName: sql<string | null>`replenish_cat.name`,
+    replenishCategoryColor: sql<string | null>`replenish_cat.color`,
+  })
+
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))
     .innerJoin(accounts, eq(income.accountId, accounts.id))

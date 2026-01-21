@@ -497,14 +497,15 @@ export function ExpenseCard(props: ExpenseCardProps) {
         onConvertToFatura={() => setConvertDialogOpen(true)}
       />
 
-      <EditTransactionDialog
-        mode="expense"
-        transactionId={entry.transactionId}
-        accounts={accounts}
-        categories={categories}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
+        <EditTransactionDialog
+          mode="expense"
+          transactionId={entry.transactionId}
+          accounts={accounts}
+          categories={categories}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+
 
       {canConvertToFatura && (
         <ConvertToFaturaDialog

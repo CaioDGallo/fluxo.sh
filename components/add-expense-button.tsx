@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/button';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon } from '@hugeicons/core-free-icons';
 import type { Account, Category } from '@/lib/schema';
+import type { RecentAccount } from '@/lib/actions/accounts';
 
 type AddExpenseButtonProps = {
   accounts: Account[];
   categories: Category[];
+  recentAccounts: RecentAccount[];
 };
 
-export function AddExpenseButton({ accounts, categories }: AddExpenseButtonProps) {
+export function AddExpenseButton({ accounts, categories, recentAccounts }: AddExpenseButtonProps) {
   const [open, setOpen] = useState(false);
   const t = useTranslations('expenses');
 
@@ -21,6 +23,7 @@ export function AddExpenseButton({ accounts, categories }: AddExpenseButtonProps
     <TransactionForm
       mode="expense"
       accounts={accounts}
+      recentAccounts={recentAccounts}
       categories={categories}
       open={open}
       onOpenChange={setOpen}

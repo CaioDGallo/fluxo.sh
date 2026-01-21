@@ -6,6 +6,7 @@ import { getTransactionWithEntries } from '@/lib/actions/expenses';
 import { TransactionForm } from '@/components/transaction-form';
 import type { Account, Category, Transaction, Entry } from '@/lib/schema';
 import type { IncomeEntry } from '@/lib/contexts/income-context';
+import type { RecentAccount } from '@/lib/actions/accounts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ type EditTransactionDialogProps = {
   transactionId?: number;
   income?: IncomeEntry;
   accounts: Account[];
+  recentAccounts?: RecentAccount[];
   categories: Category[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +35,7 @@ export function EditTransactionDialog({
   transactionId,
   income,
   accounts,
+  recentAccounts = [],
   categories,
   open,
   onOpenChange,
@@ -151,6 +154,7 @@ export function EditTransactionDialog({
       <TransactionForm
         mode={mode}
         accounts={accounts}
+        recentAccounts={recentAccounts}
         categories={categories}
         transaction={transaction || undefined}
         income={income}

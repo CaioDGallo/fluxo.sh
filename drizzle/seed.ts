@@ -209,10 +209,10 @@ function getYearMonth(monthOffset: number): string {
 
 // Seed data constants
 const accountsData = [
-  { name: 'Nubank', type: 'credit_card' as const, closingDay: 1, paymentDueDay: 8 },
-  { name: 'Itaú Corrente', type: 'checking' as const },
-  { name: 'Nubank Rendimento', type: 'savings' as const },
-  { name: 'Carteira', type: 'cash' as const },
+  { name: 'Nubank', type: 'credit_card' as const, closingDay: 1, paymentDueDay: 8, bankLogo: 'nubank' },
+  { name: 'Itaú Corrente', type: 'checking' as const, bankLogo: 'itau' },
+  { name: 'Nubank Rendimento', type: 'savings' as const, bankLogo: 'nubank' },
+  { name: 'Carteira', type: 'cash' as const, bankLogo: null },
 ];
 
 const categoriesData = [

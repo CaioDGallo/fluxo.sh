@@ -38,6 +38,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
+import { BankLogo } from '@/components/bank-logo';
 
 type IncomeCardBaseProps = {
   income: {
@@ -52,12 +53,14 @@ type IncomeCardBaseProps = {
     categoryIcon: string | null;
     accountId: number;
     accountName: string;
-    accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
-    ignored: boolean;
-    replenishCategoryId: number | null;
-    replenishCategoryName: string | null;
-    replenishCategoryColor: string | null;
-  };
+     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+     bankLogo: string | null;
+     ignored: boolean;
+     replenishCategoryId: number | null;
+     replenishCategoryName: string | null;
+     replenishCategoryColor: string | null;
+   };
+
   categories: Category[];
   accounts: Account[];
   isOptimistic?: boolean;
@@ -345,6 +348,7 @@ export function IncomeCard(props: IncomeCardProps) {
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex items-center py-1 gap-1 text-blue-600 hover:text-blue-700 transition-colors"
               >
+                <span className='absolute h-16 w-24' />
                 <div className='flex flex-row gap-1 items-center p-1 px-2 bg-blue-100'>
                   <HugeiconsIcon
                     icon={ArrowReloadHorizontalIcon}
@@ -386,19 +390,25 @@ export function IncomeCard(props: IncomeCardProps) {
                 strokeWidth={2}
                 aria-hidden="true"
               />
-              {/* Account type icon */}
-              <div
-                className="size-4 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: accountTypeConfig[income.accountType].color }}
-                aria-hidden="true"
-              >
-                <HugeiconsIcon
-                  icon={accountTypeConfig[income.accountType].icon}
-                  size={10}
-                  className="text-white"
-                  strokeWidth={2}
-                />
-              </div>
+              {/* Account icon (bank logo or type icon) */}
+              {income.bankLogo ? (
+                <div className="size-4 rounded-full flex items-center justify-center bg-white p-0.5" aria-hidden="true">
+                  <BankLogo logo={income.bankLogo} size={16} />
+                </div>
+              ) : (
+                <div
+                  className="size-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: accountTypeConfig[income.accountType].color }}
+                  aria-hidden="true"
+                >
+                  <HugeiconsIcon
+                    icon={accountTypeConfig[income.accountType].icon}
+                    size={10}
+                    className="text-white"
+                    strokeWidth={2}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -417,47 +427,47 @@ export function IncomeCard(props: IncomeCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" onPointerDown={stopCardGesture}>
-                <DropdownMenuItem
-                  onClick={() => setDetailOpen(true)}
-                  onSelect={stopCardGesture}
-                  onPointerDown={stopCardGesture}
-                >
-                  {t('viewDetails')}
-                </DropdownMenuItem>
-                {isReceived ? (
                   <DropdownMenuItem
-                    onClick={handleMarkPending}
+                    onClick={() => setDetailOpen(true)}
                     onSelect={stopCardGesture}
                     onPointerDown={stopCardGesture}
                   >
-                    {t('markAsPending')}
+                    {t('viewDetails')}
                   </DropdownMenuItem>
-                ) : (
+                  {isReceived ? (
+                    <DropdownMenuItem
+                      onClick={handleMarkPending}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {t('markAsPending')}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={handleMarkReceived}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {t('markAsReceived')}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleToggleIgnore} onSelect={stopCardGesture} onPointerDown={stopCardGesture}>
+                    {income.ignored ? t('showInTotals') : t('hideFromTotals')}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleMarkReceived}
+                    onClick={() => setEditOpen(true)}
                     onSelect={stopCardGesture}
                     onPointerDown={stopCardGesture}
                   >
-                    {t('markAsReceived')}
+                    {tCommon('edit')}
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleToggleIgnore} onSelect={stopCardGesture} onPointerDown={stopCardGesture}>
-                  {income.ignored ? t('showInTotals') : t('hideFromTotals')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setEditOpen(true)}
-                  onSelect={stopCardGesture}
-                  onPointerDown={stopCardGesture}
-                >
-                  {tCommon('edit')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteConfirm(true)}
-                  onSelect={stopCardGesture}
-                  onPointerDown={stopCardGesture}
-                >
-                  {t('deleteIncome')}
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    onSelect={stopCardGesture}
+                    onPointerDown={stopCardGesture}
+                  >
+                    {t('deleteIncome')}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

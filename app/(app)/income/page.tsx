@@ -1,5 +1,5 @@
 import { getIncome, type IncomeFilters as IncomeFiltersType } from '@/lib/actions/income';
-import { getAccounts } from '@/lib/actions/accounts';
+import { getAccounts, getRecentAccounts } from '@/lib/actions/accounts';
 import { getCategories } from '@/lib/actions/categories';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { IncomeClient } from './income-client';
@@ -21,9 +21,10 @@ export default async function IncomePage({
   };
 
   // Fetch all data in parallel
-  const [income, accounts, categories] = await Promise.all([
+  const [income, accounts, recentAccounts, categories] = await Promise.all([
     getIncome(filters),
     getAccounts(),
+    getRecentAccounts(),
     getCategories('income'),
   ]);
 
@@ -31,6 +32,7 @@ export default async function IncomePage({
     <IncomeClient
       initialIncome={income}
       accounts={accounts}
+      recentAccounts={recentAccounts}
       categories={categories}
       filters={filters}
       currentMonth={yearMonth}

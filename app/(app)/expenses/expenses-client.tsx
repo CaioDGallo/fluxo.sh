@@ -12,10 +12,12 @@ import { AddExpenseButton } from '@/components/add-expense-button';
 import type { Account, Category } from '@/lib/schema';
 import type { UnpaidFatura } from '@/lib/actions/faturas';
 import type { ExpenseEntry } from '@/lib/contexts/expense-context';
+import type { RecentAccount } from '@/lib/actions/accounts';
 
 type ExpensesClientProps = {
   initialExpenses: ExpenseEntry[];
   accounts: Account[];
+  recentAccounts: RecentAccount[];
   categories: Category[];
   unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFiltersType;
@@ -25,6 +27,7 @@ type ExpensesClientProps = {
 export function ExpensesClient({
   initialExpenses,
   accounts,
+  recentAccounts,
   categories,
   unpaidFaturas,
   filters,
@@ -79,7 +82,7 @@ export function ExpensesClient({
 
       <div className="mb-3 flex gap-2 justify-end">
         <ImportModal accounts={accounts} categories={categories} />
-        <AddExpenseButton accounts={accounts} categories={categories} />
+        <AddExpenseButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} />
       </div>
 
       <ExpenseListProvider

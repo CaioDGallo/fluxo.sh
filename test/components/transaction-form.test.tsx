@@ -41,6 +41,7 @@ const baseAccounts: Account[] = [
     closingDay: null,
     paymentDueDay: null,
     creditLimit: null,
+    bankLogo: null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
   },
   {
@@ -54,7 +55,17 @@ const baseAccounts: Account[] = [
     closingDay: null,
     paymentDueDay: null,
     creditLimit: null,
+    bankLogo: null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
+  },
+];
+
+const baseRecentAccounts = [
+  {
+    id: 2,
+    name: 'Savings',
+    type: 'savings' as const,
+    bankLogo: null,
   },
 ];
 
@@ -104,6 +115,7 @@ const baseTransaction: Transaction & { entries: Entry[] } = {
   categoryId: 10,
   externalId: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),
+  ignored: false,
   entries: [baseEntry],
 };
 
@@ -126,6 +138,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="expense"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={baseCategories}
         transaction={baseTransaction}
         open
@@ -143,6 +156,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="expense"
         accounts={[]}
+        recentAccounts={[]}
         categories={baseCategories}
         open
         onOpenChange={() => { }}
@@ -155,6 +169,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="expense"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={[]}
         open
         onOpenChange={() => { }}
@@ -172,6 +187,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="expense"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={baseCategories}
         open
         onOpenChange={() => { }} />
@@ -207,6 +223,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="expense"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={baseCategories}
         transaction={baseTransaction}
         open
@@ -249,6 +266,7 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="income"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={baseCategories}
         open
         onOpenChange={() => { }}
@@ -285,12 +303,14 @@ describe('TransactionForm', () => {
       <TransactionForm
         mode="income"
         accounts={baseAccounts}
+        recentAccounts={baseRecentAccounts}
         categories={baseCategories}
         income={baseIncome}
         open
         onOpenChange={() => { }}
       />
     );
+
 
     const updateForm = document.querySelector('form');
     expect(updateForm).not.toBeNull();

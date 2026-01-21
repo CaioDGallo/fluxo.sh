@@ -8,6 +8,7 @@ import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
 import { useIncomeContextOptional } from '@/lib/contexts/income-context';
 import { formatCurrency } from '@/lib/utils';
 import type { Account, Category, Transaction, Entry, Income } from '@/lib/schema';
+import type { RecentAccount } from '@/lib/actions/accounts';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,21 +22,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { CurrencyInputGroupInput } from '@/components/ui/currency-input';
 import { CategorySelect } from '@/components/category-select';
+import { AccountPicker } from '@/components/account-picker';
 
 type TransactionFormProps = {
   mode: 'expense' | 'income';
   accounts: Account[];
+  recentAccounts: RecentAccount[];
   categories: Category[];
   transaction?: Transaction & { entries: Entry[] };
   income?: Pick<Income, 'id' | 'description' | 'amount' | 'categoryId' | 'accountId' | 'receivedDate'>;
@@ -48,6 +43,7 @@ type TransactionFormProps = {
 export function TransactionForm({
   mode,
   accounts,
+  recentAccounts,
   categories,
   transaction,
   income,
@@ -79,11 +75,14 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<number>(
     existingData?.categoryId || categories[0]?.id || 0
   );
-  const [accountId, setAccountId] = useState<number>(
-    mode === 'expense'
-      ? (transaction?.entries[0]?.accountId || accounts[0]?.id || 0)
-      : (income?.accountId || accounts[0]?.id || 0)
-  );
+  const defaultAccountId = mode === 'expense'
+    ? (transaction?.entries[0]?.accountId || 0)
+    : (income?.accountId || 0);
+  const recentDefaultId = recentAccounts[0]?.id || 0;
+  const fallbackAccountId = accounts[0]?.id || 0;
+  const initialAccountId = defaultAccountId || recentDefaultId || fallbackAccountId;
+
+  const [accountId, setAccountId] = useState<number>(initialAccountId);
   const [date, setDate] = useState(
     mode === 'expense'
       ? (transaction?.entries[0]?.purchaseDate || new Date().toISOString().split('T')[0])
@@ -163,6 +162,7 @@ export function TransactionForm({
               categoryIcon: category?.icon || null,
               accountName: account?.name || '',
               accountType: account?.type || 'checking',
+              bankLogo: account?.bankLogo || null,
             });
           } else {
             await createIncome(data);
@@ -178,7 +178,7 @@ export function TransactionForm({
         setAmountCents(0);
         setDescription('');
         setCategoryId(categories[0]?.id || 0);
-        setAccountId(accounts[0]?.id || 0);
+        setAccountId(recentAccounts[0]?.id || accounts[0]?.id || 0);
         setDate(new Date().toISOString().split('T')[0]);
         if (mode === 'expense') {
           setInstallments(1);
@@ -300,23 +300,13 @@ export function TransactionForm({
               <Field>
                 <FieldLabel htmlFor="account">{t('account')}</FieldLabel>
                 {hasAccounts ? (
-                  <Select
-                    value={accountId.toString()}
-                    onValueChange={(value) => setAccountId(parseInt(value))}
-                  >
-                    <SelectTrigger id="account">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id.toString()}>
-                            {account.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <AccountPicker
+                    accounts={accounts}
+                    recentAccounts={recentAccounts}
+                    value={accountId}
+                    onChange={setAccountId}
+                    triggerId="account"
+                  />
                 ) : (
                   <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
                     {t('noAccounts')}

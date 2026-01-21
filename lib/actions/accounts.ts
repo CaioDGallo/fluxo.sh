@@ -78,6 +78,62 @@ export async function getAccounts() {
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
 }
 
+export type RecentAccount = Pick<
+  typeof accounts.$inferSelect,
+  'id' | 'name' | 'type' | 'bankLogo'
+>;
+
+export async function getRecentAccounts(limit = 3): Promise<RecentAccount[]> {
+  const userId = await getCurrentUserId();
+  const sqlQuery = sql<RecentAccount>`
+    SELECT id, name, type, "bankLogo"
+    FROM (
+      SELECT DISTINCT ON (account_id)
+        account_id AS id,
+        account_name AS name,
+        account_type AS type,
+        bank_logo AS "bankLogo",
+        created_at
+      FROM (
+        SELECT
+          ${entries.accountId} AS account_id,
+          ${accounts.name} AS account_name,
+          ${accounts.type} AS account_type,
+          ${accounts.bankLogo} AS bank_logo,
+          ${entries.createdAt} AS created_at
+        FROM ${entries}
+        INNER JOIN ${transactions}
+          ON ${entries.transactionId} = ${transactions.id}
+        INNER JOIN ${accounts}
+          ON ${entries.accountId} = ${accounts.id}
+        WHERE ${entries.userId} = ${userId}
+          AND ${transactions.ignored} = false
+
+        UNION ALL
+
+        SELECT
+          ${income.accountId} AS account_id,
+          ${accounts.name} AS account_name,
+          ${accounts.type} AS account_type,
+          ${accounts.bankLogo} AS bank_logo,
+          ${income.createdAt} AS created_at
+        FROM ${income}
+        INNER JOIN ${accounts}
+          ON ${income.accountId} = ${accounts.id}
+        WHERE ${income.userId} = ${userId}
+          AND ${income.ignored} = false
+      ) recent_items
+      ORDER BY account_id, created_at DESC
+    ) recent_accounts
+    ORDER BY created_at DESC
+    LIMIT ${limit};
+  `;
+
+  const results = await db.execute(sqlQuery);
+
+  return results.rows as RecentAccount[];
+}
+
 type DbClient = Pick<typeof db, 'select' | 'update'>;
 
 async function calculateAccountBalanceForUser(dbClient: DbClient, userId: string, accountId: number) {

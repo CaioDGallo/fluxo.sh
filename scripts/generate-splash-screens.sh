@@ -31,17 +31,22 @@ for size in "${SIZES[@]}"; do
   logo_size=$(echo "$height * 0.20" | bc | cut -d'.' -f1)
 
   output="$OUTPUT_DIR/splash-$size.png"
+  temp_logo="/tmp/logo-${logo_size}.png"
 
   echo "  → $size (logo: ${logo_size}px)"
 
-  # Generate splash screen:
-  # 1. Create white canvas
-  # 2. Convert SVG to PNG at calculated size
-  # 3. Composite logo centered on canvas
-  convert -size ${width}x${height} xc:$BG_COLOR \
-    \( "$LOGO" -resize ${logo_size}x${logo_size} \) \
-    -gravity center -composite \
+  # Convert logo to RGB PNG first (prevents grayscale optimization)
+  magick "$LOGO" -background none -resize ${logo_size}x${logo_size} \
+    -define png:color-type=2 \
+    "$temp_logo"
+
+  # Generate splash screen: white canvas + RGB logo composite
+  magick -size ${width}x${height} xc:$BG_COLOR \
+    "$temp_logo" -gravity center -composite \
+    -define png:color-type=2 \
     "$output"
+
+  rm "$temp_logo"
 done
 
 echo "✓ Generated ${#SIZES[@]} splash screens"

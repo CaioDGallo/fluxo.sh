@@ -76,7 +76,7 @@ export function AppSidebar() {
       <SidebarHeader>
         {/* Expanded state: show full text */}
         <div className="flex h-12 items-center px-4 font-semibold group-data-[collapsible=icon]:hidden">
-          {t('northstar')}
+          {t('fluxosh')}
         </div>
         {/* Collapsed state: show clickable icon */}
         <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">

@@ -28,7 +28,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: northstar
+          POSTGRES_DB: fluxosh
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -48,11 +48,11 @@ jobs:
       - name: Run database migrations
         run: npx drizzle-kit migrate
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/northstar
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fluxosh
       - name: Run e2e tests
         run: pnpm test:e2e
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/northstar
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fluxosh
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret-for-ci-only
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA

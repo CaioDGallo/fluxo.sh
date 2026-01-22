@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 
 const DATABASE_URL = process.env.DATABASE_URL
-  ?? 'postgresql://postgres:postgres@127.0.0.1:5432/northstar';
+  ?? 'postgresql://postgres:postgres@127.0.0.1:5432/fluxosh';
 
 export default defineConfig({
   schema: './lib/schema.ts',

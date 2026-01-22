@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Northstar",
-    short_name: "Northstar",
-    description: "Personal finance tracking, calendar and tasks",
+    name: "fluxo.sh",
+    short_name: "fluxo.sh",
+    description: "Suas finanças, no seu controle",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#09090b",
@@ -12,13 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait-primary",
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: "/brand-kit/exports/icon-192-dark.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/brand-kit/exports/icon-512-dark.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",

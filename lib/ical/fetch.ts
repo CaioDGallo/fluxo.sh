@@ -14,7 +14,7 @@ export async function fetchICalUrl(url: string): Promise<FetchResult> {
       signal: controller.signal,
       headers: {
         'Accept': 'text/calendar, application/calendar+json, */*',
-        'User-Agent': 'Northstar-Calendar-Sync/1.0',
+        'User-Agent': 'Fluxosh-Calendar-Sync/1.0',
       },
     });
 

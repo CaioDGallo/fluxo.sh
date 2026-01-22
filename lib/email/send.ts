@@ -20,7 +20,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       throw new Error('RESEND_API_KEY not configured');
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@northstar.app';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@fluxo.sh';
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

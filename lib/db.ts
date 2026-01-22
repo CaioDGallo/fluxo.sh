@@ -3,6 +3,6 @@ import * as schema from './schema';
 
 // Fallback to Supabase Local PostgreSQL if DATABASE_URL not set
 const DATABASE_URL = process.env.DATABASE_URL
-  ?? 'postgresql://postgres:postgres@127.0.0.1:5432/northstar';
+  ?? 'postgresql://postgres:postgres@127.0.0.1:5432/fluxosh';
 
 export const db = drizzle(DATABASE_URL, { schema });

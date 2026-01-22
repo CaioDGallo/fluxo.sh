@@ -323,7 +323,7 @@ async function sendUserDigest(
     const formattedDate = dateFormatter.format(new Date(localDateStr));
 
     // Generate email content
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
     const digestData = {
       date: formattedDate,
       events,

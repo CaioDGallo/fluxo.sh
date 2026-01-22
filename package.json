@@ -1,5 +1,5 @@
 {
-  "name": "northstar",
+  "name": "fluxosh",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.17.0",
@@ -17,11 +17,11 @@
     "test:e2e": "playwright test",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
-    "db:init": "psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -c 'CREATE DATABASE northstar;' || true",
-    "db:migrate:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/northstar npx drizzle-kit migrate",
+    "db:init": "psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -c 'CREATE DATABASE fluxosh;' || true",
+    "db:migrate:local": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/fluxosh npx drizzle-kit migrate",
     "db:setup": "pnpm db:init && pnpm db:migrate:local",
-    "db:seed": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/northstar npx tsx drizzle/seed.ts",
-    "db:reset": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/northstar npx tsx drizzle/db-reset.ts"
+    "db:seed": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/fluxosh npx tsx drizzle/seed.ts",
+    "db:reset": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/fluxosh npx tsx drizzle/db-reset.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

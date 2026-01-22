@@ -91,7 +91,7 @@
     "invalidDueDay": "Due day must be between 1 and 31"
   },
   "navigation": {
-    "northstar": "Northstar",
+    "fluxosh": "fluxo.sh",
     "navigation": "Navigation",
     "dashboard": "Dashboard",
     "budgets": "Budgets",
@@ -868,7 +868,7 @@
       "overdueTitle": "Overdue ({{count}})",
       "viewCalendar": "View Calendar",
       "viewCalendarText": "View your calendar at:",
-      "footer": "Northstar - Your Personal Finance & Calendar",
+      "footer": "fluxo.sh - Your finances, under your control",
       "allDay": "All day",
       "noTime": "No time set",
       "noDate": "No date set",

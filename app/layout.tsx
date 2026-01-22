@@ -13,8 +13,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Northstar Finance',
-  description: 'Personal finance tracking with installment support',
+  title: 'fluxo.sh',
+  description: 'Suas finanças, no seu controle',
 };
 
 export default async function RootLayout({
@@ -32,15 +32,15 @@ export default async function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
         {/* Favicons */}
-        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-        <link rel="shortcut icon" href="/icons/icon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/brand-kit/exports/icon-16-dark.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/brand-kit/exports/icon-32-dark.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/brand-kit/exports/icon-192-dark.png" />
+        <link rel="shortcut icon" href="/brand-kit/exports/icon-32-dark.png" />
 
         <meta name="theme-color" content="#09090b" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/brand-kit/exports/icon-192-dark.png" />
 
         {/* iOS Splash Screens */}
         <link rel="apple-touch-startup-image" href="/icons/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />

@@ -325,7 +325,7 @@ async function processBillReminderEmailJobsGrouped(
 
       // Determine email type and send
       const jobIds = validReminders.map(({ job }) => job.id);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app';
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
       const scheduledDate = validReminders[0].job.scheduledAt;
       const formattedDate = new Intl.DateTimeFormat(locale, {
         month: 'short',
@@ -365,7 +365,7 @@ async function processBillReminderEmailJobsGrouped(
 
       // Send email
       const sendResult = await sendGroupedBillReminderEmail({
-        fromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@northstar.app',
+        fromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@fluxo.sh',
         toEmail: settings.notificationEmail,
         subject,
         text: textBody,
@@ -518,11 +518,11 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
       throw new Error('User notification email not configured');
     }
 
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@northstar.app';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@fluxo.sh';
     const toEmail = settings.notificationEmail;
     const timeZone = settings.timezone || 'UTC';
     const locale: Locale = (settings.locale as Locale) || defaultLocale;
-    
+
     let subject = '';
     let body = '';
     let html: string | undefined = undefined;
@@ -531,14 +531,14 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
       const eventItem = itemData as EventItem;
       const eventTime = formatDateTimeForUser(new Date(eventItem.startAt), timeZone);
       subject = `Event Reminder: ${eventItem.title}`;
-      body = `You have an upcoming event: ${eventItem.title}\n\nTime: ${eventTime}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app'}/calendar`;
+      body = `You have an upcoming event: ${eventItem.title}\n\nTime: ${eventTime}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh'}/calendar`;
     } else if (job.itemType === 'task' && itemData && 'dueAt' in itemData) {
       const taskItem = itemData as TaskItem;
       const dueDate = taskItem.dueAt
         ? formatDateTimeForUser(new Date(taskItem.dueAt), timeZone)
         : 'N/A';
       subject = `Task Reminder: ${taskItem.title}`;
-      body = `You have a task due: ${taskItem.title}\n\nDue: ${dueDate}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app'}/calendar`;
+      body = `You have a task due: ${taskItem.title}\n\nDue: ${dueDate}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh'}/calendar`;
     } else if (job.itemType === 'bill_reminder' && itemData && 'dueDay' in itemData) {
       const reminderItem = itemData as BillReminderItem;
       const nextDue = calculateNextDueDate(reminderItem, { timeZone });
@@ -569,7 +569,7 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
         }).format(nextDue),
         dueTime: reminderItem.dueTime,
         daysUntilDue: daysUntil,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://northstar.app',
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh',
         locale,
       };
 
@@ -603,12 +603,12 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
       },
       body: JSON.stringify(emailPayload),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to send email');
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('[notifications:email] Failed:', error);

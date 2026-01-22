@@ -1,14 +1,14 @@
-name: northstar
+name: fluxosh
 
 services:
   db:
     image: postgres:16-alpine
-    container_name: northstar-db
+    container_name: fluxosh-db
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: northstar
+      POSTGRES_DB: fluxosh
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:

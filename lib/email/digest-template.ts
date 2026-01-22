@@ -193,7 +193,7 @@ export function generateDigestHtml(data: DigestData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - Northstar</title>
+  <title>${title} - fluxo.sh</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; background: ${COLORS.bg};">
   <div style="max-width: 600px; margin: 0 auto; padding: 20px;">

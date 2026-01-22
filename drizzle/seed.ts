@@ -751,6 +751,7 @@ async function seedDatabase() {
       categoryId: categoryMap[transaction.categoryName],
       externalId: null,
       ignored: transaction.ignored ?? false,
+      refundedAmount: 0,
     }));
     const seededTransactions = await seedRows('transactions', transactionRecords);
 
@@ -838,6 +839,8 @@ async function seedDatabase() {
       receivedAt: inc.received ? new Date(getRelativeDate(inc.monthOffset, inc.day)) : null,
       externalId: null,
       ignored: inc.ignored ?? false,
+      refundOfTransactionId: null,
+      replenishCategoryId: null,
     }));
     await seedRows('income', incomeRecords);
     console.log(`  ✓ ${incomeRecords.length} income entries created\n`);
@@ -863,6 +866,7 @@ async function seedDatabase() {
       type: 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal';
       faturaId?: number;
       description: string | null;
+      externalId: string | null;
       ignored: boolean;
     }> = [];
 
@@ -878,6 +882,7 @@ async function seedDatabase() {
           type: 'fatura_payment',
           faturaId: fatura.id as number,
           description: `Pagamento fatura ${fatura.yearMonth}`,
+          externalId: null,
           ignored: false,
         });
       }
@@ -893,6 +898,7 @@ async function seedDatabase() {
         date: getRelativeDate(0, 15),
         type: 'internal_transfer',
         description: 'Investimento mensal',
+        externalId: null,
         ignored: false,
       },
       {
@@ -903,6 +909,7 @@ async function seedDatabase() {
         date: getRelativeDate(-1, 20),
         type: 'internal_transfer',
         description: 'Resgate poupança',
+        externalId: null,
         ignored: false,
       }
     );
@@ -917,6 +924,7 @@ async function seedDatabase() {
         date: getRelativeDate(0, 3),
         type: 'deposit',
         description: 'Depósito em dinheiro',
+        externalId: null,
         ignored: false,
       },
       {
@@ -927,6 +935,7 @@ async function seedDatabase() {
         date: getRelativeDate(0, 10),
         type: 'withdrawal',
         description: 'Saque caixa eletrônico',
+        externalId: null,
         ignored: false,
       },
       {
@@ -937,6 +946,7 @@ async function seedDatabase() {
         date: getRelativeDate(-1, 18),
         type: 'withdrawal',
         description: 'Saque emergência',
+        externalId: null,
         ignored: false,
       }
     );
@@ -951,6 +961,7 @@ async function seedDatabase() {
         date: getRelativeDate(0, 22),
         type: 'internal_transfer',
         description: 'Teste transferência - cancelado',
+        externalId: null,
         ignored: true,
       },
       {
@@ -961,6 +972,7 @@ async function seedDatabase() {
         date: getRelativeDate(-1, 5),
         type: 'deposit',
         description: 'Depósito teste',
+        externalId: null,
         ignored: true,
       }
     );

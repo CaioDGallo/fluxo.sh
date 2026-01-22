@@ -45,15 +45,6 @@ export function ExpensesClient({
   // Initialize from URL and sync on navigation
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(() => searchParams.get('add') === 'true');
 
-  useEffect(() => {
-    const shouldOpen = searchParams.get('add') === 'true';
-    if (shouldOpen !== isAddExpenseOpen) {
-      // Sync external state (URL) to React state - valid use of setState in effect
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsAddExpenseOpen(shouldOpen);
-    }
-  }, [searchParams, isAddExpenseOpen]);
-
   // Filter change handlers update URL
   const handleCategoryChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());

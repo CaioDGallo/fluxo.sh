@@ -64,6 +64,21 @@ async function createUser({ email, password, firstName, lastName }: CreateUserAr
     }
     console.log('Created at:', newUser.createdAt);
 
+    // Setup new user with default categories and welcome email
+    console.log('\n📝 Setting up user account...');
+    const { setupNewUser } = await import('@/lib/user-setup/setup-new-user');
+    const setupResult = await setupNewUser(newUser.id);
+
+    if (setupResult.success) {
+      console.log(`✅ Setup complete!`);
+      console.log(`   Categories: ${setupResult.categoriesCreated} created`);
+      console.log(`   Welcome email: ${setupResult.emailSent ? 'sent' : 'skipped'}`);
+    } else {
+      console.warn(`⚠️  Setup had issues: ${setupResult.error}`);
+      console.warn(`   Categories: ${setupResult.categoriesCreated} created`);
+      console.warn(`   Welcome email: ${setupResult.emailSent ? 'sent' : 'not sent'}`);
+    }
+
     process.exit(0);
   } catch (error) {
     if (error instanceof Error) {

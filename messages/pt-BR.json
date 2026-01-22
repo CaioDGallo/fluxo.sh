@@ -915,6 +915,19 @@
       "count": "{{count}} lembretes para hoje",
       "viewAllReminders": "Visualizar Todos os Lembretes",
       "footer": "Você está recebendo este e-mail porque tem lembretes ativos"
+    },
+    "welcome": {
+      "subject": "Bem-vindo ao Fluxo.sh!",
+      "title": "Bem-vindo ao Fluxo.sh!",
+      "greeting": "Olá, {{name}}!",
+      "greetingNoName": "Olá!",
+      "intro": "Sua conta foi criada com sucesso. Estamos felizes em tê-lo conosco!",
+      "whatYouCanDo": "Com o Fluxo você pode:",
+      "feature1": "Acompanhar gastos e receitas",
+      "feature2": "Controlar parcelas do cartão",
+      "feature3": "Definir orçamentos mensais",
+      "getStarted": "Começar",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
     }
   },
   "netWorth": {

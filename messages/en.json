@@ -905,6 +905,19 @@
       "count": "{{count}} reminders for today",
       "viewAllReminders": "View All Reminders",
       "footer": "You're receiving this email because you have active reminders"
+    },
+    "welcome": {
+      "subject": "Welcome to Fluxo.sh!",
+      "title": "Welcome to Fluxo.sh!",
+      "greeting": "Hello, {{name}}!",
+      "greetingNoName": "Hello!",
+      "intro": "Your account has been created successfully. We're glad to have you with us!",
+      "whatYouCanDo": "With Fluxo you can:",
+      "feature1": "Track expenses and income",
+      "feature2": "Manage credit card installments",
+      "feature3": "Set monthly budgets",
+      "getStarted": "Get Started",
+      "footer": "fluxo.sh - Your finances under control"
     }
   },
   "netWorth": {

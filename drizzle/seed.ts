@@ -7,6 +7,7 @@ import { db } from '../lib/db';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
 import * as schema from '../lib/schema';
 import { addMonths, getCurrentYearMonth } from '../lib/utils';
+import { DEFAULT_CATEGORIES } from '../lib/user-setup/default-categories';
 
 // Production safety check
 if (process.env.NODE_ENV === 'production') {
@@ -215,21 +216,8 @@ const accountsData = [
   { name: 'Carteira', type: 'cash' as const, bankLogo: null },
 ];
 
-const categoriesData = [
-  // Expense categories
-  { name: 'Alimentação', color: '#ef4444', icon: 'Restaurant01Icon', type: 'expense' as const, isImportDefault: true },
-  { name: 'Transporte', color: '#3b82f6', icon: 'Car01Icon', type: 'expense' as const, isImportDefault: true },
-  { name: 'Entretenimento', color: '#a855f7', icon: 'GameController01Icon', type: 'expense' as const, isImportDefault: false },
-  { name: 'Compras', color: '#f97316', icon: 'ShoppingBag01Icon', type: 'expense' as const, isImportDefault: true },
-  { name: 'Saúde', color: '#22c55e', icon: 'HealthIcon', type: 'expense' as const, isImportDefault: false },
-  { name: 'Contas', color: '#64748b', icon: 'Wallet01Icon', type: 'expense' as const, isImportDefault: true },
-  { name: 'Educação', color: '#0ea5e9', icon: 'Book01Icon', type: 'expense' as const, isImportDefault: false },
-  // Income categories
-  { name: 'Salário', color: '#22c55e', icon: 'MoneyBag01Icon', type: 'income' as const, isImportDefault: true },
-  { name: 'Freelance', color: '#3b82f6', icon: 'BriefcaseIcon', type: 'income' as const, isImportDefault: false },
-  { name: 'Investimentos', color: '#a855f7', icon: 'ChartLineData01Icon', type: 'income' as const, isImportDefault: false },
-  { name: 'Outros', color: '#64748b', icon: 'CoinsIcon', type: 'income' as const, isImportDefault: false },
-];
+// Import shared default categories (used by both seed and user setup)
+const categoriesData = DEFAULT_CATEGORIES;
 
 function createBudgets(categoryIds: Record<string, number>, userId: string) {
   const months = [CURRENT_MONTH, PREV_MONTH, TWO_MONTHS_AGO];

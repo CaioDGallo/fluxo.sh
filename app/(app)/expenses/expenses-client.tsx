@@ -25,6 +25,7 @@ type ExpensesClientProps = {
   unpaidFaturas: UnpaidFatura[];
   filters: ExpenseFiltersType;
   currentMonth: string;
+  initialDialogOpen?: boolean;
 };
 
 export function ExpensesClient({
@@ -36,14 +37,17 @@ export function ExpensesClient({
   unpaidFaturas,
   filters,
   currentMonth,
+  initialDialogOpen = false,
 }: ExpensesClientProps) {
   const t = useTranslations('expenses');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize from URL and sync on navigation
-  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(() => searchParams.get('add') === 'true');
+  // Initialize from prop or URL param
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(() =>
+    initialDialogOpen || searchParams.get('add') === 'true'
+  );
 
   // Filter change handlers update URL
   const handleCategoryChange = (value: string) => {

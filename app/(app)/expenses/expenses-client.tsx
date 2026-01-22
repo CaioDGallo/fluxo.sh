@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ExpenseFilters as ExpenseFiltersType } from '@/lib/actions/expenses';
@@ -41,6 +42,18 @@ export function ExpensesClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Initialize from URL and sync on navigation
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(() => searchParams.get('add') === 'true');
+
+  useEffect(() => {
+    const shouldOpen = searchParams.get('add') === 'true';
+    if (shouldOpen !== isAddExpenseOpen) {
+      // Sync external state (URL) to React state - valid use of setState in effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsAddExpenseOpen(shouldOpen);
+    }
+  }, [searchParams, isAddExpenseOpen]);
+
   // Filter change handlers update URL
   const handleCategoryChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -72,6 +85,17 @@ export function ExpensesClient({
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const handleAddExpenseChange = (open: boolean) => {
+    setIsAddExpenseOpen(open);
+
+    // Remove 'add' param when closing
+    if (!open && searchParams.get('add') === 'true') {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('add');
+      router.push(`${pathname}?${params.toString()}`);
+    }
+  };
+
   const categoryFilter = filters.categoryId?.toString() || 'all';
   const accountFilter = filters.accountId?.toString() || 'all';
   const statusFilter = filters.status || 'all';
@@ -85,7 +109,14 @@ export function ExpensesClient({
 
       <div className="mb-3 flex gap-2 justify-end">
         <ImportModal accounts={accounts} categories={categories} />
-        <AddExpenseButton accounts={accounts} categories={categories} recentAccounts={recentAccounts} recentCategories={recentCategories} />
+        <AddExpenseButton
+          accounts={accounts}
+          categories={categories}
+          recentAccounts={recentAccounts}
+          recentCategories={recentCategories}
+          open={isAddExpenseOpen}
+          onOpenChange={handleAddExpenseChange}
+        />
       </div>
 
       <ExpenseListProvider

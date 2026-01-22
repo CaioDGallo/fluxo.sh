@@ -15,11 +15,25 @@ type AddExpenseButtonProps = {
   categories: Category[];
   recentAccounts: RecentAccount[];
   recentCategories: RecentCategory[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function AddExpenseButton({ accounts, categories, recentAccounts, recentCategories }: AddExpenseButtonProps) {
-  const [open, setOpen] = useState(false);
+export function AddExpenseButton({
+  accounts,
+  categories,
+  recentAccounts,
+  recentCategories,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: AddExpenseButtonProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const t = useTranslations('expenses');
+
+  // Controlled/uncontrolled pattern
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
   return (
     <TransactionForm

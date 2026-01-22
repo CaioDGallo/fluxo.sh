@@ -8,7 +8,7 @@ import { ExpensesClient } from './expenses-client';
 export default async function ExpensesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; category?: string; account?: string; status?: string }>
+  searchParams: Promise<{ month?: string; category?: string; account?: string; status?: string; add?: string }>
 }) {
   const params = await searchParams;
   const yearMonth = params.month || getCurrentYearMonth();

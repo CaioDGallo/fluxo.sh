@@ -46,7 +46,7 @@ async function findByFitId(
   userId: string,
   rawFitId: string,
   accountId: number
-): Promise<{ id: number; description: string; totalAmount: number; categoryId: number } | null> {
+): Promise<{ id: number; description: string | null; totalAmount: number; categoryId: number } | null> {
   // Query transactions with externalId starting with rawFitId
   // externalId format: "FITID-AMOUNT" (e.g., "20250116000001-18892")
   const results = await db
@@ -81,7 +81,7 @@ async function findByDescription(
   merchantName: string,
   accountId: number,
   refundAmount: number
-): Promise<{ id: number; description: string; totalAmount: number; categoryId: number } | null> {
+): Promise<{ id: number; description: string | null; totalAmount: number; categoryId: number } | null> {
   // Normalize merchant name for comparison
   const normalizedMerchant = normalizeDescription(merchantName);
 
@@ -112,6 +112,11 @@ async function findByDescription(
   let bestScore = 0;
 
   for (const result of results) {
+    // Skip results with null description
+    if (!result.description) {
+      continue;
+    }
+
     const normalizedDesc = normalizeDescription(result.description);
 
     // Simple similarity: how much of the merchant name appears in the description
@@ -156,7 +161,7 @@ export async function findRefundMatch(
     if (fitIdMatch) {
       return {
         matchedTransactionId: fitIdMatch.id,
-        matchedDescription: fitIdMatch.description,
+        ...(fitIdMatch.description && { matchedDescription: fitIdMatch.description }),
         matchConfidence: 'high',
         matchReason: 'Mesmo FITID da transação original',
       };
@@ -170,7 +175,7 @@ export async function findRefundMatch(
     if (descMatch) {
       return {
         matchedTransactionId: descMatch.id,
-        matchedDescription: descMatch.description,
+        ...(descMatch.description && { matchedDescription: descMatch.description }),
         matchConfidence: 'medium',
         matchReason: `Estabelecimento semelhante: "${merchantName}"`,
       };

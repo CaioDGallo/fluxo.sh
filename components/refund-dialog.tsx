@@ -22,7 +22,7 @@ type RefundDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transactionId: number;
-  transactionDescription: string;
+  transactionDescription: string | null;
   totalAmount: number; // cents
   refundedAmount: number; // cents
   accountType: string;
@@ -81,7 +81,7 @@ export function RefundDialog({
           amount: amountInCents,
           refundDate,
           faturaMonth,
-          description: `Estorno - ${transactionDescription}`,
+          description: `Estorno - ${transactionDescription || 'Despesa'}`,
         });
 
         toast.success(t('refundCreated'));

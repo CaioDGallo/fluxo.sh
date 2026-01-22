@@ -53,7 +53,7 @@ type ExpenseCardBaseProps = {
     paidAt: string | null;
     installmentNumber: number;
     transactionId: number;
-    description: string;
+    description: string | null;
     totalInstallments: number;
     totalAmount: number;
     categoryId: number;
@@ -550,7 +550,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmationTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmation', { count: entry.totalInstallments, description: entry.description })}
+              {t('deleteConfirmation', { count: entry.totalInstallments, description: entry.description || entry.categoryName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

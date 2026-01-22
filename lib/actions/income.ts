@@ -14,7 +14,7 @@ import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/act
 import { getPostHogClient } from '@/lib/posthog-server';
 
 export type CreateIncomeData = {
-  description: string;
+  description?: string;
   amount: number; // cents
   categoryId: number;
   accountId: number;
@@ -23,9 +23,6 @@ export type CreateIncomeData = {
 
 export async function createIncome(data: CreateIncomeData) {
   // Validate inputs
-  if (!data.description || data.description.trim().length === 0) {
-    throw new Error(await t('errors.descriptionRequired'));
-  }
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
     throw new Error(await t('errors.amountPositiveCents'));
   }
@@ -42,9 +39,20 @@ export async function createIncome(data: CreateIncomeData) {
   try {
     const userId = await getCurrentUserId();
 
+    // Generate description from category if empty
+    let finalDescription = data.description?.trim();
+    if (!finalDescription) {
+      const [category] = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.id, data.categoryId)))
+        .limit(1);
+      finalDescription = category?.name || 'Receita';
+    }
+
     await db.insert(income).values({
       userId,
-      description: data.description.trim(),
+      description: finalDescription,
       amount: data.amount,
       categoryId: data.categoryId,
       accountId: data.accountId,
@@ -54,7 +62,7 @@ export async function createIncome(data: CreateIncomeData) {
     await syncAccountBalance(data.accountId);
 
     // Track category frequency for auto-suggestions
-    await incrementCategoryFrequency(userId, data.description.trim(), data.categoryId, 'income');
+    await incrementCategoryFrequency(userId, finalDescription, data.categoryId, 'income');
 
     // PostHog event tracking
     const posthog = getPostHogClient();
@@ -83,9 +91,6 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
     throw new Error(await t('errors.invalidIncomeId'));
   }
-  if (!data.description || data.description.trim().length === 0) {
-    throw new Error(await t('errors.descriptionRequired'));
-  }
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
     throw new Error(await t('errors.amountPositiveCents'));
   }
@@ -112,10 +117,21 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
       throw new Error(await t('errors.invalidIncomeId'));
     }
 
+    // Generate description from category if empty
+    let finalDescription = data.description?.trim();
+    if (!finalDescription) {
+      const [category] = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.id, data.categoryId)))
+        .limit(1);
+      finalDescription = category?.name || 'Receita';
+    }
+
     await db
       .update(income)
       .set({
-        description: data.description.trim(),
+        description: finalDescription,
         amount: data.amount,
         categoryId: data.categoryId,
         accountId: data.accountId,
@@ -349,13 +365,15 @@ export async function updateIncomeCategory(incomeId: number, categoryId: number)
     .where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
   // Transfer frequency from old to new category
-  await transferCategoryFrequency(
-    userId,
-    incomeRecord.description,
-    incomeRecord.categoryId,
-    categoryId,
-    'income'
-  );
+  if (incomeRecord.description) {
+    await transferCategoryFrequency(
+      userId,
+      incomeRecord.description,
+      incomeRecord.categoryId,
+      categoryId,
+      'income'
+    );
+  }
 
   revalidateTag(`user-${userId}`, {});
   revalidatePath('/income');
@@ -394,7 +412,9 @@ export async function bulkUpdateIncomeCategories(
 
     // Transfer frequency for each income record
     for (const inc of oldIncomes) {
-      await transferCategoryFrequency(userId, inc.description, inc.categoryId, categoryId, 'income');
+      if (inc.description) {
+        await transferCategoryFrequency(userId, inc.description, inc.categoryId, categoryId, 'income');
+      }
     }
 
     revalidateTag(`user-${userId}`, {});

@@ -35,7 +35,7 @@ type ConvertToFaturaDialogProps = {
   entry: {
     id: number;
     amount: number;
-    description: string;
+    description: string | null;
     purchaseDate: string;
   };
   unpaidFaturas: UnpaidFatura[];
@@ -104,7 +104,7 @@ export function ConvertToFaturaDialog({
 
         <div className="space-y-4">
           <div className="min-w-0">
-            <p className="text-sm text-gray-600 truncate">{entry.description}</p>
+            <p className="text-sm text-gray-600 truncate">{entry.description || '-'}</p>
             <p className="text-2xl font-bold mt-2">{formatCurrency(entry.amount)}</p>
           </div>
 

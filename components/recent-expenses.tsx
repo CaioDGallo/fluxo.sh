@@ -9,7 +9,7 @@ import Link from 'next/link';
 type RecentExpensesProps = {
   expenses: {
     entryId: number;
-    description: string;
+    description: string | null;
     amount: number;
     dueDate: string;
     categoryName: string;

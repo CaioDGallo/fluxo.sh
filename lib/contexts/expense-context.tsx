@@ -26,7 +26,7 @@ export type ExpenseEntry = {
   paidAt: string | null;
   installmentNumber: number;
   transactionId: number;
-  description: string;
+  description: string | null;
   totalInstallments: number;
   categoryId: number;
   categoryName: string;
@@ -50,7 +50,7 @@ export type OptimisticExpenseEntry = ExpenseEntry & {
 
 // Input for creating expense
 export type CreateExpenseInput = {
-  description: string;
+  description?: string;
   totalAmount: number; // cents
   categoryId: number;
   accountId: number;
@@ -188,7 +188,7 @@ function generateOptimisticEntries(
       paidAt: null,
       installmentNumber: i + 1,
       transactionId: tempTransactionId,
-      description: input.description,
+      description: input.description ?? null,
       totalInstallments: input.installments,
       totalAmount: input.totalAmount,
       categoryId: input.categoryId,

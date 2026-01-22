@@ -19,7 +19,7 @@ import { centsToDisplay } from '@/lib/utils';
 // Income entry shape (from getIncome return type)
 export type IncomeEntry = {
   id: number;
-  description: string;
+  description: string | null;
   amount: number;
   receivedDate: string;
   receivedAt: string | null;
@@ -46,7 +46,7 @@ export type OptimisticIncomeEntry = IncomeEntry & {
 
 // Input for creating income
 export type CreateIncomeInput = {
-  description: string;
+  description?: string;
   amount: number; // cents
   categoryId: number;
   accountId: number;
@@ -153,7 +153,7 @@ type IncomeListProviderProps = {
 function generateOptimisticIncome(input: CreateIncomeInput, tempId: string): OptimisticIncomeEntry {
   return {
     id: -Date.now(), // Negative temp ID
-    description: input.description,
+    description: input.description ?? null,
     amount: input.amount,
     receivedDate: input.receivedDate,
     receivedAt: null,

@@ -112,7 +112,7 @@ export function TransactionForm({
     try {
       if (mode === 'expense') {
         const data = {
-          description,
+          description: description.trim() || undefined,
           totalAmount: totalCents,
           categoryId,
           accountId,
@@ -143,7 +143,7 @@ export function TransactionForm({
         }
       } else {
         const data = {
-          description,
+          description: description.trim() || undefined,
           amount: totalCents,
           categoryId,
           accountId,
@@ -201,9 +201,12 @@ export function TransactionForm({
       : tIncome('addIncome');
 
   const dateLabel = mode === 'expense' ? t('purchaseDate') : t('receivedDate');
-  const descriptionPlaceholder = mode === 'expense'
-    ? t('descriptionPlaceholder.expense')
-    : t('descriptionPlaceholder.income');
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const descriptionPlaceholder = selectedCategory?.name || (
+    mode === 'expense'
+      ? t('descriptionPlaceholder.expense')
+      : t('descriptionPlaceholder.income')
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -275,7 +278,6 @@ export function TransactionForm({
                   name="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  required
                   placeholder={descriptionPlaceholder}
                   autoComplete="off"
                   spellCheck={false}

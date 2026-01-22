@@ -28,7 +28,7 @@ export type DashboardData = {
   }[];
   recentExpenses: {
     entryId: number;
-    description: string;
+    description: string | null;
     amount: number;
     purchaseDate: string;
     dueDate: string;
@@ -39,7 +39,7 @@ export type DashboardData = {
   }[];
   recentIncome: {
     incomeId: number;
-    description: string;
+    description: string | null;
     amount: number;
     receivedDate: string;
     categoryName: string;

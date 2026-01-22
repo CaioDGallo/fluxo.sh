@@ -43,7 +43,7 @@ import { BankLogo } from '@/components/bank-logo';
 type IncomeCardBaseProps = {
   income: {
     id: number;
-    description: string;
+    description: string | null;
     amount: number;
     receivedDate: string;
     receivedAt: string | null;
@@ -517,7 +517,7 @@ export function IncomeCard(props: IncomeCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteConfirmationTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConfirmation', { description: income.description })}
+              {t('deleteConfirmation', { description: income.description || income.categoryName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

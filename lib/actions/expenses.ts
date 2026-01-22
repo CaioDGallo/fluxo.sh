@@ -17,7 +17,7 @@ import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/act
 import { getPostHogClient } from '@/lib/posthog-server';
 
 type CreateExpenseData = {
-  description: string;
+  description?: string;
   totalAmount: number; // cents
   categoryId: number;
   accountId: number;
@@ -28,9 +28,6 @@ type CreateExpenseData = {
 export async function createExpense(data: CreateExpenseData) {
   console.log('data', data);
   // Validate inputs
-  if (!data.description?.trim()) {
-    throw new Error(await t('errors.descriptionRequired'));
-  }
   if (!Number.isInteger(data.totalAmount) || data.totalAmount <= 0) {
     throw new Error(await t('errors.amountPositive'));
   }
@@ -60,12 +57,23 @@ export async function createExpense(data: CreateExpenseData) {
     const isCreditCard = account[0].type === 'credit_card';
     const hasBillingConfig = isCreditCard && account[0].closingDay && account[0].paymentDueDay;
 
-    // 2. Create transaction
+    // 2. Generate description from category if empty
+    let finalDescription = data.description?.trim();
+    if (!finalDescription) {
+      const [category] = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.id, data.categoryId)))
+        .limit(1);
+      finalDescription = category?.name || 'Despesa';
+    }
+
+    // 3. Create transaction
     const [transaction] = await db
       .insert(transactions)
       .values({
         userId,
-        description: data.description,
+        description: finalDescription,
         totalAmount: data.totalAmount,
         totalInstallments: data.installments,
         categoryId: data.categoryId,
@@ -145,7 +153,7 @@ export async function createExpense(data: CreateExpenseData) {
     await syncAccountBalance(data.accountId);
 
     // Track category frequency for auto-suggestions
-    await incrementCategoryFrequency(userId, data.description, data.categoryId, 'expense');
+    await incrementCategoryFrequency(userId, finalDescription, data.categoryId, 'expense');
 
     // PostHog event tracking
     const posthog = getPostHogClient();
@@ -188,9 +196,6 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
   // Validate inputs
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
     throw new Error(await t('errors.invalidTransactionId'));
-  }
-  if (!data.description?.trim()) {
-    throw new Error(await t('errors.descriptionRequired'));
   }
   if (!Number.isInteger(data.totalAmount) || data.totalAmount <= 0) {
     throw new Error(await t('errors.amountPositive'));
@@ -235,21 +240,32 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
     const isCreditCard = account[0].type === 'credit_card';
     const hasBillingConfig = isCreditCard && account[0].closingDay && account[0].paymentDueDay;
 
-    // 3. Update transaction
+    // 3. Generate description from category if empty
+    let finalDescription = data.description?.trim();
+    if (!finalDescription) {
+      const [category] = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.id, data.categoryId)))
+        .limit(1);
+      finalDescription = category?.name || 'Despesa';
+    }
+
+    // 4. Update transaction
     await db
       .update(transactions)
       .set({
-        description: data.description,
+        description: finalDescription,
         totalAmount: data.totalAmount,
         totalInstallments: data.installments,
         categoryId: data.categoryId,
       })
       .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
 
-    // 4. Delete old entries
+    // 5. Delete old entries
     await db.delete(entries).where(and(eq(entries.userId, userId), eq(entries.transactionId, transactionId)));
 
-    // 5. Regenerate entries (same logic as create)
+    // 6. Regenerate entries (same logic as create)
     const amountPerInstallment = Math.round(data.totalAmount / data.installments);
     const basePurchaseDate = new Date(data.purchaseDate + 'T00:00:00Z');
 
@@ -307,7 +323,7 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
 
     await db.insert(entries).values(entriesToInsert);
 
-    // 6. Update fatura totals (both old and new)
+    // 7. Update fatura totals (both old and new)
     if (hasBillingConfig) {
       const allAffectedFaturas = new Set([...newFaturas]);
       const oldAccountFaturas = oldFaturas.get(data.accountId) || new Set();
@@ -547,13 +563,15 @@ export async function updateTransactionCategory(transactionId: number, categoryI
       .where(and(eq(transactions.userId, userId), eq(transactions.id, transactionId)));
 
     // Transfer frequency from old to new category
-    await transferCategoryFrequency(
-      userId,
-      transaction.description,
-      transaction.categoryId,
-      categoryId,
-      'expense'
-    );
+    if (transaction.description) {
+      await transferCategoryFrequency(
+        userId,
+        transaction.description,
+        transaction.categoryId,
+        categoryId,
+        'expense'
+      );
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');
@@ -596,7 +614,9 @@ export async function bulkUpdateTransactionCategories(
 
     // Transfer frequency for each transaction
     for (const txn of oldTransactions) {
-      await transferCategoryFrequency(userId, txn.description, txn.categoryId, categoryId, 'expense');
+      if (txn.description) {
+        await transferCategoryFrequency(userId, txn.description, txn.categoryId, categoryId, 'expense');
+      }
     }
 
     revalidateTag(`user-${userId}`, {});

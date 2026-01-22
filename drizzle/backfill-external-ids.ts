@@ -62,7 +62,7 @@ async function backfillExternalIds() {
     let successCount = 0;
     let skipCount = 0;
     let errorCount = 0;
-    const conflicts: Array<{ id: number; description: string; externalId: string }> = [];
+    const conflicts: Array<{ id: number; description: string | null; externalId: string }> = [];
 
     for (let i = 0; i < nullTransactions.length; i++) {
       const tx = nullTransactions[i];
@@ -85,7 +85,7 @@ async function backfillExternalIds() {
         // Generate external ID
         const externalId = generateSyntheticExternalId(
           firstEntry.purchaseDate,
-          tx.description,
+          tx.description || 'Despesa',
           tx.totalAmount
         );
 

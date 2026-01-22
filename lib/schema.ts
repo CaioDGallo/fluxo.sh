@@ -89,7 +89,7 @@ export const monthlyBudgets = pgTable(
 export const transactions = pgTable('transactions', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
-  description: text('description').notNull(),
+  description: text('description'),
   totalAmount: integer('total_amount').notNull(), // cents
   totalInstallments: integer('total_installments').notNull().default(1),
   categoryId: integer('category_id')
@@ -163,7 +163,7 @@ export const transfers = pgTable('transfers', {
 export const income = pgTable('income', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
-  description: text('description').notNull(),
+  description: text('description'),
   amount: integer('amount').notNull(), // cents
   categoryId: integer('category_id')
     .notNull()

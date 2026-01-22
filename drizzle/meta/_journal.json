@@ -183,6 +183,13 @@
       "when": 1769032339173,
       "tag": "0025_bright_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1769073399621,
+      "tag": "0026_rainy_pet_avengers",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { syncAccountBalance } from '@/lib/actions/accounts';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 export type CreateTransferData = {
   fromAccountId?: number | null;
@@ -87,6 +88,19 @@ export async function createTransfer(data: CreateTransferData) {
     if (data.toAccountId) {
       await syncAccountBalance(data.toAccountId, tx, userId);
     }
+  });
+
+  // PostHog event tracking
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: userId,
+    event: 'transfer_created',
+    properties: {
+      transfer_type: data.type,
+      amount_cents: data.amount,
+      has_from_account: data.fromAccountId !== null && data.fromAccountId !== undefined,
+      has_to_account: data.toAccountId !== null && data.toAccountId !== undefined,
+    },
   });
 
   revalidatePath('/transfers');

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { signIn } from 'next-auth/react';
+import posthog from 'posthog-js';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +63,9 @@ function LoginForm() {
         setError(t('authenticationFailed'));
         setCaptchaToken(null);
       } else {
+        // Identify user and capture login event
+        posthog.identify(email, { email });
+        posthog.capture('login_success', { email });
         router.push('/dashboard');
         router.refresh();
       }

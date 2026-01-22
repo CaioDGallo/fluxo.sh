@@ -9,6 +9,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { activeTransactionCondition } from '@/lib/query-helpers';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 export const getBudgetsForMonth = cache(async (yearMonth: string) => {
   const userId = await getCurrentUserId();
@@ -84,6 +85,19 @@ export async function upsertBudget(
     } else {
       await db.insert(budgets).values({ userId, categoryId, yearMonth, amount });
     }
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'budget_set',
+      properties: {
+        category_id: categoryId,
+        amount_cents: amount,
+        year_month: yearMonth,
+        is_update: existing.length > 0,
+      },
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/settings/budgets');

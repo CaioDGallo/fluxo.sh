@@ -22,6 +22,7 @@ import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { bulkIncrementCategoryFrequency } from '@/lib/actions/category-frequency';
 import { findRefundMatches } from '@/lib/import/refund-matcher';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 type SuggestionsInput = {
   expenseDescriptions: string[];
@@ -319,6 +320,19 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
     }
 
     await syncAccountBalance(accountId);
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'import_completed',
+      properties: {
+        import_type: 'expenses',
+        row_count: rows.length,
+        account_id: accountId,
+        is_credit_card: isCreditCard,
+      },
+    });
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
@@ -1008,6 +1022,21 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
     if (frequencyItems.length > 0) {
       await bulkIncrementCategoryFrequency(userId, frequencyItems);
     }
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'import_completed',
+      properties: {
+        import_type: 'mixed',
+        expense_count: newExpenses.length,
+        income_count: newIncome.length,
+        skipped_duplicates: skippedDuplicates,
+        account_id: accountId,
+        is_credit_card: isCreditCard,
+      },
+    });
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');

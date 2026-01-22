@@ -11,6 +11,7 @@ import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 export type CreateIncomeData = {
   description: string;
@@ -54,6 +55,18 @@ export async function createIncome(data: CreateIncomeData) {
 
     // Track category frequency for auto-suggestions
     await incrementCategoryFrequency(userId, data.description.trim(), data.categoryId, 'income');
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'income_created',
+      properties: {
+        amount_cents: data.amount,
+        category_id: data.categoryId,
+        account_id: data.accountId,
+      },
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/income');
@@ -146,6 +159,16 @@ export async function deleteIncome(incomeId: number) {
     await db.delete(income).where(and(eq(income.userId, userId), eq(income.id, incomeId)));
 
     await syncAccountBalance(existing.accountId);
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'income_deleted',
+      properties: {
+        income_id: incomeId,
+      },
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/income');

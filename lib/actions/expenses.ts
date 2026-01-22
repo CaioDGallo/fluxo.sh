@@ -14,6 +14,7 @@ import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 type CreateExpenseData = {
   description: string;
@@ -145,6 +146,21 @@ export async function createExpense(data: CreateExpenseData) {
 
     // Track category frequency for auto-suggestions
     await incrementCategoryFrequency(userId, data.description, data.categoryId, 'expense');
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'expense_created',
+      properties: {
+        total_amount_cents: data.totalAmount,
+        installments: data.installments,
+        category_id: data.categoryId,
+        account_id: data.accountId,
+        is_credit_card: isCreditCard,
+        has_installments: data.installments > 1,
+      },
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');
@@ -362,6 +378,16 @@ export async function deleteExpense(transactionId: number) {
     for (const accountId of affectedAccountIds) {
       await syncAccountBalance(accountId);
     }
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'expense_deleted',
+      properties: {
+        transaction_id: transactionId,
+      },
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');

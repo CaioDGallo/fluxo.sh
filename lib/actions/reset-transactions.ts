@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { handleDbError } from '@/lib/db-errors';
 import { reconcileAccountBalancesForUser } from '@/lib/actions/accounts';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 export async function resetAllTransactions(): Promise<
   | {
@@ -69,6 +70,21 @@ export async function resetAllTransactions(): Promise<
       // 6. Recalculate account balances
       const { updated } = await reconcileAccountBalancesForUser(userId, tx);
       accountsReconciled = updated;
+    });
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'data_reset',
+      properties: {
+        deleted_transfers: deletedTransfers,
+        deleted_faturas: deletedFaturas,
+        deleted_entries: deletedEntries,
+        deleted_transactions: deletedTransactions,
+        deleted_income: deletedIncome,
+        accounts_reconciled: accountsReconciled,
+      },
     });
 
     revalidatePath('/expenses');

@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email/send';
 import { t } from '@/lib/i18n/server-errors';
 import { checkLoginRateLimit, checkPasswordResetRateLimit } from '@/lib/rate-limit';
 import { getCurrentUserId } from '@/lib/auth';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * Validates rate limit and CAPTCHA before login
@@ -98,6 +99,16 @@ export async function forgotPassword(email: string) {
           <p>If you didn't request this, ignore this email.</p>
         `,
         text: `Reset your password: ${resetUrl}`,
+      });
+
+      // PostHog event tracking - track request (not user ID for privacy)
+      const posthog = getPostHogClient();
+      posthog.capture({
+        distinctId: 'anonymous',
+        event: 'password_reset_requested',
+        properties: {
+          // Don't include email or user info for privacy
+        },
       });
     }
 

@@ -10,6 +10,7 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
 import { cache } from 'react';
 import { syncAccountBalance } from '@/lib/actions/accounts';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 export type UnpaidFatura = {
   id: number;
@@ -703,6 +704,17 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
 
       await syncAccountBalance(fromAccountId, tx, userId);
       await syncAccountBalance(fatura[0].accountId, tx, userId);
+    });
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'fatura_paid',
+      properties: {
+        fatura_id: faturaId,
+        from_account_id: fromAccountId,
+      },
     });
 
     revalidateTag(`user-${userId}`, {});

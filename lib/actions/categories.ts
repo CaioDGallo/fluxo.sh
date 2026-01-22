@@ -8,6 +8,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -79,6 +80,18 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | '
   try {
     const userId = await getCurrentUserId();
     await db.insert(categories).values({ ...data, userId });
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'category_created',
+      properties: {
+        category_type: data.type,
+        has_icon: data.icon !== null && data.icon !== undefined,
+      },
+    });
+
     revalidatePath('/settings/categories');
     revalidatePath('/settings/budgets');
     revalidatePath('/budgets');

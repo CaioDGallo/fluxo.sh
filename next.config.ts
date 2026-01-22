@@ -12,6 +12,22 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  // Required for PostHog trailing slash API requests
+  skipTrailingSlashRedirect: true,
+
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
@@ -41,7 +57,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com",
+              "connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com us.i.posthog.com us.posthog.com",
               "frame-src 'self' challenges.cloudflare.com",
               "frame-ancestors 'none'",
             ].join('; '),

@@ -10,6 +10,7 @@ import { handleDbError } from '@/lib/db-errors';
 import { computeBalance } from '@/lib/balance';
 import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
 import { isValidBankLogo } from '@/lib/bank-logos';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -325,6 +326,19 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
       ...(data.currentBalance !== undefined && { lastBalanceUpdate: new Date() }),
     };
     await db.insert(accounts).values(accountData);
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'account_created',
+      properties: {
+        account_type: data.type,
+        has_credit_limit: data.creditLimit !== null && data.creditLimit !== undefined,
+        has_bank_logo: data.bankLogo !== null && data.bankLogo !== undefined,
+      },
+    });
+
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');
     return { success: true };
@@ -393,6 +407,17 @@ export async function deleteAccount(id: number) {
   try {
     const userId = await getCurrentUserId();
     await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
+
+    // PostHog event tracking
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: userId,
+      event: 'account_deleted',
+      properties: {
+        account_id: id,
+      },
+    });
+
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');
   } catch (error) {

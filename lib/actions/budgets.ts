@@ -88,16 +88,18 @@ export async function upsertBudget(
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'budget_set',
-      properties: {
-        category_id: categoryId,
-        amount_cents: amount,
-        year_month: yearMonth,
-        is_update: existing.length > 0,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'budget_set',
+        properties: {
+          category_id: categoryId,
+          amount_cents: amount,
+          year_month: yearMonth,
+          is_update: existing.length > 0,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/settings/budgets');

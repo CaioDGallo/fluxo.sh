@@ -92,16 +92,18 @@ export async function createTransfer(data: CreateTransferData) {
 
   // PostHog event tracking
   const posthog = getPostHogClient();
-  posthog.capture({
-    distinctId: userId,
-    event: 'transfer_created',
-    properties: {
-      transfer_type: data.type,
-      amount_cents: data.amount,
-      has_from_account: data.fromAccountId !== null && data.fromAccountId !== undefined,
-      has_to_account: data.toAccountId !== null && data.toAccountId !== undefined,
-    },
-  });
+  if (posthog) {
+    posthog.capture({
+      distinctId: userId,
+      event: 'transfer_created',
+      properties: {
+        transfer_type: data.type,
+        amount_cents: data.amount,
+        has_from_account: data.fromAccountId !== null && data.fromAccountId !== undefined,
+        has_to_account: data.toAccountId !== null && data.toAccountId !== undefined,
+      },
+    });
+  }
 
   revalidatePath('/transfers');
   revalidatePath('/dashboard');

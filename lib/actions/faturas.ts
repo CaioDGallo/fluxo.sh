@@ -708,14 +708,16 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'fatura_paid',
-      properties: {
-        fatura_id: faturaId,
-        from_account_id: fromAccountId,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'fatura_paid',
+        properties: {
+          fatura_id: faturaId,
+          from_account_id: fromAccountId,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/faturas');

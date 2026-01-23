@@ -83,14 +83,16 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | '
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'category_created',
-      properties: {
-        category_type: data.type,
-        has_icon: data.icon !== null && data.icon !== undefined,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'category_created',
+        properties: {
+          category_type: data.type,
+          has_icon: data.icon !== null && data.icon !== undefined,
+        },
+      });
+    }
 
     revalidatePath('/settings/categories');
     revalidatePath('/settings/budgets');

@@ -66,15 +66,17 @@ export async function createIncome(data: CreateIncomeData) {
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'income_created',
-      properties: {
-        amount_cents: data.amount,
-        category_id: data.categoryId,
-        account_id: data.accountId,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'income_created',
+        properties: {
+          amount_cents: data.amount,
+          category_id: data.categoryId,
+          account_id: data.accountId,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/income');
@@ -178,13 +180,15 @@ export async function deleteIncome(incomeId: number) {
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'income_deleted',
-      properties: {
-        income_id: incomeId,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'income_deleted',
+        properties: {
+          income_id: incomeId,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/income');

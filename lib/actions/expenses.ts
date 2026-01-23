@@ -157,18 +157,20 @@ export async function createExpense(data: CreateExpenseData) {
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'expense_created',
-      properties: {
-        total_amount_cents: data.totalAmount,
-        installments: data.installments,
-        category_id: data.categoryId,
-        account_id: data.accountId,
-        is_credit_card: isCreditCard,
-        has_installments: data.installments > 1,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'expense_created',
+        properties: {
+          total_amount_cents: data.totalAmount,
+          installments: data.installments,
+          category_id: data.categoryId,
+          account_id: data.accountId,
+          is_credit_card: isCreditCard,
+          has_installments: data.installments > 1,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');
@@ -397,13 +399,15 @@ export async function deleteExpense(transactionId: number) {
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'expense_deleted',
-      properties: {
-        transaction_id: transactionId,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'expense_deleted',
+        properties: {
+          transaction_id: transactionId,
+        },
+      });
+    }
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');

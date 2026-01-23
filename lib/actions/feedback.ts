@@ -27,21 +27,23 @@ export async function submitFeedback(
     const posthog = getPostHogClient();
 
     // Capture feedback event in PostHog
-    posthog.capture({
-      distinctId: session.user.id,
-      event: 'feedback_submitted',
-      properties: {
-        feedback_type: input.type,
-        feedback_message: input.message,
-        current_page: input.currentPage,
-        user_agent: input.userAgent,
-        user_email: session.user.email,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: session.user.id,
+        event: 'feedback_submitted',
+        properties: {
+          feedback_type: input.type,
+          feedback_message: input.message,
+          current_page: input.currentPage,
+          user_agent: input.userAgent,
+          user_email: session.user.email,
+          timestamp: new Date().toISOString(),
+        },
+      });
 
-    // Flush immediately to ensure event is captured
-    await posthog.flush();
+      // Flush immediately to ensure event is captured
+      await posthog.flush();
+    }
 
     return { success: true };
   } catch (error) {

@@ -74,18 +74,20 @@ export async function resetAllTransactions(): Promise<
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'data_reset',
-      properties: {
-        deleted_transfers: deletedTransfers,
-        deleted_faturas: deletedFaturas,
-        deleted_entries: deletedEntries,
-        deleted_transactions: deletedTransactions,
-        deleted_income: deletedIncome,
-        accounts_reconciled: accountsReconciled,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'data_reset',
+        properties: {
+          deleted_transfers: deletedTransfers,
+          deleted_faturas: deletedFaturas,
+          deleted_entries: deletedEntries,
+          deleted_transactions: deletedTransactions,
+          deleted_income: deletedIncome,
+          accounts_reconciled: accountsReconciled,
+        },
+      });
+    }
 
     revalidatePath('/expenses');
     revalidatePath('/income');

@@ -3,8 +3,8 @@ import { PostHog } from 'posthog-node';
 let posthogClient: PostHog | null = null;
 
 export function getPostHogClient() {
-  if (!posthogClient) {
-    posthogClient = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  if (!posthogClient && process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+    posthogClient = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
       host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
       flushAt: 1,
       flushInterval: 0,

@@ -103,13 +103,15 @@ export async function forgotPassword(email: string) {
 
       // PostHog event tracking - track request (not user ID for privacy)
       const posthog = getPostHogClient();
-      posthog.capture({
-        distinctId: 'anonymous',
-        event: 'password_reset_requested',
-        properties: {
-          // Don't include email or user info for privacy
-        },
-      });
+      if (posthog) {
+        posthog.capture({
+          distinctId: 'anonymous',
+          event: 'password_reset_requested',
+          properties: {
+            // Don't include email or user info for privacy
+          },
+        });
+      }
     }
 
     // Always return success (prevent email enumeration)

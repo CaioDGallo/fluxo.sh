@@ -329,15 +329,17 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'account_created',
-      properties: {
-        account_type: data.type,
-        has_credit_limit: data.creditLimit !== null && data.creditLimit !== undefined,
-        has_bank_logo: data.bankLogo !== null && data.bankLogo !== undefined,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'account_created',
+        properties: {
+          account_type: data.type,
+          has_credit_limit: data.creditLimit !== null && data.creditLimit !== undefined,
+          has_bank_logo: data.bankLogo !== null && data.bankLogo !== undefined,
+        },
+      });
+    }
 
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');
@@ -410,13 +412,15 @@ export async function deleteAccount(id: number) {
 
     // PostHog event tracking
     const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: userId,
-      event: 'account_deleted',
-      properties: {
-        account_id: id,
-      },
-    });
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: 'account_deleted',
+        properties: {
+          account_id: id,
+        },
+      });
+    }
 
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');

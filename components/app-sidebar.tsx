@@ -1,24 +1,11 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { HugeiconsIcon } from '@hugeicons/react';
+import { LogoutButton } from '@/components/logout-button';
 import {
-  Home01Icon,
-  Invoice03Icon,
-  Wallet01Icon,
-  Settings01Icon,
-  ArrowRight01Icon,
-  SparklesIcon,
-  CreditCardIcon,
-  CalendarIcon,
-  Calendar03Icon,
-  ArrowLeftRightIcon,
-  Notification02Icon,
-  Settings02Icon,
-  FileDownloadIcon,
-} from '@hugeicons/core-free-icons';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Sidebar,
   SidebarContent,
@@ -36,11 +23,23 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { LogoutButton } from '@/components/logout-button';
+  ArrowLeftRightIcon,
+  ArrowRight01Icon,
+  CalendarIcon,
+  CreditCardIcon,
+  FileDownloadIcon,
+  Home01Icon,
+  Invoice03Icon,
+  Notification02Icon,
+  Settings01Icon,
+  Settings02Icon,
+  SparklesIcon,
+  Wallet01Icon
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const navItems = [
   { key: 'dashboard', href: '/dashboard', icon: Home01Icon },
@@ -57,10 +56,8 @@ const settingsItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
-  { key: 'calendars', href: '/settings/calendars', icon: Calendar03Icon },
-  { key: 'preferences', href: '/settings/preferences', icon: Notification02Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
-  { key: 'settings', href: '/settings/data', icon: Settings02Icon },
+  { key: 'settings', href: '/settings', icon: Settings02Icon },
 ];
 
 export function AppSidebar() {

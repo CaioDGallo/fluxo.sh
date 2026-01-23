@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -9,24 +8,25 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
-  ArrowUp01Icon,
   ArrowLeftRightIcon,
-  CreditCardIcon,
-  Invoice03Icon,
-  SparklesIcon,
-  Wallet01Icon,
+  ArrowUp01Icon,
   Calendar03Icon,
+  CreditCardIcon,
+  FileDownloadIcon,
+  Invoice03Icon,
+  Message01Icon,
   Notification02Icon,
   Settings02Icon,
-  FileDownloadIcon,
-  Message01Icon,
+  SparklesIcon,
+  Wallet01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogoutButton } from './logout-button';
+import { useState } from 'react';
 import { FeedbackSheet } from './feedback-sheet';
+import { LogoutButton } from './logout-button';
 
 const moreItems = [
   { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
@@ -37,10 +37,8 @@ const moreItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
-  { key: 'calendars', href: '/settings/calendars', icon: Calendar03Icon },
-  { key: 'preferences', href: '/settings/preferences', icon: Notification02Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
-  { key: 'settings', href: '/settings/data', icon: Settings02Icon },
+  { key: 'settings', href: '/settings', icon: Settings02Icon },
 ];
 
 type MoreSheetProps = {

@@ -23,6 +23,7 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   // Check for error parameter from OAuth callback
   useEffect(() => {
@@ -49,6 +50,7 @@ function LoginForm() {
       if (!validation.allowed) {
         setError(validation.error || t('unexpectedError'));
         setCaptchaToken(null);
+        setCaptchaKey((prev) => prev + 1);
         return;
       }
 
@@ -63,6 +65,7 @@ function LoginForm() {
       if (result?.error) {
         setError(t('authenticationFailed'));
         setCaptchaToken(null);
+        setCaptchaKey((prev) => prev + 1);
       } else {
         // Identify user and capture login event
         posthog.identify(email, { email });
@@ -73,6 +76,7 @@ function LoginForm() {
     } catch {
       setError(t('unexpectedError'));
       setCaptchaToken(null);
+      setCaptchaKey((prev) => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -126,6 +130,7 @@ function LoginForm() {
 
             <div>
               <Turnstile
+                key={captchaKey}
                 siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
                 onSuccess={(token) => setCaptchaToken(token)}
                 onError={() => setCaptchaToken(null)}

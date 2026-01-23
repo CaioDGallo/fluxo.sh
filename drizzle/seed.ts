@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { sql } from 'drizzle-orm';
 import { reset, seed } from 'drizzle-seed';
 import { db } from '../lib/db';
-import { getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
+import { computeClosingDate, getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
 import * as schema from '../lib/schema';
 import { addMonths, getCurrentYearMonth } from '../lib/utils';
 import { DEFAULT_CATEGORIES } from '../lib/user-setup/default-categories';
@@ -108,8 +108,6 @@ const idCounters: Record<SeedTableKey, number> = {
   billReminders: 0,
 };
 
-const tableSchema = (tableKey: SeedTableKey) => ({ [tableKey]: seedSchema[tableKey] });
-
 function assignIds<T extends SeedRow>(tableKey: SeedTableKey, rows: T[]) {
   if (!serialTables.has(tableKey)) {
     return rows;
@@ -121,26 +119,6 @@ function assignIds<T extends SeedRow>(tableKey: SeedTableKey, rows: T[]) {
   });
 }
 
-async function seedRow(tableKey: SeedTableKey, row: SeedRow) {
-  await seed(db, tableSchema(tableKey)).refine((funcs) => {
-    const columns = Object.fromEntries(
-      Object.entries(row)
-        .filter(([, value]) => value !== undefined)
-        .map(([column, value]) => [
-          column,
-          funcs.valuesFromArray({ values: [value as number | string | boolean | null] }),
-        ])
-    );
-
-    return {
-      [tableKey]: {
-        count: 1,
-        columns,
-      },
-    };
-  });
-}
-
 async function seedRows(tableKey: SeedTableKey, rows: SeedRow[]) {
   const rowsWithIds = assignIds(tableKey, rows);
 
@@ -148,11 +126,11 @@ async function seedRows(tableKey: SeedTableKey, rows: SeedRow[]) {
     return rowsWithIds;
   }
 
-  for (const row of rowsWithIds) {
-    await seedRow(tableKey, row);
-  }
+  // Use direct inserts instead of drizzle-seed to avoid constraint violations
+  const table = seedSchema[tableKey];
+  const inserted = await db.insert(table).values(rowsWithIds as any[]).returning();
 
-  return rowsWithIds;
+  return inserted;
 }
 
 async function resetSequences() {
@@ -222,13 +200,13 @@ const categoriesData = DEFAULT_CATEGORIES;
 function createBudgets(categoryIds: Record<string, number>, userId: string) {
   const months = [CURRENT_MONTH, PREV_MONTH, TWO_MONTHS_AGO];
   const budgetAmounts: Record<string, number> = {
-    'Alimentação': 80000, // R$ 800
+    'Alimentacao': 80000, // R$ 800
     'Transporte': 50000, // R$ 500
     'Entretenimento': 30000, // R$ 300
     'Compras': 60000, // R$ 600
-    'Saúde': 40000, // R$ 400
+    'Saude': 40000, // R$ 400
     'Contas': 120000, // R$ 1200
-    'Educação': 20000, // R$ 200
+    'Educacao': 20000, // R$ 200
   };
 
   return months.flatMap((month) =>
@@ -258,7 +236,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'iFood mensal',
     totalAmount: 35000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
@@ -268,7 +246,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Mercado Extra',
     totalAmount: 28000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Itaú Corrente',
     startMonth: 0,
     installments: 1,
@@ -278,7 +256,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Padaria Zé',
     totalAmount: 4500,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Carteira',
     startMonth: 0,
     installments: 1,
@@ -288,7 +266,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Restaurante Família',
     totalAmount: 18000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
@@ -298,7 +276,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Supermercado Dia',
     totalAmount: 9500,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Carteira',
     startMonth: 0,
     installments: 1,
@@ -418,7 +396,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Curso Udemy',
     totalAmount: 6000,
-    categoryName: 'Educação',
+    categoryName: 'Educacao',
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
@@ -432,7 +410,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'iFood',
     totalAmount: 32000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Nubank',
     startMonth: -1,
     installments: 1,
@@ -442,7 +420,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Mercado',
     totalAmount: 25000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Itaú Corrente',
     startMonth: -1,
     installments: 1,
@@ -452,7 +430,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Consulta Médica',
     totalAmount: 35000,
-    categoryName: 'Saúde',
+    categoryName: 'Saude',
     accountName: 'Nubank',
     startMonth: -1,
     installments: 1,
@@ -474,7 +452,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Curso Online',
     totalAmount: 18000,
-    categoryName: 'Educação',
+    categoryName: 'Educacao',
     accountName: 'Nubank',
     startMonth: -2,
     installments: 3,
@@ -497,7 +475,7 @@ const transactionsData: TransactionSeed[] = [
   {
     description: 'Teste pagamento - cancelado',
     totalAmount: 15000,
-    categoryName: 'Alimentação',
+    categoryName: 'Alimentacao',
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
@@ -534,7 +512,7 @@ const incomeData: IncomeSeed[] = [
   {
     description: 'Salário mensal',
     amount: 500000, // R$ 5,000
-    categoryName: 'Salário',
+    categoryName: 'Salario',
     accountName: 'Itaú Corrente',
     monthOffset: 0,
     day: 5,
@@ -563,7 +541,7 @@ const incomeData: IncomeSeed[] = [
   {
     description: 'Salário mensal',
     amount: 500000,
-    categoryName: 'Salário',
+    categoryName: 'Salario',
     accountName: 'Itaú Corrente',
     monthOffset: -1,
     day: 5,
@@ -583,7 +561,7 @@ const incomeData: IncomeSeed[] = [
   {
     description: 'Salário mensal',
     amount: 500000,
-    categoryName: 'Salário',
+    categoryName: 'Salario',
     accountName: 'Itaú Corrente',
     monthOffset: -2,
     day: 5,
@@ -789,6 +767,7 @@ async function seedDatabase() {
       const account = accountsById[group.accountId];
 
       if (account.type === 'credit_card' && account.closingDay && account.paymentDueDay) {
+        const closingDate = computeClosingDate(group.faturaMonth, account.closingDay);
         const dueDate = getFaturaPaymentDueDate(
           group.faturaMonth,
           account.paymentDueDay,
@@ -804,6 +783,7 @@ async function seedDatabase() {
           userId: TEST_USER_ID,
           accountId: group.accountId,
           yearMonth: group.faturaMonth,
+          closingDate,
           totalAmount: group.total,
           dueDate,
           paidAt,
@@ -972,20 +952,20 @@ async function seedDatabase() {
     console.log('  🔍 Inserting category frequency data...');
     const categoryFrequencyRecords = [
       // Expense patterns
-      { userId: TEST_USER_ID, descriptionNormalized: 'ifood', categoryId: categoryMap['Alimentação'], type: 'expense' as const, count: 5, lastUsedAt: new Date() },
-      { userId: TEST_USER_ID, descriptionNormalized: 'mercado', categoryId: categoryMap['Alimentação'], type: 'expense' as const, count: 8, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'ifood', categoryId: categoryMap['Alimentacao'], type: 'expense' as const, count: 5, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'mercado', categoryId: categoryMap['Alimentacao'], type: 'expense' as const, count: 8, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'uber', categoryId: categoryMap['Transporte'], type: 'expense' as const, count: 12, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'gasolina', categoryId: categoryMap['Transporte'], type: 'expense' as const, count: 6, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'netflix', categoryId: categoryMap['Entretenimento'], type: 'expense' as const, count: 10, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'spotify', categoryId: categoryMap['Entretenimento'], type: 'expense' as const, count: 8, lastUsedAt: new Date() },
-      { userId: TEST_USER_ID, descriptionNormalized: 'farmacia', categoryId: categoryMap['Saúde'], type: 'expense' as const, count: 4, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'farmacia', categoryId: categoryMap['Saude'], type: 'expense' as const, count: 4, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'aluguel', categoryId: categoryMap['Contas'], type: 'expense' as const, count: 15, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'luz', categoryId: categoryMap['Contas'], type: 'expense' as const, count: 12, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'internet', categoryId: categoryMap['Contas'], type: 'expense' as const, count: 11, lastUsedAt: new Date() },
-      { userId: TEST_USER_ID, descriptionNormalized: 'curso', categoryId: categoryMap['Educação'], type: 'expense' as const, count: 3, lastUsedAt: new Date() },
-      { userId: TEST_USER_ID, descriptionNormalized: 'livro', categoryId: categoryMap['Educação'], type: 'expense' as const, count: 2, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'curso', categoryId: categoryMap['Educacao'], type: 'expense' as const, count: 3, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'livro', categoryId: categoryMap['Educacao'], type: 'expense' as const, count: 2, lastUsedAt: new Date() },
       // Income patterns
-      { userId: TEST_USER_ID, descriptionNormalized: 'salario', categoryId: categoryMap['Salário'], type: 'income' as const, count: 20, lastUsedAt: new Date() },
+      { userId: TEST_USER_ID, descriptionNormalized: 'salario', categoryId: categoryMap['Salario'], type: 'income' as const, count: 20, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'freelance', categoryId: categoryMap['Freelance'], type: 'income' as const, count: 7, lastUsedAt: new Date() },
       { userId: TEST_USER_ID, descriptionNormalized: 'dividendos', categoryId: categoryMap['Investimentos'], type: 'income' as const, count: 4, lastUsedAt: new Date() },
     ];
@@ -1640,7 +1620,7 @@ async function seedDatabase() {
       {
         userId: TEST_USER_ID,
         name: 'Academia SmartFit',
-        categoryId: categoryMap['Saúde'],
+        categoryId: categoryMap['Saude'],
         amount: 8000, // R$ 80
         dueDay: 5,
         dueTime: null,

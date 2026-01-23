@@ -32,7 +32,6 @@ const moreItems = [
   { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
-  { key: 'income', href: '/income', icon: ArrowUp01Icon },
   { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },

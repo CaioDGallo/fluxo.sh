@@ -529,7 +529,9 @@
     "tooManyAttempts": "Muitas tentativas. Tente novamente em {retryAfter}s.",
     "alreadyHaveAccount": "Já tem conta?",
     "signIn": "Entrar",
-    "backToInvite": "← Voltar para código do convite"
+    "backToInvite": "← Voltar para código do convite",
+    "oauthNewUser": "Você precisa de um código de convite para criar uma conta. Digite o código abaixo para continuar.",
+    "oauthInvalidInvite": "O código de convite usado não é válido. Digite um código válido para continuar."
   },
   "auth": {
     "orContinueWith": "Ou continuar com"

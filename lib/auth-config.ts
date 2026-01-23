@@ -5,9 +5,9 @@ import Credentials from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
 import { db } from '@/lib/db';
-import { users } from '@/lib/auth-schema';
+import { users, authAccounts } from '@/lib/auth-schema';
 import bcrypt from 'bcryptjs';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { setupNewUser } from '@/lib/user-setup/setup-new-user';
 import { getStoredInviteCode, clearStoredInviteCode, validateInviteCode } from '@/lib/actions/signup';
 import { invites } from '@/lib/auth-schema';
@@ -123,7 +123,7 @@ export const authConfig: NextAuthOptions = {
         const inviteCode = await getStoredInviteCode();
         if (!inviteCode) {
           console.log('[AUTH] OAuth signup rejected - no invite code');
-          return '/login?error=auth_failed';
+          return '/signup?error=oauth_new_user';
         }
 
         // Validate invite
@@ -131,7 +131,7 @@ export const authConfig: NextAuthOptions = {
         if (!validation.valid) {
           console.log('[AUTH] OAuth signup rejected - invalid invite:', validation.error);
           await clearStoredInviteCode();
-          return '/login?error=auth_failed';
+          return '/signup?error=oauth_invalid_invite';
         }
 
         // Store invite ID in user object for jwt callback
@@ -150,14 +150,17 @@ export const authConfig: NextAuthOptions = {
             where: eq(users.email, user.email as string),
           });
 
+          let userId: string;
+
           if (existingUser) {
             // Existing user - just set token ID
             token.id = existingUser.id;
+            userId = existingUser.id;
           } else {
             // New OAuth user - create in database
             console.log('[AUTH] Creating new OAuth user:', user.email);
             const { randomUUID } = await import('crypto');
-            const userId = randomUUID();
+            userId = randomUUID();
 
             await db.insert(users).values({
               id: userId,
@@ -194,6 +197,30 @@ export const authConfig: NextAuthOptions = {
               // Clear cookie
               await clearStoredInviteCode();
             }
+          }
+
+          // Persist OAuth account link (both for new and existing users)
+          const existingAccount = await db.query.authAccounts.findFirst({
+            where: and(
+              eq(authAccounts.provider, account.provider),
+              eq(authAccounts.providerAccountId, account.providerAccountId)
+            ),
+          });
+
+          if (!existingAccount) {
+            console.log('[AUTH] Linking OAuth account:', account.provider, 'for user:', userId);
+            await db.insert(authAccounts).values({
+              userId,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token ?? null,
+              refresh_token: account.refresh_token ?? null,
+              expires_at: account.expires_at ?? null,
+              token_type: account.token_type ?? null,
+              scope: account.scope ?? null,
+              id_token: account.id_token ?? null,
+            });
           }
         } else {
           // Credentials login - user already exists in DB

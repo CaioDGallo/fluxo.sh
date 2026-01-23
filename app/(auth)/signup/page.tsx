@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signIn } from 'next-auth/react';
 import posthog from 'posthog-js';
@@ -18,6 +19,7 @@ export default function SignupPage() {
   const t = useTranslations('signup');
   const tAuth = useTranslations('auth');
   const tCommon = useTranslations('common');
+  const searchParams = useSearchParams();
 
   const [step, setStep] = useState<Step>('invite');
   const [inviteCode, setInviteCode] = useState('');
@@ -27,6 +29,18 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  // Handle OAuth errors from URL parameters
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'oauth_new_user') {
+      setError(t('oauthNewUser'));
+      setStep('invite');
+    } else if (errorParam === 'oauth_invalid_invite') {
+      setError(t('oauthInvalidInvite'));
+      setStep('invite');
+    }
+  }, [searchParams, t]);
 
   async function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault();

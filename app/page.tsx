@@ -13,11 +13,11 @@ import { LandingCtaTracker } from '@/components/tracking/landing-cta-tracker';
 import { LandingWaitlistForm } from '@/components/tracking/landing-waitlist-form';
 
 export const metadata: Metadata = {
-  title: 'Fluxo.sh | Financas pessoais no Brasil',
-  description: 'Fluxo.sh organiza gastos, receitas e faturas com parcelas. Feito para o Brasil.',
+  title: 'Fluxo.sh | Controle financeiro sem planilha',
+  description: 'Organize gastos, receitas, faturas e parcelas no mês certo. Importe e exporte seus dados.',
   openGraph: {
     title: 'Fluxo.sh',
-    description: 'Controle financeiro pessoal com parcelas e faturas.',
+    description: 'Controle financeiro pessoal com parcelas, faturas e exportação de dados.',
     type: 'website',
   },
 };

@@ -19,6 +19,7 @@ import {
   Notification02Icon,
   Settings02Icon,
   FileDownloadIcon,
+  Message01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
@@ -27,7 +28,7 @@ import { usePathname } from 'next/navigation';
 import { ThemeToggleRow } from './theme-toggle-row';
 import { LanguageToggleRow } from './language-toggle-row';
 import { LogoutButton } from './logout-button';
-import { FeedbackForm } from './feedback-form';
+import { FeedbackSheet } from './feedback-sheet';
 
 const moreItems = [
   { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
@@ -56,83 +57,66 @@ export function MoreSheet({
   const t = useTranslations('navigation');
   const tFeedback = useTranslations('feedback');
   const pathname = usePathname();
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      setShowFeedbackForm(false);
-    }
-    onOpenChange(newOpen);
+  const handleFeedbackClick = () => {
+    onOpenChange(false); // Close More sheet
+    setFeedbackOpen(true); // Open Feedback sheet
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="bottom"
-        className={cn(
-          'pb-[env(safe-area-inset-bottom)]',
-          'backdrop-blur-xl bg-background/95',
-          'max-h-[80vh] flex flex-col'
-        )}
-      >
-        <SheetHeader className="shrink-0">
-          <SheetTitle>{showFeedbackForm ? tFeedback('title') : t('more')}</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className={cn(
+            'pb-[env(safe-area-inset-bottom)]',
+            'backdrop-blur-xl bg-background/95',
+            'max-h-[80vh] flex flex-col'
+          )}
+        >
+          <SheetHeader className="shrink-0">
+            <SheetTitle>{t('more')}</SheetTitle>
+          </SheetHeader>
 
-        {showFeedbackForm ? (
-          <div className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0 py-4">
-            <button
-              onClick={() => setShowFeedbackForm(false)}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground px-4"
-            >
-              <span>←</span>
-              <span>{t('more')}</span>
-            </button>
-            <div className="px-4">
-              <FeedbackForm onSuccess={() => {
-                handleOpenChange(false);
-              }} />
-            </div>
-          </div>
-        ) : (
-          <>
-            <nav className="flex flex-col gap-1 py-4 overflow-y-auto flex-1 min-h-0">
-              {moreItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => handleOpenChange(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-md shrink-0',
-                    'text-foreground hover:bg-muted transition-colors',
-                    pathname === item.href && 'bg-muted font-medium'
-                  )}
-                >
-                  <HugeiconsIcon icon={item.icon} className="size-5" />
-                  <span>{t(item.key)}</span>
-                </Link>
-              ))}
-              <ThemeToggleRow />
-              <LanguageToggleRow />
-            </nav>
-
-            {/* Feedback and Logout at bottom */}
-            <div className="border-t pt-4 pb-3 mt-2 shrink-0 flex flex-col gap-2">
-              <button
-                onClick={() => setShowFeedbackForm(true)}
+          <nav className="flex flex-col gap-1 py-4 overflow-y-auto flex-1 min-h-0">
+            {moreItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => onOpenChange(false)}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-md',
-                  'text-foreground hover:bg-muted transition-colors'
+                  'flex items-center gap-3 px-4 py-3 rounded-md shrink-0',
+                  'text-foreground hover:bg-muted transition-colors',
+                  pathname === item.href && 'bg-muted font-medium'
                 )}
               >
-                <HugeiconsIcon icon={Notification02Icon} className="size-5" />
-                <span>{tFeedback('button')}</span>
-              </button>
-              <LogoutButton variant="mobile" />
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
+                <HugeiconsIcon icon={item.icon} className="size-5" />
+                <span>{t(item.key)}</span>
+              </Link>
+            ))}
+            <ThemeToggleRow />
+            <LanguageToggleRow />
+          </nav>
+
+          {/* Feedback and Logout at bottom */}
+          <div className="border-t pt-4 pb-3 mt-2 shrink-0 flex flex-col gap-2">
+            <button
+              onClick={handleFeedbackClick}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-md',
+                'text-foreground hover:bg-muted transition-colors'
+              )}
+            >
+              <HugeiconsIcon icon={Message01Icon} className="size-5" />
+              <span>{tFeedback('button')}</span>
+            </button>
+            <LogoutButton variant="mobile" />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <FeedbackSheet open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+    </>
   );
 }

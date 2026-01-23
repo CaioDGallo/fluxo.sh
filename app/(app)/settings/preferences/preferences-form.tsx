@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { updateUserSettings } from '@/lib/actions/user-settings';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { setLocale } from '@/lib/i18n/actions';
 import type { UserSettings } from '@/lib/schema';
+import type { Locale } from '@/lib/i18n/config';
+
+type Theme = 'light' | 'dark' | 'system';
 
 const TIMEZONES = [
   'UTC',
@@ -34,7 +38,54 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Theme state
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system';
+    return (localStorage.getItem('theme') as Theme | null) || 'system';
+  });
+
+  // Language state
+  const locale = useLocale() as Locale;
+  const [isPendingLocale, startTransition] = useTransition();
+
   const t = useTranslations('preferences');
+  const tTheme = useTranslations('theme');
+  const tLanguage = useTranslations('language');
+
+  // Apply theme changes
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyTheme = () => {
+      if (theme === 'dark') {
+        root.classList.add('dark');
+      } else if (theme === 'light') {
+        root.classList.remove('dark');
+      } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }
+    };
+
+    applyTheme();
+    localStorage.setItem('theme', theme);
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      mediaQuery.addEventListener('change', applyTheme);
+      return () => mediaQuery.removeEventListener('change', applyTheme);
+    }
+  }, [theme]);
+
+  const handleLanguageChange = (newLocale: string) => {
+    startTransition(async () => {
+      await setLocale(newLocale as Locale);
+    });
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +118,38 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
+        {/* Appearance Section */}
+        <Field>
+          <FieldLabel htmlFor="theme">{tTheme('label')}</FieldLabel>
+          <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+            <SelectTrigger id="theme">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="system">{tTheme('system')}</SelectItem>
+                <SelectItem value="light">{tTheme('light')}</SelectItem>
+                <SelectItem value="dark">{tTheme('dark')}</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="language">{tLanguage('label')}</FieldLabel>
+          <Select value={locale} onValueChange={handleLanguageChange} disabled={isPendingLocale}>
+            <SelectTrigger id="language">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="pt-BR">{tLanguage('portuguese')}</SelectItem>
+                <SelectItem value="en">{tLanguage('english')}</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+
         <Field>
           <FieldLabel htmlFor="timezone">{t('timezone')}</FieldLabel>
           <Select value={timezone} onValueChange={setTimezone}>

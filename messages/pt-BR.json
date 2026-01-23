@@ -992,6 +992,23 @@
     "noDataDescription": "Não há transações no período selecionado.",
     "formatInfo": "O arquivo CSV será exportado com separadores de coluna e codificação UTF-8 para compatibilidade com Excel."
   },
+  "feedback": {
+    "button": "Feedback",
+    "title": "Enviar Feedback",
+    "type": "Tipo",
+    "types": {
+      "bug": "Bug",
+      "suggestion": "Sugestão",
+      "other": "Outro"
+    },
+    "message": "Mensagem",
+    "messagePlaceholder": "Descreva o problema ou sugestão...",
+    "screenshot": "Captura de tela (opcional)",
+    "submit": "Enviar",
+    "submitting": "Enviando…",
+    "success": "Feedback enviado! Obrigado.",
+    "error": "Erro ao enviar feedback"
+  },
   "landing": {
     "tagline": "Controle financeiro sem planilha",
     "title": "Fluxo. Seu dinheiro no piloto automático.",

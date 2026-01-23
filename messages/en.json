@@ -982,6 +982,23 @@
     "noDataDescription": "There are no transactions in the selected period.",
     "formatInfo": "The CSV file will be exported with column separators and UTF-8 encoding for Excel compatibility."
   },
+  "feedback": {
+    "button": "Feedback",
+    "title": "Submit Feedback",
+    "type": "Type",
+    "types": {
+      "bug": "Bug",
+      "suggestion": "Suggestion",
+      "other": "Other"
+    },
+    "message": "Message",
+    "messagePlaceholder": "Describe the issue or suggestion...",
+    "screenshot": "Screenshot (optional)",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "success": "Feedback submitted! Thank you.",
+    "error": "Error submitting feedback"
+  },
   "landing": {
     "tagline": "Finance control without spreadsheets",
     "title": "Fluxo. Your money on autopilot.",

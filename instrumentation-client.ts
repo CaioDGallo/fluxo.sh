@@ -5,5 +5,6 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   ui_host: 'https://us.posthog.com',
   defaults: '2025-11-30',
   capture_exceptions: true,
+  capture_performance: false,
   debug: process.env.NODE_ENV === 'development',
 });

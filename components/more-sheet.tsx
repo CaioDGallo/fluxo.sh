@@ -109,7 +109,7 @@ export function MoreSheet({
                   <span>{t(item.key)}</span>
                 </Link>
               ))}
-              <ThemeToggleRow iconOnly={false} showLabel={true} />
+              <ThemeToggleRow />
               <LanguageToggleRow />
             </nav>
 

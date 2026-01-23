@@ -23,7 +23,7 @@ const PRESET_COLORS = [
 
 export function CategoryStep() {
   const t = useTranslations('onboarding.category');
-  const { nextStep } = useOnboarding();
+  const { nextStep, setLastCreatedCategoryId } = useOnboarding();
   const [name, setName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [isCreating, setIsCreating] = useState(false);
@@ -43,6 +43,9 @@ export function CategoryStep() {
     setIsCreating(false);
 
     if (result.success) {
+      if (result.data?.id) {
+        setLastCreatedCategoryId(result.data.id);
+      }
       toast.success(t('categoryCreated'));
       nextStep();
     } else {

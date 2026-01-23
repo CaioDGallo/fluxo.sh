@@ -8,6 +8,7 @@ interface OnboardingContextValue {
   currentStep: number;
   hintsViewed: Set<string>;
   needsOnboarding: boolean;
+  lastCreatedCategoryId: number | null;
 
   // Actions
   nextStep: () => void;
@@ -17,6 +18,7 @@ interface OnboardingContextValue {
   closeWizard: () => void;
   isHintViewed: (key: string) => boolean;
   markHintViewed: (key: string) => Promise<void>;
+  setLastCreatedCategoryId: (id: number | null) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
@@ -40,6 +42,23 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       }
     }
     return new Set();
+  });
+
+  // Initialize lastCreatedCategoryId from localStorage
+  const [lastCreatedCategoryId, setLastCreatedCategoryIdState] = useState<number | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const cachedId = localStorage.getItem('onboarding-last-category');
+    if (cachedId) {
+      try {
+        return parseInt(cachedId, 10);
+      } catch (e) {
+        console.error('Failed to parse cached category ID:', e);
+        return null;
+      }
+    }
+    return null;
   });
 
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -106,6 +125,16 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setNeedsOnboarding(false);
     localStorage.removeItem('onboarding-wizard-status');
     localStorage.removeItem('onboarding-step');
+    localStorage.removeItem('onboarding-last-category');
+  }, []);
+
+  const setLastCreatedCategoryId = useCallback((id: number | null) => {
+    setLastCreatedCategoryIdState(id);
+    if (id !== null) {
+      localStorage.setItem('onboarding-last-category', id.toString());
+    } else {
+      localStorage.removeItem('onboarding-last-category');
+    }
   }, []);
 
   const isHintViewed = useCallback((key: string) => {
@@ -130,6 +159,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     currentStep,
     hintsViewed,
     needsOnboarding,
+    lastCreatedCategoryId,
     nextStep,
     prevStep,
     setStep,
@@ -137,6 +167,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     closeWizard,
     isHintViewed,
     markHintViewed,
+    setLastCreatedCategoryId,
   };
 
   return (

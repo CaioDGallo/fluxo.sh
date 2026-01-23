@@ -22,7 +22,7 @@ import { getCurrentYearMonth } from '@/lib/utils';
 
 export function BudgetStep() {
   const t = useTranslations('onboarding.budget');
-  const { nextStep } = useOnboarding();
+  const { nextStep, lastCreatedCategoryId } = useOnboarding();
   const [categories, setCategories] = useState<Array<{ id: number; name: string; color: string }>>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [amount, setAmount] = useState('');
@@ -33,11 +33,16 @@ export function BudgetStep() {
     getCategories('expense').then((cats) => {
       setCategories(cats);
       if (cats.length > 0) {
-        setSelectedCategoryId(cats[0].id.toString());
+        // Priority: lastCreatedCategoryId if exists in list, else first
+        const defaultId = lastCreatedCategoryId &&
+          cats.find(c => c.id === lastCreatedCategoryId)
+          ? lastCreatedCategoryId
+          : cats[0].id;
+        setSelectedCategoryId(defaultId.toString());
       }
       setIsLoading(false);
     });
-  }, []);
+  }, [lastCreatedCategoryId]);
 
   const handleCreate = async () => {
     if (!selectedCategoryId || !amount) {

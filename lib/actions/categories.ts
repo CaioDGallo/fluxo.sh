@@ -10,7 +10,9 @@ import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { getPostHogClient } from '@/lib/posthog-server';
 
-type ActionResult = { success: true } | { success: false; error: string };
+type ActionResult<T = void> =
+  | { success: true; data?: T }
+  | { success: false; error: string };
 
 export const getCategories = cache(async (type?: 'expense' | 'income') => {
   const userId = await getCurrentUserId();
@@ -76,10 +78,10 @@ export async function getRecentCategories(
   return results.rows as RecentCategory[];
 }
 
-export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {
+export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult<{ id: number }>> {
   try {
     const userId = await getCurrentUserId();
-    await db.insert(categories).values({ ...data, userId });
+    const [created] = await db.insert(categories).values({ ...data, userId }).returning({ id: categories.id });
 
     // PostHog event tracking
     const posthog = getPostHogClient();
@@ -104,7 +106,7 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | '
     } else if (data.type === 'income') {
       revalidateTag('income-categories', 'max');
     }
-    return { success: true };
+    return { success: true, data: { id: created.id } };
   } catch (error) {
     console.error('[categories:create] Failed:', error);
     return { success: false, error: await handleDbError(error, 'errors.failedToCreate') };

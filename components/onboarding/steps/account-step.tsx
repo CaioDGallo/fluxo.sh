@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { useOnboarding } from '../onboarding-provider';
 import { useTranslations } from 'next-intl';
 import { createAccount } from '@/lib/actions/accounts';
@@ -22,6 +23,7 @@ export function AccountStep() {
   const { nextStep } = useOnboarding();
   const [name, setName] = useState('');
   const [type, setType] = useState<'checking' | 'savings' | 'credit_card' | 'cash'>('checking');
+  const [creditLimitCents, setCreditLimitCents] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async () => {
@@ -30,11 +32,17 @@ export function AccountStep() {
       return;
     }
 
+    if (type === 'credit_card' && creditLimitCents === 0) {
+      toast.error(t('creditLimitRequired'));
+      return;
+    }
+
     setIsCreating(true);
     const result = await createAccount({
       name: name.trim(),
       type,
       currentBalance: 0,
+      ...(type === 'credit_card' && { creditLimit: creditLimitCents }),
     });
     setIsCreating(false);
 
@@ -78,6 +86,18 @@ export function AccountStep() {
             </SelectContent>
           </Select>
         </div>
+
+        {type === 'credit_card' && (
+          <div className="space-y-2">
+            <Label htmlFor="credit-limit">{t('creditLimitLabel')}</Label>
+            <CurrencyInput
+              id="credit-limit"
+              value={creditLimitCents}
+              onChange={setCreditLimitCents}
+              placeholder={t('creditLimitPlaceholder')}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">

@@ -1135,6 +1135,9 @@
         "creditCard": "Cartão de Crédito",
         "cash": "Dinheiro"
       },
+      "creditLimitLabel": "Limite de crédito",
+      "creditLimitPlaceholder": "Ex: 5000,00",
+      "creditLimitRequired": "Limite de crédito é obrigatório para cartões",
       "skip": "Pular",
       "create": "Criar",
       "creating": "Criando...",

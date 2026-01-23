@@ -18,19 +18,21 @@ export function OnboardingTooltip({
   children,
   className,
 }: OnboardingTooltipProps) {
-  const { isHintViewed, markHintViewed, wizardStatus } = useOnboarding();
+  const { isHintViewed, markHintViewed, wizardStatus, hintsLoading } = useOnboarding();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Only show hint after wizard is completed and if not viewed yet
-    if (wizardStatus === 'completed' && !isHintViewed(hintKey)) {
-      // Delay showing hint slightly for better UX
+    // Only show hint after:
+    // 1. Wizard completed
+    // 2. Hints loaded from DB
+    // 3. Hint not viewed
+    if (wizardStatus === 'completed' && !hintsLoading && !isHintViewed(hintKey)) {
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [hintKey, isHintViewed, wizardStatus]);
+  }, [hintKey, isHintViewed, wizardStatus, hintsLoading]);
 
   const handleDismiss = async () => {
     setIsVisible(false);

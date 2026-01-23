@@ -7,6 +7,7 @@ interface OnboardingContextValue {
   wizardStatus: 'loading' | 'pending' | 'in_progress' | 'completed';
   currentStep: number;
   hintsViewed: Set<string>;
+  hintsLoading: boolean;
   needsOnboarding: boolean;
   lastCreatedCategoryId: number | null;
 
@@ -27,22 +28,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [wizardStatus, setWizardStatus] = useState<'loading' | 'pending' | 'in_progress' | 'completed'>('loading');
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Initialize hintsViewed from localStorage for instant PWA persistence
-  const [hintsViewed, setHintsViewed] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') {
-      return new Set();
-    }
-    const cachedHints = localStorage.getItem('onboarding-hints-viewed');
-    if (cachedHints) {
-      try {
-        return new Set(JSON.parse(cachedHints));
-      } catch (e) {
-        console.error('Failed to parse cached hints:', e);
-        return new Set();
-      }
-    }
-    return new Set();
-  });
+  // Initialize empty - will load from DB
+  const [hintsViewed, setHintsViewed] = useState<Set<string>>(new Set());
+  const [hintsLoading, setHintsLoading] = useState(true);
 
   // Initialize lastCreatedCategoryId from localStorage
   const [lastCreatedCategoryId, setLastCreatedCategoryIdState] = useState<number | null>(() => {
@@ -65,22 +53,23 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   // Load onboarding status on mount
   useEffect(() => {
-    // Fetch from DB to sync with authoritative source
     getOnboardingStatus().then((status) => {
       setNeedsOnboarding(status.needsOnboarding);
+
+      // Set hints from DB only
       const dbHints = new Set(status.hintsViewed);
       setHintsViewed(dbHints);
+      setHintsLoading(false); // Signal ready
 
-      // Update localStorage with DB truth
-      localStorage.setItem('onboarding-hints-viewed', JSON.stringify(status.hintsViewed));
+      // Clean up legacy localStorage
+      localStorage.removeItem('onboarding-hints-viewed');
 
-      // Check localStorage for current step
+      // Wizard state still uses localStorage (session-scoped)
       const savedStep = localStorage.getItem('onboarding-step');
       if (savedStep) {
         setCurrentStep(parseInt(savedStep, 10));
       }
 
-      // Check localStorage for wizard status
       const savedStatus = localStorage.getItem('onboarding-wizard-status');
       if (savedStatus === 'in_progress') {
         setWizardStatus('in_progress');
@@ -89,6 +78,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       } else {
         setWizardStatus('completed');
       }
+    }).catch((error) => {
+      console.error('[onboarding] Failed to load hints:', error);
+      setHintsLoading(false); // Unblock UI on error
     });
   }, []);
 
@@ -146,10 +138,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       const newHints = new Set([...hintsViewed, key]);
       setHintsViewed(newHints);
 
-      // Optimistic localStorage update for PWA persistence
-      localStorage.setItem('onboarding-hints-viewed', JSON.stringify([...newHints]));
-
-      // Persist to DB
+      // Persist to DB only (removed localStorage)
       await markHintViewedAction(key);
     }
   }, [hintsViewed]);
@@ -158,6 +147,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     wizardStatus,
     currentStep,
     hintsViewed,
+    hintsLoading,
     needsOnboarding,
     lastCreatedCategoryId,
     nextStep,

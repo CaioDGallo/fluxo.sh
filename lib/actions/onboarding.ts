@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { cache } from 'react';
+import { getOrCreateUserSettings } from '@/lib/actions/user-settings';
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -104,13 +105,13 @@ export async function markHintViewed(hintKey: string): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
 
-    const [settings] = await db
-      .select({ hintsViewed: userSettings.hintsViewed })
-      .from(userSettings)
-      .where(eq(userSettings.userId, userId))
-      .limit(1);
+    // Ensure settings row exists (upsert pattern)
+    const settings = await getOrCreateUserSettings();
+    if (!settings) {
+      return { success: false, error: 'Failed to get user settings' };
+    }
 
-    const hintsViewed = settings?.hintsViewed
+    const hintsViewed = settings.hintsViewed
       ? (JSON.parse(settings.hintsViewed) as string[])
       : [];
 

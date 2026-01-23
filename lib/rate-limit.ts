@@ -6,6 +6,7 @@ const loginStore: RateLimitStore = new Map();
 const passwordResetStore: RateLimitStore = new Map();
 const signupStore: RateLimitStore = new Map();
 const bulkStore: RateLimitStore = new Map();
+const waitlistStore: RateLimitStore = new Map();
 
 // Cleanup old entries every 5 minutes
 setInterval(() => {
@@ -21,6 +22,9 @@ setInterval(() => {
   }
   for (const [key, value] of bulkStore) {
     if (value.resetAt < now) bulkStore.delete(key);
+  }
+  for (const [key, value] of waitlistStore) {
+    if (value.resetAt < now) waitlistStore.delete(key);
   }
 }, 5 * 60 * 1000);
 
@@ -78,4 +82,9 @@ export async function checkSignupRateLimit(): Promise<RateLimitResult> {
 
 export async function checkBulkRateLimit(userId: string): Promise<RateLimitResult> {
   return checkLimit(bulkStore, userId, 10, 60 * 1000); // 10 attempts per minute
+}
+
+export async function checkWaitlistRateLimit(): Promise<RateLimitResult> {
+  const ip = await getClientIP();
+  return checkLimit(waitlistStore, ip, 3, 60 * 1000); // 3 attempts per minute
 }

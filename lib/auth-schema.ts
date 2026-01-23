@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, primaryKey, pgEnum, serial } from 'drizzle-orm/pg-core';
 
 // Auth.js adapter tables
 export const users = pgTable('users', {
@@ -78,6 +78,21 @@ export const invites = pgTable('invites', {
   createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
 });
 
+// Waitlist status enum
+export const waitlistStatusEnum = pgEnum('waitlist_status', ['pending', 'approved', 'rejected']);
+
+// Waitlist table for landing page signups
+export const waitlist = pgTable('waitlist', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  status: waitlistStatusEnum('status').notNull().default('pending'),
+  notes: text('notes'),
+  metadata: text('metadata'), // JSON: utm params, sections viewed, etc.
+  inviteCode: text('invite_code').references(() => invites.code),
+  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -85,3 +100,5 @@ export type Session = typeof sessions.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Invite = typeof invites.$inferSelect;
 export type NewInvite = typeof invites.$inferInsert;
+export type WaitlistEntry = typeof waitlist.$inferSelect;
+export type NewWaitlistEntry = typeof waitlist.$inferInsert;

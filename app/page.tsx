@@ -329,20 +329,22 @@ export default async function Home() {
                     <CardTitle className="text-2xl md:text-3xl">{t('ctaTitle')}</CardTitle>
                     <CardDescription className="text-sm md:text-base">{t('ctaSubtitle')}</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
+                  <CardContent className="space-y-6">
                     <LandingWaitlistForm
                       emailLabel={t('emailLabel')}
                       emailPlaceholder={t('emailPlaceholder')}
                       submitNote={t('submitNote')}
+                      submitButton={t('waitlistSubmit')}
+                      submittingButton={t('waitlistSubmitting')}
+                      successMessage={t('waitlistSuccess')}
+                      errorDuplicate={t('waitlistErrorDuplicate')}
+                      errorRateLimit={t('waitlistErrorRateLimit')}
+                      errorInvalid={t('waitlistErrorInvalid')}
+                      errorGeneric={t('waitlistErrorGeneric')}
                     />
-                    <div className="flex h-full flex-col justify-between gap-4">
-                      <Button variant="popout" className="w-full" disabled>
-                        {t('ctaDisabled')}
-                      </Button>
-                      <div className="border border-border p-4 text-xs">
-                        <p className="font-semibold">{t('footerTitle')}</p>
-                        <p className="text-foreground/80">{t('footerText')}</p>
-                      </div>
+                    <div className="border border-border p-4 text-xs">
+                      <p className="font-semibold">{t('footerTitle')}</p>
+                      <p className="text-foreground/80">{t('footerText')}</p>
                     </div>
                   </CardContent>
                 </Card>

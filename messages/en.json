@@ -1094,7 +1094,14 @@
     "faq2Q": "Can I import and export my data?",
     "faq2A": "Yes. Import CSV/OFX and export CSV whenever you want.",
     "faq3Q": "Is there an app?",
-    "faq3A": "Use it in the browser with app-like experience (PWA)."
+    "faq3A": "Use it in the browser with app-like experience (PWA).",
+    "waitlistSubmit": "Join waitlist",
+    "waitlistSubmitting": "Submitting...",
+    "waitlistSuccess": "Done! You're on the list. We'll notify you when we grant access.",
+    "waitlistErrorDuplicate": "This email is already on the waitlist.",
+    "waitlistErrorRateLimit": "Too many attempts. Please wait a moment.",
+    "waitlistErrorInvalid": "Please enter a valid email.",
+    "waitlistErrorGeneric": "Something went wrong. Please try again."
   },
   "onboarding": {
     "wizard": {

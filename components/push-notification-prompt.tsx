@@ -42,11 +42,19 @@ export function PushNotificationPrompt() {
   const handleEnable = async () => {
     setIsLoading(true);
     try {
-      const result = await requestPermission();
-      if (result.success || !result.success) {
-        // Mark as prompted regardless of outcome
-        await markPushNotificationPrompted();
-        setShouldShow(false);
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise<{ success: false; error: string }>((resolve) =>
+        setTimeout(() => resolve({ success: false, error: 'Timeout' }), 10000)
+      );
+
+      const result = await Promise.race([requestPermission(), timeoutPromise]);
+
+      // Always mark as prompted
+      await markPushNotificationPrompted();
+      setShouldShow(false);
+
+      if (!result.success) {
+        console.error('Enable failed:', result.error);
       }
     } finally {
       setIsLoading(false);

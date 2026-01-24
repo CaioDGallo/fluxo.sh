@@ -741,7 +741,8 @@
       "noDevices": "No devices registered",
       "testNotification": "Send Test",
       "testSuccess": "Test notification sent!",
-      "testError": "Failed to send test notification"
+      "testError": "Failed to send test notification",
+      "disableError": "Failed to disable notifications"
     },
     "yes": "Yes",
     "no": "No",

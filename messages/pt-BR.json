@@ -753,7 +753,8 @@
       "noDevices": "Nenhum dispositivo registrado",
       "testNotification": "Enviar Teste",
       "testSuccess": "Notificação de teste enviada!",
-      "testError": "Falha ao enviar notificação de teste"
+      "testError": "Falha ao enviar notificação de teste",
+      "disableError": "Falha ao desativar notificações"
     },
     "yes": "Sim",
     "no": "Não",

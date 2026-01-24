@@ -174,3 +174,23 @@ export async function markPushNotificationPrompted() {
     return { success: false, error: 'Failed to mark as prompted' };
   }
 }
+
+export async function disableAllPushNotifications() {
+  const userId = await getCurrentUserId();
+
+  try {
+    // Delete ALL tokens for this user
+    await db.delete(fcmTokens).where(eq(fcmTokens.userId, userId));
+
+    // Disable in settings
+    await db
+      .update(userSettings)
+      .set({ pushNotificationsEnabled: false })
+      .where(eq(userSettings.userId, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error disabling all push notifications:', error);
+    return { success: false, error: 'Failed to disable notifications' };
+  }
+}

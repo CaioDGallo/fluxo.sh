@@ -22,6 +22,7 @@ export function PushNotificationSection() {
   const [isLoading, setIsLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const t = useTranslations('preferences.push');
 
   // Load devices when notifications are enabled
@@ -52,9 +53,16 @@ export function PushNotificationSection() {
 
   const handleDisable = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      await disable();
+      const result = await disable();
+      if (!result.success) {
+        setError(result.error || t('disableError'));
+        return;
+      }
       setDevices([]);
+    } catch {
+      setError(t('disableError'));
     } finally {
       setIsLoading(false);
     }
@@ -163,6 +171,12 @@ export function PushNotificationSection() {
                 {testLoading ? 'Sending...' : t('testNotification')}
               </Button>
             </div>
+
+            {error && (
+              <div className="rounded-md p-2 text-sm bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200">
+                {error}
+              </div>
+            )}
 
             {testMessage && (
               <div className={`rounded-md p-2 text-sm ${

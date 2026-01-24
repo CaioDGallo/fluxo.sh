@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { firebaseConfig, VAPID_KEY } from '@/lib/firebase/config';
-import { registerFcmToken, unregisterFcmToken } from '@/lib/actions/push-notifications';
+import { registerFcmToken, disableAllPushNotifications } from '@/lib/actions/push-notifications';
 
 type PushState = 'loading' | 'unsupported' | 'prompt' | 'denied' | 'granted' | 'error' | 'ios-not-pwa' | 'ios-unsupported';
 
@@ -12,56 +12,69 @@ export function usePushNotifications() {
   const [state, setState] = useState<PushState>('loading');
   const [currentToken, setCurrentToken] = useState<string | null>(null);
 
-  const initializeMessaging = useCallback(async () => {
-    try {
-      // Initialize Firebase app
-      let app: FirebaseApp;
-      if (getApps().length === 0) {
-        app = initializeApp(firebaseConfig);
-      } else {
-        app = getApps()[0];
-      }
+  const initializeMessagingImpl = useCallback(async () => {
+    // Initialize Firebase app
+    let app: FirebaseApp;
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
 
-      // Get messaging instance
-      const messagingInstance = getMessaging(app);
+    // Get messaging instance
+    const messagingInstance = getMessaging(app);
 
-      // Wait for service worker to be ready
-      const registration = await navigator.serviceWorker.ready;
+    // Wait for service worker to be ready
+    const registration = await navigator.serviceWorker.ready;
 
-      // Get FCM token
-      const token = await getToken(messagingInstance, {
-        vapidKey: VAPID_KEY,
-        serviceWorkerRegistration: registration,
+    // Get FCM token
+    const token = await getToken(messagingInstance, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (token) {
+      setCurrentToken(token);
+
+      // Get device name
+      const deviceName = getDeviceName();
+
+      // Register token with backend
+      await registerFcmToken(token, deviceName);
+
+      // Listen for foreground messages
+      onMessage(messagingInstance, (payload) => {
+        console.log('Foreground message received:', payload);
+
+        // Show notification manually in foreground
+        if (payload.notification) {
+          new Notification(payload.notification.title || 'fluxo.sh', {
+            body: payload.notification.body,
+            icon: '/brand-kit/exports/icon-192-dark.png',
+            tag: payload.data?.tag || 'default',
+          });
+        }
       });
+    }
+  }, []);
 
-      if (token) {
-        setCurrentToken(token);
+  const initializeMessaging = useCallback(async () => {
+    const timeoutMs = 15000; // 15 second timeout
 
-        // Get device name
-        const deviceName = getDeviceName();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Initialization timeout')), timeoutMs)
+    );
 
-        // Register token with backend
-        await registerFcmToken(token, deviceName);
-
-        // Listen for foreground messages
-        onMessage(messagingInstance, (payload) => {
-          console.log('Foreground message received:', payload);
-
-          // Show notification manually in foreground
-          if (payload.notification) {
-            new Notification(payload.notification.title || 'fluxo.sh', {
-              body: payload.notification.body,
-              icon: '/brand-kit/exports/icon-192-dark.png',
-              tag: payload.data?.tag || 'default',
-            });
-          }
-        });
-      }
+    try {
+      await Promise.race([
+        initializeMessagingImpl(),
+        timeoutPromise
+      ]);
     } catch (error) {
       console.error('Error initializing messaging:', error);
       setState('error');
     }
-  }, []);
+  }, [initializeMessagingImpl]);
 
   useEffect(() => {
     // Compute the state based on browser capabilities and permissions
@@ -136,7 +149,10 @@ export function usePushNotifications() {
 
       if (permission === 'granted') {
         setState('granted');
-        await initializeMessaging();
+
+        // Fire and forget - don't block UI
+        void initializeMessaging().catch(console.error);
+
         return { success: true };
       } else {
         setState('denied');
@@ -150,15 +166,14 @@ export function usePushNotifications() {
   };
 
   const disable = async () => {
-    if (!currentToken) {
-      return { success: false, error: 'No token to unregister' };
-    }
-
     try {
-      await unregisterFcmToken(currentToken);
-      setCurrentToken(null);
-      setState('prompt');
-      return { success: true };
+      // Use server action that doesn't need token
+      const result = await disableAllPushNotifications();
+      if (result.success) {
+        setCurrentToken(null);
+        setState('prompt');
+      }
+      return result;
     } catch (error) {
       console.error('Error disabling push notifications:', error);
       return { success: false, error: 'Failed to disable notifications' };

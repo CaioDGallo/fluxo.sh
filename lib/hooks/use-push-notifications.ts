@@ -64,30 +64,35 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
+    // Compute the state based on browser capabilities and permissions
+    let newState: PushState;
+    let shouldInitialize = false;
+
     // Check if push notifications are supported
-    // eslint-disable-next-line react-hooks/immutability
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      setState('unsupported');
-      return;
-    }
-
-    if (!('serviceWorker' in navigator)) {
-      setState('unsupported');
-      return;
-    }
-
-    // Check current permission state
-    const permission = Notification.permission;
-    if (permission === 'denied') {
-      setState('denied');
-      return;
-    }
-
-    if (permission === 'granted') {
-      setState('granted');
-      void initializeMessaging();
+      newState = 'unsupported';
+    } else if (!('serviceWorker' in navigator)) {
+      newState = 'unsupported';
     } else {
-      setState('prompt');
+      // Check current permission state
+      const permission = Notification.permission;
+      if (permission === 'denied') {
+        newState = 'denied';
+      } else if (permission === 'granted') {
+        newState = 'granted';
+        shouldInitialize = true;
+      } else {
+        newState = 'prompt';
+      }
+    }
+
+    // Update state once (initialization pattern - checking browser capabilities on mount)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState(newState);
+
+    // Initialize messaging if needed
+    if (shouldInitialize) {
+      void initializeMessaging();
     }
   }, [initializeMessaging]);
 

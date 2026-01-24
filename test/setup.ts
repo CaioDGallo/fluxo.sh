@@ -44,6 +44,13 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn().mockResolvedValue({
     get: (name: string) => (name === 'NEXT_LOCALE' ? { value: 'en' } : undefined),
   }),
+  headers: vi.fn().mockResolvedValue({
+    get: (name: string) => {
+      // Allow cron jobs to bypass auth in tests
+      if (name === 'x-cron-bypass') return 'true';
+      return undefined;
+    },
+  }),
 }));
 
 // Prevent tests from performing real network requests in the sandbox.

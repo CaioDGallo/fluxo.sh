@@ -1,32 +1,83 @@
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { headers } from 'next/headers';
 
-type RateLimitStore = Map<string, { count: number; resetAt: number }>;
+// Initialize Redis client (supports both Upstash REST API and local Redis)
+function getRedisClient(): Redis {
+  // Production: Use Upstash REST API
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
 
-const loginStore: RateLimitStore = new Map();
-const passwordResetStore: RateLimitStore = new Map();
-const signupStore: RateLimitStore = new Map();
-const bulkStore: RateLimitStore = new Map();
-const waitlistStore: RateLimitStore = new Map();
+  // Development: Use local Redis (requires ioredis adapter)
+  if (process.env.REDIS_URL) {
+    return Redis.fromEnv();
+  }
 
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of loginStore) {
-    if (value.resetAt < now) loginStore.delete(key);
-  }
-  for (const [key, value] of passwordResetStore) {
-    if (value.resetAt < now) passwordResetStore.delete(key);
-  }
-  for (const [key, value] of signupStore) {
-    if (value.resetAt < now) signupStore.delete(key);
-  }
-  for (const [key, value] of bulkStore) {
-    if (value.resetAt < now) bulkStore.delete(key);
-  }
-  for (const [key, value] of waitlistStore) {
-    if (value.resetAt < now) waitlistStore.delete(key);
-  }
-}, 5 * 60 * 1000);
+  throw new Error(
+    'Redis not configured. Set UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN (production) or REDIS_URL (development)'
+  );
+}
+
+const redis = getRedisClient();
+
+// Rate limiter instances with sliding window algorithm
+const loginLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(15, '60 s'),
+  prefix: 'ratelimit:login',
+});
+
+const passwordResetLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '60 s'),
+  prefix: 'ratelimit:password-reset',
+});
+
+const passwordUpdateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '60 s'),
+  prefix: 'ratelimit:password-update',
+});
+
+const signupLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '60 s'),
+  prefix: 'ratelimit:signup',
+});
+
+const waitlistLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '60 s'),
+  prefix: 'ratelimit:waitlist',
+});
+
+const bulkLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '60 s'),
+  prefix: 'ratelimit:bulk',
+});
+
+const crudLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, '60 s'),
+  prefix: 'ratelimit:crud',
+});
+
+const destructiveLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '3600 s'),
+  prefix: 'ratelimit:destructive',
+});
+
+const calendarSyncLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '60 s'),
+  prefix: 'ratelimit:calendar-sync',
+});
 
 export async function getClientIP(): Promise<string> {
   const h = await headers();
@@ -40,51 +91,56 @@ export async function getClientIP(): Promise<string> {
 
 export type RateLimitResult = { allowed: true } | { allowed: false; retryAfter: number };
 
-function checkLimit(
-  store: RateLimitStore,
-  key: string,
-  maxAttempts: number,
-  windowMs: number
-): RateLimitResult {
-  const now = Date.now();
-  const record = store.get(key);
+async function checkLimit(limiter: Ratelimit, key: string): Promise<RateLimitResult> {
+  const { success, reset } = await limiter.limit(key);
 
-  if (!record || record.resetAt < now) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true };
+  if (!success) {
+    const retryAfter = Math.ceil((reset - Date.now()) / 1000);
+    return { allowed: false, retryAfter: Math.max(retryAfter, 1) };
   }
 
-  if (record.count >= maxAttempts) {
-    return {
-      allowed: false,
-      retryAfter: Math.ceil((record.resetAt - now) / 1000),
-    };
-  }
-
-  record.count++;
   return { allowed: true };
 }
 
+// IP-based rate limiters
 export async function checkLoginRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
-  return checkLimit(loginStore, ip, 15, 60 * 1000); // 15 attempts per minute
+  return checkLimit(loginLimiter, ip);
 }
 
 export async function checkPasswordResetRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
-  return checkLimit(passwordResetStore, ip, 3, 60 * 1000); // 3 attempts per minute
+  return checkLimit(passwordResetLimiter, ip);
+}
+
+export async function checkPasswordUpdateRateLimit(): Promise<RateLimitResult> {
+  const ip = await getClientIP();
+  return checkLimit(passwordUpdateLimiter, ip);
 }
 
 export async function checkSignupRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
-  return checkLimit(signupStore, ip, 5, 60 * 1000); // 5 attempts per minute
-}
-
-export async function checkBulkRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(bulkStore, userId, 10, 60 * 1000); // 10 attempts per minute
+  return checkLimit(signupLimiter, ip);
 }
 
 export async function checkWaitlistRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
-  return checkLimit(waitlistStore, ip, 3, 60 * 1000); // 3 attempts per minute
+  return checkLimit(waitlistLimiter, ip);
+}
+
+// User-based rate limiters
+export async function checkBulkRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(bulkLimiter, userId);
+}
+
+export async function checkCrudRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(crudLimiter, userId);
+}
+
+export async function checkDestructiveRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(destructiveLimiter, userId);
+}
+
+export async function checkCalendarSyncRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(calendarSyncLimiter, userId);
 }

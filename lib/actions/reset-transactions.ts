@@ -8,6 +8,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { handleDbError } from '@/lib/db-errors';
 import { reconcileAccountBalancesForUser } from '@/lib/actions/accounts';
 import { getPostHogClient } from '@/lib/posthog-server';
+import { checkDestructiveRateLimit } from '@/lib/rate-limit';
 
 export async function resetAllTransactions(): Promise<
   | {
@@ -23,6 +24,15 @@ export async function resetAllTransactions(): Promise<
 > {
   try {
     const userId = await getCurrentUserId();
+
+    // Rate limiting (destructive operation - 3 per hour)
+    const rateLimit = await checkDestructiveRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: `Muitas requisições. Tente novamente em ${Math.ceil(rateLimit.retryAfter / 60)} minutos`,
+      };
+    }
 
     let deletedTransfers = 0;
     let deletedFaturas = 0;

@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { accounts, faturas, transfers } from '@/lib/schema';
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { t } from '@/lib/i18n/server-errors';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { syncAccountBalance } from '@/lib/actions/accounts';
@@ -27,6 +28,8 @@ export type TransferFilters = {
 };
 
 export async function createTransfer(data: CreateTransferData) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
     throw new Error(await t('errors.amountPositiveCents'));
   }
@@ -111,6 +114,8 @@ export async function createTransfer(data: CreateTransferData) {
 }
 
 export async function updateTransfer(transferId: number, data: CreateTransferData) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(transferId) || transferId <= 0) {
     throw new Error(await t('errors.invalidTransactionId'));
   }
@@ -201,6 +206,8 @@ export async function updateTransfer(transferId: number, data: CreateTransferDat
 }
 
 export async function deleteTransfer(transferId: number) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(transferId) || transferId <= 0) {
     throw new Error(await t('errors.invalidTransactionId'));
   }

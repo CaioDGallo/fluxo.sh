@@ -10,6 +10,8 @@ import { ErrorIds } from '@/constants/errorIds';
 import { fetchICalUrlWithRetry } from '@/lib/ical/fetch';
 import { parseICalendar, expandRecurringEvent } from '@/lib/ical/parser';
 import type { SyncResult, SyncError, ParsedEvent, EventDiff } from '@/lib/ical/types';
+import { requireCronAuth } from '@/lib/cron-auth';
+import { checkCalendarSyncRateLimit } from '@/lib/rate-limit';
 
 // Sync window: 6 months forward
 const SYNC_WINDOW_MONTHS = 6;
@@ -218,6 +220,24 @@ async function syncCalendarSourceInternal(
  */
 export async function syncCalendarSource(calendarSourceId: number): Promise<SyncResult> {
   const userId = await getCurrentUserId();
+
+  // Rate limiting
+  const rateLimit = await checkCalendarSyncRateLimit(userId);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      calendarSourceId,
+      created: 0,
+      updated: 0,
+      cancelled: 0,
+      errors: [{
+        message: `Muitas requisições. Tente novamente em ${rateLimit.retryAfter}s`,
+        type: 'unknown',
+      }],
+      syncedAt: new Date(),
+    };
+  }
+
   return syncCalendarSourceInternal(calendarSourceId, userId);
 }
 
@@ -227,6 +247,23 @@ export async function syncCalendarSource(calendarSourceId: number): Promise<Sync
 export async function syncAllCalendars(): Promise<SyncResult[]> {
   try {
     const userId = await getCurrentUserId();
+
+    // Rate limiting
+    const rateLimit = await checkCalendarSyncRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return [{
+        success: false,
+        calendarSourceId: 0,
+        created: 0,
+        updated: 0,
+        cancelled: 0,
+        errors: [{
+          message: `Muitas requisições. Tente novamente em ${rateLimit.retryAfter}s`,
+          type: 'unknown',
+        }],
+        syncedAt: new Date(),
+      }];
+    }
 
     const sources = await db
       .select()
@@ -259,6 +296,9 @@ export async function syncAllUsersCalendars(): Promise<{
   sourcesProcessed: number;
   results: SyncResult[];
 }> {
+  // Defense-in-depth: verify cron authorization
+  await requireCronAuth();
+
   try {
     const sources = await db
       .select()

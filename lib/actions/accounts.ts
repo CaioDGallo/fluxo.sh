@@ -11,6 +11,8 @@ import { computeBalance } from '@/lib/balance';
 import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
 import { isValidBankLogo } from '@/lib/bank-logos';
 import { getPostHogClient } from '@/lib/posthog-server';
+import { requireCronAuth } from '@/lib/cron-auth';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -247,6 +249,9 @@ export async function reconcileCurrentUserBalances(): Promise<void> {
 }
 
 export async function reconcileAllAccountBalances(): Promise<{ users: number; accounts: number }> {
+  // Defense-in-depth: verify cron authorization
+  await requireCronAuth();
+
   const userRows = await db
     .selectDistinct({ userId: accounts.userId })
     .from(accounts);
@@ -309,6 +314,8 @@ export async function getAccountsByUser(userId: string) {
 
 export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult> {
   try {
+    await guardCrudOperation(); // Rate limiting
+
     const name = await validateAccountName(data.name);
     await validateAccountType(data.type);
     await validateBillingDay(data.closingDay, 'errors.invalidClosingDay');
@@ -355,6 +362,8 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
 
 export async function updateAccount(id: number, data: Partial<Omit<NewAccount, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
   try {
+    await guardCrudOperation(); // Rate limiting
+
     if (!Number.isInteger(id) || id <= 0) {
       return { success: false, error: await t('errors.invalidAccountId') };
     }
@@ -402,6 +411,8 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
 }
 
 export async function deleteAccount(id: number) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error(await t('errors.invalidAccountId'));
   }

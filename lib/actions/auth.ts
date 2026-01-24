@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email/send';
 import { t } from '@/lib/i18n/server-errors';
-import { checkLoginRateLimit, checkPasswordResetRateLimit } from '@/lib/rate-limit';
+import { checkLoginRateLimit, checkPasswordResetRateLimit, checkPasswordUpdateRateLimit } from '@/lib/rate-limit';
 import { getCurrentUserId } from '@/lib/auth';
 import { getPostHogClient } from '@/lib/posthog-server';
 
@@ -132,6 +132,14 @@ export async function updatePasswordWithToken(
   newPassword: string
 ) {
   try {
+    // Rate limiting (prevent brute-force attacks on token validation)
+    const rateLimit = await checkPasswordUpdateRateLimit();
+    if (!rateLimit.allowed) {
+      return {
+        error: await t('errors.tooManyRequests', { seconds: rateLimit.retryAfter.toString() }),
+      };
+    }
+
     // Validate password requirements
     if (newPassword.length < 8) {
       return { error: await t('errors.passwordTooShort') };

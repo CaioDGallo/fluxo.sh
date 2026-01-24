@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { events, tasks } from '@/lib/schema';
 import { eq, and, lt, or } from 'drizzle-orm';
+import { requireCronAuth } from '@/lib/cron-auth';
 
 export interface StatusUpdateResult {
   eventsCompleted: number;
@@ -15,6 +16,9 @@ export interface StatusUpdateResult {
  * - Tasks: dueAt < now AND status IN ('pending','in_progress') → status='overdue'
  */
 export async function updatePastItemStatuses(): Promise<StatusUpdateResult> {
+  // Defense-in-depth: verify cron authorization
+  await requireCronAuth();
+
   const now = new Date();
   let eventsCompleted = 0;
   let tasksMarkedOverdue = 0;

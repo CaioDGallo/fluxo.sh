@@ -11,6 +11,7 @@ import { addMonths } from '@/lib/utils';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
@@ -26,6 +27,8 @@ type CreateExpenseData = {
 };
 
 export async function createExpense(data: CreateExpenseData) {
+  await guardCrudOperation(); // Rate limiting
+
   console.log('data', data);
   // Validate inputs
   if (!Number.isInteger(data.totalAmount) || data.totalAmount <= 0) {
@@ -195,6 +198,8 @@ export async function getTransactionWithEntries(transactionId: number) {
 }
 
 export async function updateExpense(transactionId: number, data: CreateExpenseData) {
+  await guardCrudOperation(); // Rate limiting
+
   // Validate inputs
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
     throw new Error(await t('errors.invalidTransactionId'));
@@ -360,6 +365,8 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
 }
 
 export async function deleteExpense(transactionId: number) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(transactionId) || transactionId <= 0) {
     throw new Error(await t('errors.invalidTransactionId'));
   }

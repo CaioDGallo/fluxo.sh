@@ -3,6 +3,8 @@
 import { db } from '@/lib/db';
 import { invites } from '@/lib/auth-schema';
 import { randomUUID } from 'crypto';
+import { getCurrentUserId } from '@/lib/auth';
+import { checkCrudRateLimit } from '@/lib/rate-limit';
 
 /**
  * Generates a human-readable invite code
@@ -32,11 +34,27 @@ export type CreateInviteResult = {
 
 /**
  * Creates a new invite code (admin function)
+ * SECURITY: Requires authentication
  */
 export async function createInvite(params: CreateInviteParams = {}): Promise<CreateInviteResult> {
-  const { email, expiresInDays, maxUses = 1, createdBy } = params;
+  const { email, expiresInDays, maxUses = 1 } = params;
 
   try {
+    // CRITICAL: Require authentication
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return { success: false, error: 'Não autorizado' };
+    }
+
+    // Rate limiting
+    const rateLimit = await checkCrudRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: `Muitas requisições. Tente novamente em ${rateLimit.retryAfter}s`,
+      };
+    }
+
     const code = generateInviteCode();
     const id = randomUUID();
 
@@ -50,7 +68,7 @@ export async function createInvite(params: CreateInviteParams = {}): Promise<Cre
       id,
       code,
       email: email || null,
-      createdBy: createdBy || null,
+      createdBy: userId, // Track who created the invite
       expiresAt,
       maxUses,
       useCount: 0,

@@ -40,6 +40,8 @@
     "@schedule-x/theme-default": "^3.6.0",
     "@schedule-x/theme-shadcn": "^3.6.0",
     "@serwist/next": "^9.4.2",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.1",
     "@vercel/analytics": "^1.6.1",
     "bcryptjs": "^3.0.3",
     "chrono-node": "^2.9.0",

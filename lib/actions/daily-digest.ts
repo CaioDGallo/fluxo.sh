@@ -10,6 +10,7 @@ import { logError, logForDebugging } from '@/lib/logger';
 import { ErrorIds } from '@/constants/errorIds';
 import { defaultLocale, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
+import { requireCronAuth } from '@/lib/cron-auth';
 
 export interface DigestResult {
   success: boolean;
@@ -374,6 +375,9 @@ async function sendUserDigest(
 }
 
 export async function sendAllDailyDigests(): Promise<DigestResult> {
+  // Defense-in-depth: verify cron authorization
+  await requireCronAuth();
+
   const result: DigestResult = {
     success: true,
     usersProcessed: 0,

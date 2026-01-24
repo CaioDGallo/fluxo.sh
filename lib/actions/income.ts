@@ -7,6 +7,7 @@ import { income, categories, accounts } from '@/lib/schema';
 import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { syncAccountBalance } from '@/lib/actions/accounts';
@@ -22,6 +23,8 @@ export type CreateIncomeData = {
 };
 
 export async function createIncome(data: CreateIncomeData) {
+  await guardCrudOperation(); // Rate limiting
+
   // Validate inputs
   if (!Number.isInteger(data.amount) || data.amount <= 0) {
     throw new Error(await t('errors.amountPositiveCents'));
@@ -89,6 +92,8 @@ export async function createIncome(data: CreateIncomeData) {
 }
 
 export async function updateIncome(incomeId: number, data: CreateIncomeData) {
+  await guardCrudOperation(); // Rate limiting
+
   // Validate inputs
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
     throw new Error(await t('errors.invalidIncomeId'));
@@ -157,6 +162,8 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
 }
 
 export async function deleteIncome(incomeId: number) {
+  await guardCrudOperation(); // Rate limiting
+
   if (!Number.isInteger(incomeId) || incomeId <= 0) {
     throw new Error(await t('errors.invalidIncomeId'));
   }

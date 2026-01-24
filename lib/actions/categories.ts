@@ -6,6 +6,7 @@ import { categories, transactions, income, type NewCategory } from '@/lib/schema
 import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { getPostHogClient } from '@/lib/posthog-server';
@@ -80,6 +81,8 @@ export async function getRecentCategories(
 
 export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult<{ id: number }>> {
   try {
+    await guardCrudOperation(); // Rate limiting
+
     const userId = await getCurrentUserId();
     const [created] = await db.insert(categories).values({ ...data, userId }).returning({ id: categories.id });
 
@@ -115,6 +118,8 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | '
 
 export async function updateCategory(id: number, data: Partial<Omit<NewCategory, 'id' | 'userId' | 'createdAt'>>): Promise<ActionResult> {
   try {
+    await guardCrudOperation(); // Rate limiting
+
     const userId = await getCurrentUserId();
     await db.update(categories).set(data).where(and(eq(categories.id, id), eq(categories.userId, userId)));
     revalidatePath('/settings/categories');
@@ -133,6 +138,8 @@ export async function updateCategory(id: number, data: Partial<Omit<NewCategory,
 
 export async function deleteCategory(id: number): Promise<ActionResult> {
   try {
+    await guardCrudOperation(); // Rate limiting
+
     const userId = await getCurrentUserId();
 
     // Check if category is used by any transactions

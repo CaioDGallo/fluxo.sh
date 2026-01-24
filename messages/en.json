@@ -724,12 +724,52 @@
     "digestScheduleNote": "Daily digest emails are sent at 9:00 AM in your selected timezone",
     "defaultEventOffset": "Default Event Notification Offset",
     "defaultTaskOffset": "Default Task Notification Offset",
+    "push": {
+      "label": "Push Notifications",
+      "description": "Receive alerts on your device",
+      "unsupported": "Your browser doesn't support push notifications",
+      "denied": "Permission denied",
+      "deniedHelp": "Enable in browser settings"
+    },
     "yes": "Yes",
     "no": "No",
     "save": "Save",
     "saving": "Saving…",
     "savedSuccessfully": "Settings saved successfully!",
     "unexpectedError": "An unexpected error occurred. Please try again."
+  },
+  "push": {
+    "event": {
+      "title": "Event Reminder"
+    },
+    "task": {
+      "title": "Task Reminder"
+    },
+    "billReminder": {
+      "todayTitle": "Bill due today!",
+      "tomorrowTitle": "Bill due tomorrow",
+      "upcomingTitle": "Bill due in {days} days"
+    },
+    "budgetAlert": {
+      "80": {
+        "title": "Budget Alert",
+        "body": "{category}: {percentage}% of budget used"
+      },
+      "100": {
+        "title": "Budget Reached!",
+        "body": "{category}: budget fully used"
+      },
+      "120": {
+        "title": "Budget Exceeded!",
+        "body": "{category}: {percentage}% of budget used"
+      }
+    },
+    "prompt": {
+      "title": "Enable Notifications",
+      "description": "Receive bill reminders and budget alerts",
+      "enable": "Enable",
+      "enabling": "Enabling..."
+    }
   },
   "quickAdd": {
     "placeholder": "e.g., Dentist tomorrow at 9 for 30m p1"

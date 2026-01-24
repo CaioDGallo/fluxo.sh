@@ -8,6 +8,7 @@ import { generateGroupedBillRemindersHtml, generateGroupedBillRemindersText } fr
 import { calculateNextDueDate } from '@/lib/utils/bill-reminders';
 import { defaultLocale, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
+import { sendPushToUser } from '@/lib/services/push-sender';
 
 interface ProcessNotificationJobResult {
   processed: number;
@@ -493,7 +494,111 @@ async function sendNotification(job: NotificationJob, itemData: EventItem | Task
     return await sendEmailNotification(job, itemData);
   }
 
+  if (job.channel === 'push') {
+    return await sendPushNotification(job, itemData);
+  }
+
   return { success: false, error: 'Unsupported channel' };
+}
+
+async function sendPushNotification(job: NotificationJob, itemData: EventItem | TaskItem | BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!itemData) {
+      throw new Error('Item data not found');
+    }
+
+    // Check if user has push notifications enabled
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, itemData.userId))
+      .limit(1);
+
+    if (!settings?.pushNotificationsEnabled) {
+      return { success: false, error: 'Push notifications not enabled for user' };
+    }
+
+    const timeZone = settings.timezone || 'UTC';
+    const locale: Locale = (settings.locale as Locale) || defaultLocale;
+
+    let title = '';
+    let body = '';
+    let url = '/dashboard';
+    let tag = 'default';
+    const type = job.itemType;
+
+    if (job.itemType === 'event' && 'startAt' in itemData) {
+      const eventItem = itemData as EventItem;
+      const eventTime = new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        timeZone,
+      }).format(new Date(eventItem.startAt));
+
+      title = translateWithLocale(locale, 'push.event.title');
+      body = `${eventItem.title} - ${eventTime}`;
+      url = '/calendar';
+      tag = `event-${eventItem.id}`;
+    } else if (job.itemType === 'task' && 'dueAt' in itemData) {
+      const taskItem = itemData as TaskItem;
+      const dueTime = new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        timeZone,
+      }).format(new Date(taskItem.dueAt));
+
+      title = translateWithLocale(locale, 'push.task.title');
+      body = `${taskItem.title} - ${dueTime}`;
+      url = '/calendar';
+      tag = `task-${taskItem.id}`;
+    } else if (job.itemType === 'bill_reminder' && 'dueDay' in itemData) {
+      const reminderItem = itemData as BillReminderItem;
+      const nextDue = calculateNextDueDate(reminderItem, { timeZone });
+      const now = new Date();
+      const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      const dueDate = new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        timeZone,
+      }).format(nextDue);
+
+      if (daysUntil === 0) {
+        title = translateWithLocale(locale, 'push.billReminder.todayTitle');
+      } else if (daysUntil === 1) {
+        title = translateWithLocale(locale, 'push.billReminder.tomorrowTitle');
+      } else {
+        title = translateWithLocale(locale, 'push.billReminder.upcomingTitle', { days: daysUntil });
+      }
+
+      body = `${reminderItem.name} - ${dueDate}`;
+      url = '/dashboard';
+      tag = `bill-reminder-${reminderItem.id}`;
+    }
+
+    const result = await sendPushToUser(itemData.userId, {
+      title,
+      body,
+      url,
+      tag,
+      type,
+    });
+
+    if (result.sent > 0) {
+      return { success: true };
+    } else if (result.failed > 0) {
+      return { success: false, error: 'Failed to send to all devices' };
+    } else {
+      return { success: false, error: 'No FCM tokens registered' };
+    }
+  } catch (error) {
+    console.error('[notifications:push] Failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to send push notification' };
+  }
 }
 
 async function sendEmailNotification(job: NotificationJob, itemData: EventItem | TaskItem | BillReminderItem | null): Promise<{ success: boolean; error?: string }> {

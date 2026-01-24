@@ -18,7 +18,7 @@ export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critic
 export const eventStatusEnum = pgEnum('event_status', ['scheduled', 'cancelled', 'completed']);
 export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', 'completed', 'cancelled', 'overdue']);
 export const itemTypeEnum = pgEnum('item_type', ['event', 'task', 'bill_reminder']);
-export const notificationChannelEnum = pgEnum('notification_channel', ['email']);
+export const notificationChannelEnum = pgEnum('notification_channel', ['email', 'push']);
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);
 export const calendarSourceStatusEnum = pgEnum('calendar_source_status', ['active', 'error', 'disabled']);
 export const billReminderStatusEnum = pgEnum('bill_reminder_status', ['active', 'paused', 'completed']);
@@ -319,6 +319,7 @@ export const userSettings = pgTable(
     locale: text('locale').default('pt-BR'),
     notificationEmail: text('notification_email'),
     notificationsEnabled: boolean('notifications_enabled').default(true),
+    pushNotificationsEnabled: boolean('push_notifications_enabled').default(false),
     defaultEventOffsetMinutes: integer('default_event_offset_minutes').default(60),
     defaultTaskOffsetMinutes: integer('default_task_offset_minutes').default(60),
     onboardingCompletedAt: timestamp('onboarding_completed_at'),
@@ -358,6 +359,19 @@ export const billReminders = pgTable('bill_reminders', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// FCM tokens table
+export const fcmTokens = pgTable('fcm_tokens', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  token: text('token').notNull(),
+  deviceName: text('device_name'), // "Chrome on Windows", "Safari on iPhone"
+  createdAt: timestamp('created_at').defaultNow(),
+  lastUsedAt: timestamp('last_used_at').defaultNow(),
+}, (table) => ({
+  uniqueToken: unique().on(table.token), // Tokens are globally unique
+  userIdx: sql`CREATE INDEX IF NOT EXISTS fcm_tokens_user_idx ON fcm_tokens (user_id)`,
+}));
 
 // Type exports for TypeScript
 export type Account = typeof accounts.$inferSelect;
@@ -413,6 +427,9 @@ export type NewUserSettings = typeof userSettings.$inferInsert;
 
 export type BillReminder = typeof billReminders.$inferSelect;
 export type NewBillReminder = typeof billReminders.$inferInsert;
+
+export type FcmToken = typeof fcmTokens.$inferSelect;
+export type NewFcmToken = typeof fcmTokens.$inferInsert;
 
 // Relations
 import { relations } from 'drizzle-orm';

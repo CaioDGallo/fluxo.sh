@@ -736,12 +736,52 @@
     "digestScheduleNote": "Emails de resumo diário são enviados às 9:00 no fuso horário selecionado",
     "defaultEventOffset": "Offset Padrão para Eventos",
     "defaultTaskOffset": "Offset Padrão para Tarefas",
+    "push": {
+      "label": "Notificações Push",
+      "description": "Receba alertas no seu dispositivo",
+      "unsupported": "Seu navegador não suporta notificações push",
+      "denied": "Permissão negada",
+      "deniedHelp": "Habilite nas configurações do navegador"
+    },
     "yes": "Sim",
     "no": "Não",
     "save": "Salvar",
     "saving": "Salvando…",
     "savedSuccessfully": "Configurações salvas com sucesso!",
     "unexpectedError": "Ocorreu um erro inesperado. Por favor, tente novamente."
+  },
+  "push": {
+    "event": {
+      "title": "Lembrete de Evento"
+    },
+    "task": {
+      "title": "Lembrete de Tarefa"
+    },
+    "billReminder": {
+      "todayTitle": "Conta vence hoje!",
+      "tomorrowTitle": "Conta vence amanhã",
+      "upcomingTitle": "Conta vence em {days} dias"
+    },
+    "budgetAlert": {
+      "80": {
+        "title": "Alerta de Orçamento",
+        "body": "{category}: {percentage}% do orçamento usado"
+      },
+      "100": {
+        "title": "Orçamento Atingido!",
+        "body": "{category}: orçamento completamente utilizado"
+      },
+      "120": {
+        "title": "Orçamento Excedido!",
+        "body": "{category}: {percentage}% do orçamento usado"
+      }
+    },
+    "prompt": {
+      "title": "Ativar Notificações",
+      "description": "Receba lembretes de contas e alertas de orçamento",
+      "enable": "Ativar",
+      "enabling": "Ativando..."
+    }
   },
   "quickAdd": {
     "placeholder": "ex.: Dentista amanhã às 9 por 30m p1"

@@ -18,6 +18,7 @@ import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/act
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackFirstExpense, trackUserActivity } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
+import { checkBudgetAlerts } from '@/lib/actions/budget-alerts';
 
 type CreateExpenseData = {
   description?: string;
@@ -199,6 +200,11 @@ export async function createExpense(data: CreateExpenseData) {
         },
       });
     }
+
+    // Check budget alerts (non-blocking)
+    checkBudgetAlerts(userId, data.categoryId).catch((error) => {
+      console.error('Budget alert check failed:', error);
+    });
 
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/expenses');
@@ -382,6 +388,11 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
     await trackUserActivity({
       userId,
       activityType: 'edit_expense',
+    });
+
+    // Check budget alerts (non-blocking)
+    checkBudgetAlerts(userId, data.categoryId).catch((error) => {
+      console.error('Budget alert check failed:', error);
     });
 
     revalidateTag(`user-${userId}`, {});

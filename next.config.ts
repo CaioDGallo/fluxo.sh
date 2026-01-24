@@ -57,7 +57,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com us.i.posthog.com us.posthog.com",
+              "connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com us.i.posthog.com us.posthog.com *.googleapis.com fcm.googleapis.com",
               "frame-src 'self' challenges.cloudflare.com",
               "frame-ancestors 'none'",
             ].join('; '),

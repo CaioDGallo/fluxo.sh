@@ -739,9 +739,21 @@
     "push": {
       "label": "Notificações Push",
       "description": "Receba alertas no seu dispositivo",
+      "enable": "Ativar Notificações",
+      "disable": "Desativar",
+      "enabled": "Ativado",
       "unsupported": "Seu navegador não suporta notificações push",
-      "denied": "Permissão negada",
-      "deniedHelp": "Habilite nas configurações do navegador"
+      "denied": "Bloqueado pelo navegador",
+      "deniedHelp": "Clique no ícone de cadeado na barra de endereços para permitir",
+      "iosNotPwa": "Instale o app na tela inicial primeiro",
+      "iosNotPwaHelp": "Toque em Compartilhar → Adicionar à Tela de Início",
+      "iosUnsupported": "Requer iOS 16.4 ou superior",
+      "devices": "Dispositivos Conectados",
+      "removeDevice": "Remover",
+      "noDevices": "Nenhum dispositivo registrado",
+      "testNotification": "Enviar Teste",
+      "testSuccess": "Notificação de teste enviada!",
+      "testError": "Falha ao enviar notificação de teste"
     },
     "yes": "Sim",
     "no": "Não",

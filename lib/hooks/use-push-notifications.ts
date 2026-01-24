@@ -6,7 +6,7 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { firebaseConfig, VAPID_KEY } from '@/lib/firebase/config';
 import { registerFcmToken, unregisterFcmToken } from '@/lib/actions/push-notifications';
 
-type PushState = 'loading' | 'unsupported' | 'prompt' | 'denied' | 'granted' | 'error';
+type PushState = 'loading' | 'unsupported' | 'prompt' | 'denied' | 'granted' | 'error' | 'ios-not-pwa' | 'ios-unsupported';
 
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>('loading');
@@ -74,15 +74,45 @@ export function usePushNotifications() {
     } else if (!('serviceWorker' in navigator)) {
       newState = 'unsupported';
     } else {
-      // Check current permission state
-      const permission = Notification.permission;
-      if (permission === 'denied') {
-        newState = 'denied';
-      } else if (permission === 'granted') {
-        newState = 'granted';
-        shouldInitialize = true;
+      // Detect iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as { standalone?: boolean }).standalone === true;
+
+      if (isIOS) {
+        // iOS requires PWA to be installed
+        if (!isStandalone) {
+          newState = 'ios-not-pwa';
+        } else {
+          // Check iOS version (iOS 16.4+ required for web push)
+          const match = navigator.userAgent.match(/OS (\d+)_/);
+          const version = match ? parseInt(match[1], 10) : 0;
+          if (version < 16) {
+            newState = 'ios-unsupported';
+          } else {
+            // iOS 16.4+ in PWA mode - check permission
+            const permission = Notification.permission;
+            if (permission === 'denied') {
+              newState = 'denied';
+            } else if (permission === 'granted') {
+              newState = 'granted';
+              shouldInitialize = true;
+            } else {
+              newState = 'prompt';
+            }
+          }
+        }
       } else {
-        newState = 'prompt';
+        // Non-iOS: Check current permission state
+        const permission = Notification.permission;
+        if (permission === 'denied') {
+          newState = 'denied';
+        } else if (permission === 'granted') {
+          newState = 'granted';
+          shouldInitialize = true;
+        } else {
+          newState = 'prompt';
+        }
       }
     }
 
@@ -97,7 +127,7 @@ export function usePushNotifications() {
   }, [initializeMessaging]);
 
   const requestPermission = async () => {
-    if (state === 'unsupported' || state === 'denied') {
+    if (state === 'unsupported' || state === 'denied' || state === 'ios-not-pwa' || state === 'ios-unsupported') {
       return { success: false, error: 'Permission denied or unsupported' };
     }
 

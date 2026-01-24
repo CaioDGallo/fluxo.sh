@@ -10,6 +10,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { setLocale } from '@/lib/i18n/actions';
 import type { UserSettings } from '@/lib/schema';
 import type { Locale } from '@/lib/i18n/config';
+import { PushNotificationSection } from '@/components/push-notification-section';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -196,6 +197,9 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
             {t('digestScheduleNote')}
           </p>
         </Field>
+
+        {/* Push Notifications Section */}
+        <PushNotificationSection />
 
         {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">

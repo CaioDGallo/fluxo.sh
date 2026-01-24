@@ -727,9 +727,21 @@
     "push": {
       "label": "Push Notifications",
       "description": "Receive alerts on your device",
+      "enable": "Enable Notifications",
+      "disable": "Disable",
+      "enabled": "Enabled",
       "unsupported": "Your browser doesn't support push notifications",
-      "denied": "Permission denied",
-      "deniedHelp": "Enable in browser settings"
+      "denied": "Blocked by browser",
+      "deniedHelp": "Click the lock icon in the address bar to allow",
+      "iosNotPwa": "Install the app on your home screen first",
+      "iosNotPwaHelp": "Tap Share → Add to Home Screen",
+      "iosUnsupported": "Requires iOS 16.4 or higher",
+      "devices": "Connected Devices",
+      "removeDevice": "Remove",
+      "noDevices": "No devices registered",
+      "testNotification": "Send Test",
+      "testSuccess": "Test notification sent!",
+      "testError": "Failed to send test notification"
     },
     "yes": "Yes",
     "no": "No",

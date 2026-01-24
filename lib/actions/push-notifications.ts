@@ -99,3 +99,33 @@ export async function getUserDevices() {
     return { success: false, error: 'Failed to fetch devices', devices: [] };
   }
 }
+
+export async function removeDevice(tokenId: number) {
+  const userId = await getCurrentUserId();
+
+  try {
+    // Verify token belongs to user before deleting
+    await db
+      .delete(fcmTokens)
+      .where(and(eq(fcmTokens.id, tokenId), eq(fcmTokens.userId, userId)));
+
+    // Check if user has any remaining tokens
+    const remainingTokens = await db
+      .select()
+      .from(fcmTokens)
+      .where(eq(fcmTokens.userId, userId));
+
+    // If no tokens left, disable push notifications
+    if (remainingTokens.length === 0) {
+      await db
+        .update(userSettings)
+        .set({ pushNotificationsEnabled: false })
+        .where(eq(userSettings.userId, userId));
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error removing device:', error);
+    return { success: false, error: 'Failed to remove device' };
+  }
+}

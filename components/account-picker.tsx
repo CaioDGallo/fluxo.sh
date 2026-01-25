@@ -79,7 +79,7 @@ export function AccountPicker({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          'flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2',
+          'flex items-center justify-between gap-2 rounded-none border border-input bg-background px-3 py-2',
           'text-sm ring-offset-background transition-colors',
           'hover:bg-accent hover:text-accent-foreground',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',

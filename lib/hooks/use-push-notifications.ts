@@ -83,12 +83,19 @@ export function usePushNotifications() {
       onMessage(messagingInstance, (payload) => {
         console.log('Foreground message received:', payload);
 
+        // Extract title from multiple possible locations
+        const title = payload.data?.title
+          || payload.notification?.title;
+
+        const body = payload.data?.body
+          || payload.notification?.body;
+
         // Show notification manually in foreground
-        if (payload.data?.title) {
-          new Notification(payload.data.title || 'fluxo.sh', {
-            body: payload.data.body,
+        if (title) {
+          new Notification(title, {
+            body,
             icon: '/brand-kit/exports/icon-192-dark.png',
-            tag: payload.data.tag || 'default',
+            tag: payload.data?.tag || 'default',
           });
         }
       });

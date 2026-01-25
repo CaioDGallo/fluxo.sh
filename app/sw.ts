@@ -33,15 +33,39 @@ serwist.addEventListeners();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 self.addEventListener('push', (event: any) => {
   if (!event.data) return;
-  const data = event.data.json();
+  const payload = event.data.json();
+
+  // Extract title/body from multiple possible locations
+  // 1. Root level (app format via push-sender.ts)
+  // 2. notification object (Firebase Console format)
+  // 3. nested data object (alternative format)
+  const title = payload.title
+    || payload.notification?.title
+    || payload.data?.title
+    || 'fluxo.sh';
+
+  const body = payload.body
+    || payload.notification?.body
+    || payload.data?.body;
+
+  const tag = payload.tag
+    || payload.data?.tag
+    || 'default';
+
+  const url = payload.url
+    || payload.data?.url
+    || '/dashboard';
+
+  const type = payload.type
+    || payload.data?.type;
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'fluxo.sh', {
-      body: data.body,
+    self.registration.showNotification(title, {
+      body,
       icon: '/brand-kit/exports/icon-192-dark.png',
       badge: '/brand-kit/exports/icon-192-dark.png',
-      tag: data.tag || 'default',
-      data: { url: data.url || '/dashboard', type: data.type },
+      tag,
+      data: { url, type },
     })
   );
 });

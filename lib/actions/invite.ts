@@ -1,10 +1,11 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { invites } from '@/lib/auth-schema';
+import { invites, users } from '@/lib/auth-schema';
 import { randomUUID } from 'crypto';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkCrudRateLimit } from '@/lib/rate-limit';
+import { eq } from 'drizzle-orm';
 
 /**
  * Generates a human-readable invite code
@@ -24,6 +25,14 @@ export type CreateInviteParams = {
   expiresInDays?: number;
   maxUses?: number;
   createdBy?: string;
+  createdByEmail?: string;
+};
+
+type CreateInviteRecordParams = {
+  email?: string;
+  expiresInDays?: number;
+  maxUses?: number;
+  createdById?: string | null;
 };
 
 export type CreateInviteResult = {
@@ -37,13 +46,53 @@ export type CreateInviteResult = {
  * SECURITY: Requires authentication
  */
 export async function createInvite(params: CreateInviteParams = {}): Promise<CreateInviteResult> {
+  try {
+    return await createInviteRecord(params);
+  } catch (error) {
+    console.error('Create invite error:', error);
+    return { success: false, error: 'Erro ao criar convite' };
+  }
+}
+
+export async function createInviteWithoutAuth(
+  params: CreateInviteRecordParams = {}
+): Promise<CreateInviteResult> {
+  try {
+    return await createInviteRecord(params);
+  } catch (error) {
+    console.error('Create invite error:', error);
+    return { success: false, error: 'Erro ao criar convite' };
+  }
+}
+
+async function createInviteRecord(params: CreateInviteParams | CreateInviteRecordParams) {
   const { email, expiresInDays, maxUses = 1 } = params;
 
-  try {
-    // CRITICAL: Require authentication
-    const userId = await getCurrentUserId();
+  let userId: string | undefined | null = null;
+  if ('createdById' in params) {
+    userId = params.createdById ?? null;
+  } else {
+    const { createdBy, createdByEmail } = params;
+    userId = createdBy;
+    if (!userId && createdByEmail) {
+      const [user] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, createdByEmail.toLowerCase()))
+        .limit(1);
+      userId = user?.id;
+      if (!userId) {
+        return { success: false, error: 'Usuário não encontrado' };
+      }
+    }
+
     if (!userId) {
-      return { success: false, error: 'Não autorizado' };
+      // CRITICAL: Require authentication
+      try {
+        userId = await getCurrentUserId();
+      } catch {
+        return { success: false, error: 'Não autorizado' };
+      }
     }
 
     // Rate limiting
@@ -54,29 +103,26 @@ export async function createInvite(params: CreateInviteParams = {}): Promise<Cre
         error: `Muitas requisições. Tente novamente em ${rateLimit.retryAfter}s`,
       };
     }
-
-    const code = generateInviteCode();
-    const id = randomUUID();
-
-    let expiresAt: Date | null = null;
-    if (expiresInDays && expiresInDays > 0) {
-      expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
-    }
-
-    await db.insert(invites).values({
-      id,
-      code,
-      email: email || null,
-      createdBy: userId, // Track who created the invite
-      expiresAt,
-      maxUses,
-      useCount: 0,
-    });
-
-    return { success: true, code };
-  } catch (error) {
-    console.error('Create invite error:', error);
-    return { success: false, error: 'Erro ao criar convite' };
   }
+
+  const code = generateInviteCode();
+  const id = randomUUID();
+
+  let expiresAt: Date | null = null;
+  if (expiresInDays && expiresInDays > 0) {
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+  }
+
+  await db.insert(invites).values({
+    id,
+    code,
+    email: email || null,
+    createdBy: userId, // Track who created the invite
+    expiresAt,
+    maxUses,
+    useCount: 0,
+  });
+
+  return { success: true, code };
 }

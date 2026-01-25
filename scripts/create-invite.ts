@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createInvite } from '@/lib/actions/invite';
+import { createInviteWithoutAuth } from '@/lib/actions/invite';
 import { parseArgs } from 'node:util';
 
 const { values } = parseArgs({
@@ -23,10 +23,11 @@ async function main() {
   console.log('Max uses:', maxUses);
   console.log('');
 
-  const result = await createInvite({
+  const result = await createInviteWithoutAuth({
     email,
     expiresInDays,
     maxUses,
+    createdById: null,
   });
 
   if (result.success) {

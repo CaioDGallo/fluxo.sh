@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { Analytics } from "@vercel/analytics/next"
 import { getLocale, getMessages } from 'next-intl/server';
 import { Toaster } from '@/components/toaster';
+import { ServiceWorkerRegister } from '@/components/sw-register';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -66,6 +67,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
+        <ServiceWorkerRegister />
         <NextIntlClientProvider messages={messages}>
           <Providers>
             {children}

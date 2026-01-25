@@ -15,7 +15,40 @@ export function usePushNotifications() {
   const initializeMessagingImpl = useCallback(async () => {
     console.log('[Push] Starting initialization...');
 
-    // Initialize Firebase app
+    // 1. Check if service worker is available
+    if (!('serviceWorker' in navigator)) {
+      throw new Error('Service workers not supported');
+    }
+
+    // 2. Get existing registration or wait for it (with timeout)
+    let registration: ServiceWorkerRegistration | undefined;
+
+    // First, check for existing active registrations
+    console.log('[Push] Checking for existing service worker...');
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    registration = registrations.find(r => r.active);
+
+    if (!registration) {
+      // No active SW - in development mode or first load
+      // Try to wait briefly, but don't hang forever
+      console.log('[Push] No active SW found, waiting for registration...');
+      const readyPromise = navigator.serviceWorker.ready;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('No active service worker found')), 5000)
+      );
+
+      try {
+        registration = await Promise.race([readyPromise, timeoutPromise]);
+        console.log('[Push] Service worker registered:', registration);
+      } catch (error) {
+        console.error('[Push] SW wait failed:', error);
+        throw new Error('Service worker not available (development mode or SW disabled)');
+      }
+    } else {
+      console.log('[Push] Using existing service worker:', registration);
+    }
+
+    // 3. Initialize Firebase app
     let app: FirebaseApp;
     if (getApps().length === 0) {
       app = initializeApp(firebaseConfig);
@@ -25,16 +58,11 @@ export function usePushNotifications() {
       console.log('[Push] Using existing Firebase app');
     }
 
-    // Get messaging instance
+    // 4. Get messaging instance
     const messagingInstance = getMessaging(app);
     console.log('[Push] Messaging instance created');
 
-    // Wait for service worker to be ready
-    console.log('[Push] Waiting for service worker...');
-    const registration = await navigator.serviceWorker.ready;
-    console.log('[Push] Service worker ready:', registration);
-
-    // Get FCM token
+    // 5. Get FCM token
     console.log('[Push] Requesting FCM token...');
     const token = await getToken(messagingInstance, {
       vapidKey: VAPID_KEY,

@@ -331,6 +331,7 @@ export function TransactionForm({
                   onChange={(e) => setDate(e.target.value)}
                   required
                   autoComplete="transaction-date"
+                  className='w-max!'
                 />
               </Field>
 
@@ -354,7 +355,6 @@ export function TransactionForm({
                     onValueChange={(value) => setInstallments(value[0])}
                   />
                   <div className="flex justify-between text-xs text-neutral-500 mt-1">
-                    <span>1x</span>
                     <span>{installments}x</span>
                     <span>24x</span>
                   </div>
@@ -364,14 +364,14 @@ export function TransactionForm({
           </div>
 
           <SheetFooter className="border-t border-border/60 bg-muted/70 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <Button type="submit" disabled={!canSubmit}>
+              {isSubmitting ? tCommon('saving') : existingData ? tCommon('update') : tCommon('create')}
+            </Button>
             <SheetClose asChild>
               <Button type="button" variant="outline">
                 {tCommon('cancel')}
               </Button>
             </SheetClose>
-            <Button type="submit" disabled={!canSubmit}>
-              {isSubmitting ? tCommon('saving') : existingData ? tCommon('update') : tCommon('create')}
-            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

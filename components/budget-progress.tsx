@@ -70,6 +70,7 @@ export function BudgetProgress({
 
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div
+            data-slot="progress-bar"
             className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${barColor}`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />

@@ -11,6 +11,7 @@ import { CashFlowReport } from '@/components/cash-flow-report';
 
 // Mock next-intl
 vi.mock('next-intl', () => ({
+  useLocale: () => 'pt-BR',
   useTranslations: (namespace: string) => (key: string) => {
     const translations: Record<string, Record<string, string>> = {
       summary: {
@@ -40,6 +41,10 @@ vi.mock('next-intl', () => ({
         title: 'Recent Expenses',
         noExpenses: 'No expenses this month yet',
         viewAll: 'View all',
+      },
+      common: {
+        previousMonth: 'Previous month',
+        nextMonth: 'Next month',
       },
     };
     return translations[namespace]?.[key] || key;
@@ -149,7 +154,7 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('No income recorded')).toBeInTheDocument();
 
         // Progress bar should be 0%
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
@@ -160,7 +165,7 @@ describe('Dashboard Components', () => {
 
         expect(screen.getByText('0.0% of income spent')).toBeInTheDocument();
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
@@ -181,7 +186,7 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('160.0% of income spent')).toBeInTheDocument();
 
         // Progress bar should be capped at 100% width
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '100%' });
 
         // Should show red progress bar
@@ -223,7 +228,7 @@ describe('Dashboard Components', () => {
       it('shows green progress bar when under 80%', () => {
         const { container } = render(<SummaryCard replenished={0} spent={70000} budget={100000} />);
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-green-500');
         expect(progressBar).toHaveStyle({ width: '70%' });
       });
@@ -231,7 +236,7 @@ describe('Dashboard Components', () => {
       it('shows yellow progress bar when between 80-100%', () => {
         const { container } = render(<SummaryCard replenished={0} spent={85000} budget={100000} />);
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500');
         expect(progressBar).toHaveStyle({ width: '85%' });
       });
@@ -239,7 +244,7 @@ describe('Dashboard Components', () => {
       it('shows red progress bar when over 100%', () => {
         const { container } = render(<SummaryCard replenished={0} spent={120000} budget={100000} />);
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-red-500');
         expect(progressBar).toHaveStyle({ width: '100%' }); // Capped at 100%
       });
@@ -267,7 +272,7 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('Unbudgeted')).toBeInTheDocument();
 
         // With budget=0, percentage should be 0
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
@@ -309,14 +314,14 @@ describe('Dashboard Components', () => {
       it('tests exact boundary at 80%', () => {
         const { container } = render(<SummaryCard replenished={0} spent={80000} budget={100000} />);
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500'); // 80% is warning
       });
 
       it('tests exact boundary at 100%', () => {
         const { container } = render(<SummaryCard replenished={0} spent={100000} budget={100000} />);
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500'); // 100% is still warning
       });
 
@@ -373,7 +378,7 @@ describe('Dashboard Components', () => {
           />
         );
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-green-600');
       });
 
@@ -388,7 +393,7 @@ describe('Dashboard Components', () => {
           />
         );
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-600');
       });
 
@@ -403,7 +408,7 @@ describe('Dashboard Components', () => {
           />
         );
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-red-600');
       });
     });
@@ -423,7 +428,7 @@ describe('Dashboard Components', () => {
         // With budget=0, percentage should be 0
         expect(screen.getByText('0%')).toBeInTheDocument();
 
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
@@ -469,7 +474,7 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('150%')).toBeInTheDocument();
 
         // Progress bar should be capped at 100%
-        const progressBar = container.querySelector('.h-full.transition-all');
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveStyle({ width: '100%' });
       });
 

@@ -46,6 +46,7 @@ export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryP
 
         <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
           <div
+            data-slot="progress-bar"
             className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${isPositive ? 'bg-green-600' : 'bg-red-600'
               }`}
             style={{

@@ -1196,6 +1196,7 @@
       "nameLabel": "Category name",
       "namePlaceholder": "e.g. Food, Transport",
       "colorLabel": "Color",
+      "iconLabel": "Icon",
       "skip": "Skip",
       "create": "Create",
       "creating": "Creating...",

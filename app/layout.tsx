@@ -33,8 +33,8 @@ export default async function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
         {/* Favicons */}
-        <link rel="icon" type="image/png" sizes="16x16" href="/brand-kit/exports/icon-16-dark.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/brand-kit/exports/icon-32-dark.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/brand-kit/exports/favicon-16-dark.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/brand-kit/exports/favicon-32-dark.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/brand-kit/exports/icon-192-dark.png" />
         <link rel="shortcut icon" href="/brand-kit/exports/icon-32-dark.png" />
 

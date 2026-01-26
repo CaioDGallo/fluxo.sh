@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useOnboarding } from '../onboarding-provider';
 import { useTranslations } from 'next-intl';
 import { createCategory } from '@/lib/actions/categories';
+import { IconPicker, type IconName } from '@/components/icon-picker';
 import { toast } from 'sonner';
 
 const PRESET_COLORS = [
@@ -26,6 +27,7 @@ export function CategoryStep() {
   const { nextStep, setLastCreatedCategoryId } = useOnboarding();
   const [name, setName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [icon, setIcon] = useState<IconName | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async () => {
@@ -38,6 +40,7 @@ export function CategoryStep() {
     const result = await createCategory({
       name: name.trim(),
       color,
+      icon,
       type: 'expense',
     });
     setIsCreating(false);
@@ -88,6 +91,11 @@ export function CategoryStep() {
               />
             ))}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t('iconLabel')}</Label>
+          <IconPicker value={icon} onChange={setIcon} />
         </div>
       </div>
 

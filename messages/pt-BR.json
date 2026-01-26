@@ -1211,6 +1211,7 @@
       "nameLabel": "Nome da categoria",
       "namePlaceholder": "Ex: Alimentação, Transporte",
       "colorLabel": "Cor",
+      "iconLabel": "Ícone",
       "skip": "Pular",
       "create": "Criar",
       "creating": "Criando...",

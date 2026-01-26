@@ -64,6 +64,47 @@ const COLORS = {
   low: '#888888',
 };
 
+const ICON_FALLBACK = '💰';
+
+const CATEGORY_ICON_MAP: Record<string, string> = {
+  ShoppingBag01Icon: '🛍️',
+  Restaurant01Icon: '🍽️',
+  Car01Icon: '🚗',
+  Home01Icon: '🏠',
+  HealthIcon: '🩺',
+  PlaneIcon: '✈️',
+  GameController01Icon: '🎮',
+  Book01Icon: '📚',
+  Wallet01Icon: '👛',
+  ClothesIcon: '👕',
+  Wifi01Icon: '📶',
+  Activity01Icon: '🏃',
+  GiftIcon: '🎁',
+  SparklesIcon: '✨',
+  Settings01Icon: '⚙️',
+  Briefcase01Icon: '💼',
+  Coffee01Icon: '☕',
+  Pizza01Icon: '🍕',
+  Dumbbell01Icon: '🏋️',
+  Film01Icon: '🎬',
+  BankIcon: '🏦',
+  Bus01Icon: '🚌',
+  MetroIcon: '🚇',
+  School01Icon: '🏫',
+  ElectricHome01Icon: '💡',
+  Cash01Icon: '💵',
+  BrushIcon: '🖌️',
+  BicycleIcon: '🚲',
+  CoffeeBeansIcon: '🫘',
+  Medicine01Icon: '💊',
+  MusicNote01Icon: '🎵',
+  FuelStationIcon: '⛽',
+  ParkingAreaCircleIcon: '🅿️',
+  HeadphonesIcon: '🎧',
+  HeartAddIcon: '❤️',
+  Hospital01Icon: '🏥',
+};
+
 function escapeHtml(text: string | null | undefined): string {
   if (!text) return '';
   return text
@@ -82,6 +123,13 @@ function formatCurrency(cents: number, locale: Locale): string {
   }).format(value);
 }
 
+function resolveCategoryIcon(icon: string | null): string {
+  if (!icon) return ICON_FALLBACK;
+  if (icon in CATEGORY_ICON_MAP) return CATEGORY_ICON_MAP[icon];
+  if (icon.includes('Icon')) return ICON_FALLBACK;
+  return icon;
+}
+
 export function generateDigestHtml(data: FinancialDigestData): string {
   const { yesterday, budgets, date, appUrl } = data;
   const locale = data.locale ?? defaultLocale;
@@ -96,7 +144,7 @@ export function generateDigestHtml(data: FinancialDigestData): string {
   let yesterdayHtml = '';
   if (yesterday.isEmpty) {
     yesterdayHtml = `
-      <div style="background: ${COLORS.card}; border: 1px solid ${COLORS.border}; padding: 16px; margin: 8px 0; text-align: center;">
+      <div style="background: ${COLORS.card}; border: 2px solid ${COLORS.border}; padding: 16px; margin: 0; text-align: center;">
         <p style="margin: 0; color: ${COLORS.fg}; font-size: 14px;">${t('emails.digest.noExpenses')}</p>
       </div>
     `;
@@ -104,14 +152,17 @@ export function generateDigestHtml(data: FinancialDigestData): string {
     const categoryItems = yesterday.byCategory
       .slice(0, 7) // Top 7 categories
       .map(cat => {
-        const icon = cat.categoryIcon || '💰';
+        const icon = resolveCategoryIcon(cat.categoryIcon);
         const amount = formatCurrency(cat.amount, locale);
         return `
-          <div style="background: ${COLORS.card}; border-left: 3px solid ${cat.categoryColor}; padding: 10px 12px; margin: 6px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: ${COLORS.fg}; font-size: 13px;">${icon} ${escapeHtml(cat.categoryName)}</span>
-              <strong style="color: ${COLORS.fg}; font-size: 14px;">${amount}</strong>
-            </div>
+          <div style="background: ${COLORS.card}; border: 2px solid ${COLORS.border}; border-left: 4px solid ${cat.categoryColor}; padding: 12px 14px; margin-bottom: 10px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+              <tr>
+                <td style="width: 28px; font-size: 18px; line-height: 1;">${icon}</td>
+                <td style="color: ${COLORS.fg}; font-size: 13px; font-weight: 500;">${escapeHtml(cat.categoryName)}</td>
+                <td align="right" style="color: ${COLORS.fg}; font-size: 14px; font-weight: 700; white-space: nowrap;">${amount}</td>
+              </tr>
+            </table>
           </div>
         `;
       })
@@ -120,11 +171,13 @@ export function generateDigestHtml(data: FinancialDigestData): string {
     const total = formatCurrency(yesterday.total, locale);
     yesterdayHtml = `
       <div style="margin-bottom: 12px;">
-        <div style="background: ${COLORS.fg}; color: ${COLORS.bg}; padding: 12px; margin-bottom: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 14px; font-weight: bold;">${t('emails.digest.total')}</span>
-            <span style="font-size: 18px; font-weight: bold;">${total}</span>
-          </div>
+        <div style="background: ${COLORS.fg}; color: ${COLORS.bg}; border: 2px solid ${COLORS.fg}; padding: 12px 14px; margin-bottom: 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+            <tr>
+              <td style="font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;">${t('emails.digest.total')}</td>
+              <td align="right" style="font-size: 18px; font-weight: 700; white-space: nowrap;">${total}</td>
+            </tr>
+          </table>
         </div>
         ${categoryItems}
       </div>
@@ -200,8 +253,11 @@ export function generateDigestHtml(data: FinancialDigestData): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} - fluxo.sh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; background: ${COLORS.bg};">
+<body style="margin: 0; padding: 0; font-family: 'JetBrains Mono', monospace; background: ${COLORS.bg}; font-size: 14px; line-height: 1.6;">
   <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
     <!-- Header -->
     <div style="border-bottom: 2px solid ${COLORS.fg}; padding-bottom: 12px; margin-bottom: 24px;">
@@ -266,7 +322,7 @@ export function generateDigestText(data: FinancialDigestData): string {
   } else {
     text += `${t('emails.digest.total')}: ${formatCurrency(yesterday.total, locale)}\n\n`;
     yesterday.byCategory.slice(0, 7).forEach(cat => {
-      const icon = cat.categoryIcon || '💰';
+      const icon = resolveCategoryIcon(cat.categoryIcon);
       const amount = formatCurrency(cat.amount, locale);
       text += `${icon} ${cat.categoryName}: ${amount}\n`;
     });

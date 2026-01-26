@@ -9,7 +9,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
   ArrowLeftRightIcon,
-  ArrowUp01Icon,
   Calendar03Icon,
   CreditCardIcon,
   FileDownloadIcon,
@@ -18,7 +17,7 @@ import {
   Notification02Icon,
   Settings02Icon,
   SparklesIcon,
-  Wallet01Icon,
+  Wallet01Icon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';

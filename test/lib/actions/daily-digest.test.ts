@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { setupTestDb, teardownTestDb, clearAllTables, getTestDb } from '@/test/db-utils';
-import { TEST_USER_ID, createTestEvent, createTestTask } from '@/test/fixtures';
+import { TEST_USER_ID } from '@/test/fixtures';
 import * as schema from '@/lib/schema';
 
 const { sendEmailMock, getDb, setDb } = vi.hoisted(() => {
@@ -49,11 +49,83 @@ describe('Daily Digest', () => {
     vi.useRealTimers();
   });
 
+  async function createTestCategory(userId: string, name: string, color: string = '#ff0000') {
+    const [category] = await testDb
+      .insert(schema.categories)
+      .values({
+        userId,
+        name,
+        color,
+        icon: '🍕',
+        type: 'expense',
+      })
+      .returning();
+    return category;
+  }
+
+  async function createTestAccount(userId: string) {
+    const [account] = await testDb
+      .insert(schema.accounts)
+      .values({
+        userId,
+        name: 'Test Account',
+        type: 'checking',
+        currentBalance: 100000,
+        lastBalanceUpdate: new Date(),
+      })
+      .returning();
+    return account;
+  }
+
+  async function createYesterdayExpense(
+    userId: string,
+    categoryId: number,
+    accountId: number,
+    amount: number,
+    description: string
+  ) {
+    const [transaction] = await testDb
+      .insert(schema.transactions)
+      .values({
+        userId,
+        categoryId,
+        description,
+        totalAmount: amount,
+        totalInstallments: 1,
+      })
+      .returning();
+
+    await testDb.insert(schema.entries).values({
+      userId,
+      transactionId: transaction.id,
+      accountId,
+      amount,
+      purchaseDate: '2026-01-31', // Yesterday from test time 2026-02-01
+      faturaMonth: '2026-01',
+      dueDate: '2026-02-10',
+      installmentNumber: 1,
+    });
+
+    return transaction;
+  }
+
+  async function createBudget(userId: string, categoryId: number, yearMonth: string, amount: number) {
+    await testDb.insert(schema.budgets).values({
+      userId,
+      categoryId,
+      yearMonth,
+      amount,
+    });
+  }
+
   it('skips users without notification email and aggregates counts', async () => {
     await testDb.insert(schema.userSettings).values({
       userId: 'no-email-user',
       notificationsEnabled: true,
     });
+
+    const failCategory = await createTestCategory('fail-user', 'Food');
+    const failAccount = await createTestAccount('fail-user');
 
     await testDb.insert(schema.userSettings).values({
       userId: 'fail-user',
@@ -62,12 +134,17 @@ describe('Daily Digest', () => {
       timezone: 'UTC',
     });
 
+    await createYesterdayExpense('fail-user', failCategory.id, failAccount.id, 5000, 'Lunch');
+
     await testDb.insert(schema.userSettings).values({
       userId: 'empty-user',
       notificationEmail: 'empty@example.com',
       notificationsEnabled: true,
       timezone: 'UTC',
     });
+
+    const successCategory = await createTestCategory('success-user', 'Transport');
+    const successAccount = await createTestAccount('success-user');
 
     await testDb.insert(schema.userSettings).values({
       userId: 'success-user',
@@ -76,23 +153,7 @@ describe('Daily Digest', () => {
       timezone: 'UTC',
     });
 
-    await testDb.insert(schema.events).values({
-      ...createTestEvent({
-        userId: 'fail-user',
-        title: 'Fail Event',
-        startAt: new Date('2026-02-01T14:00:00Z'),
-        endAt: new Date('2026-02-01T15:00:00Z'),
-      }),
-    });
-
-    await testDb.insert(schema.events).values({
-      ...createTestEvent({
-        userId: 'success-user',
-        title: 'Success Event',
-        startAt: new Date('2026-02-01T16:00:00Z'),
-        endAt: new Date('2026-02-01T17:00:00Z'),
-      }),
-    });
+    await createYesterdayExpense('success-user', successCategory.id, successAccount.id, 3000, 'Uber');
 
     sendEmailMock.mockImplementation(async (options: { to: string }) => {
       if (options.to === 'fail@example.com') {
@@ -105,11 +166,12 @@ describe('Daily Digest', () => {
     await vi.runAllTimersAsync();
     const result = await resultPromise;
 
+    // fail-user attempts 2 times (initial + 1 retry), success-user attempts 1 time = 3 total calls
     expect(sendEmailMock).toHaveBeenCalledTimes(3);
     expect(result).toMatchObject({
       usersProcessed: 3,
-      emailsSent: 2,
-      emailsFailed: 1,
+      emailsSent: 2, // success-user + empty-user (no data but counted as success)
+      emailsFailed: 1, // fail-user
     });
   });
 
@@ -126,35 +188,68 @@ describe('Daily Digest', () => {
     expect(sendEmailMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       usersProcessed: 1,
-      emailsSent: 1,
+      emailsSent: 1, // Considered success but no email sent
       emailsFailed: 0,
     });
   });
 
-  it('includes items within user local day boundaries', async () => {
+  it('includes spending within user local day boundaries', async () => {
     await testDb.insert(schema.userSettings).values({
       userId: TEST_USER_ID,
       notificationEmail: 'user@example.com',
       notificationsEnabled: true,
-      timezone: 'America/Sao_Paulo',
+      timezone: 'America/Sao_Paulo', // UTC-3
     });
 
-    await testDb.insert(schema.events).values({
-      ...createTestEvent({
+    const category = await createTestCategory(TEST_USER_ID, 'Food');
+    const account = await createTestAccount(TEST_USER_ID);
+
+    // Create transaction for yesterday in São Paulo timezone
+    // 2026-02-01 12:00 UTC = 2026-02-01 09:00 São Paulo
+    // Yesterday in São Paulo = 2026-01-31
+    const [transaction] = await testDb
+      .insert(schema.transactions)
+      .values({
         userId: TEST_USER_ID,
-        title: 'Local Day Event',
-        startAt: new Date('2026-02-01T03:30:00Z'),
-        endAt: new Date('2026-02-01T04:00:00Z'),
-      }),
+        categoryId: category.id,
+        description: 'Local Day Expense',
+        totalAmount: 5000,
+        totalInstallments: 1,
+      })
+      .returning();
+
+    await testDb.insert(schema.entries).values({
+      userId: TEST_USER_ID,
+      transactionId: transaction.id,
+      accountId: account.id,
+      amount: 5000,
+      purchaseDate: '2026-01-31', // Yesterday in São Paulo
+      faturaMonth: '2026-01',
+      dueDate: '2026-02-10',
+      installmentNumber: 1,
     });
 
-    await testDb.insert(schema.events).values({
-      ...createTestEvent({
+    // Create transaction for day before yesterday (should not appear)
+    const [oldTransaction] = await testDb
+      .insert(schema.transactions)
+      .values({
         userId: TEST_USER_ID,
-        title: 'Previous Day Event',
-        startAt: new Date('2026-02-01T02:30:00Z'),
-        endAt: new Date('2026-02-01T03:00:00Z'),
-      }),
+        categoryId: category.id,
+        description: 'Previous Day Expense',
+        totalAmount: 3000,
+        totalInstallments: 1,
+      })
+      .returning();
+
+    await testDb.insert(schema.entries).values({
+      userId: TEST_USER_ID,
+      transactionId: oldTransaction.id,
+      accountId: account.id,
+      amount: 3000,
+      purchaseDate: '2026-01-30', // Day before yesterday
+      faturaMonth: '2026-01',
+      dueDate: '2026-02-10',
+      installmentNumber: 1,
     });
 
     sendEmailMock.mockResolvedValue({ success: true });
@@ -163,12 +258,13 @@ describe('Daily Digest', () => {
 
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const [options] = sendEmailMock.mock.calls[0];
-    expect(options.html).toContain('Local Day Event');
-    expect(options.html).not.toContain('Previous Day Event');
+    expect(options.html).toContain('Food'); // Category name
+    expect(options.html).toContain('R$'); // Currency
+    expect(options.html).not.toContain('Previous Day Expense');
   });
 
-  it('includes recurring events and tasks occurring today', async () => {
-    vi.setSystemTime(new Date('2026-02-02T12:00:00Z'));
+  it('includes budget alerts in digest', async () => {
+    vi.setSystemTime(new Date('2026-02-15T12:00:00Z'));
 
     await testDb.insert(schema.userSettings).values({
       userId: TEST_USER_ID,
@@ -177,45 +273,45 @@ describe('Daily Digest', () => {
       timezone: 'UTC',
     });
 
-    const [event] = await testDb
-      .insert(schema.events)
-      .values(createTestEvent({
+    const category = await createTestCategory(TEST_USER_ID, 'Food');
+    const account = await createTestAccount(TEST_USER_ID);
+
+    // Create budget of 10000 cents (R$100)
+    await createBudget(TEST_USER_ID, category.id, '2026-02', 10000);
+
+    // Create spending of 9500 cents (95% of budget - critical)
+    for (let i = 1; i <= 14; i++) {
+      const [transaction] = await testDb
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          categoryId: category.id,
+          description: `Expense ${i}`,
+          totalAmount: 678,
+          totalInstallments: 1,
+        })
+        .returning();
+
+      await testDb.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        title: 'Daily Standup',
-        startAt: new Date('2026-02-01T10:00:00Z'),
-        endAt: new Date('2026-02-01T10:30:00Z'),
-      }))
-      .returning();
-
-    const [task] = await testDb
-      .insert(schema.tasks)
-      .values(createTestTask({
-        userId: TEST_USER_ID,
-        title: 'Recurring Task',
-        dueAt: new Date('2026-02-01T15:00:00Z'),
-        status: 'pending',
-      }))
-      .returning();
-
-    await testDb.insert(schema.recurrenceRules).values({
-      itemType: 'event',
-      itemId: event.id,
-      rrule: 'FREQ=DAILY;INTERVAL=1',
-    });
-
-    await testDb.insert(schema.recurrenceRules).values({
-      itemType: 'task',
-      itemId: task.id,
-      rrule: 'FREQ=DAILY;INTERVAL=1',
-    });
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 678,
+        purchaseDate: `2026-02-${String(i).padStart(2, '0')}`,
+        faturaMonth: '2026-02',
+        dueDate: '2026-03-10',
+        installmentNumber: 1,
+      });
+    }
 
     sendEmailMock.mockResolvedValue({ success: true });
 
     await sendAllDailyDigests();
 
     const [options] = sendEmailMock.mock.calls[0];
-    expect(options.html).toContain('Daily Standup');
-    expect(options.html).toContain('Recurring Task');
+    // Should include budget insights even without yesterday spending
+    expect(options.html).toContain('Food'); // Category in budget warning
+    expect(options.html).toMatch(/\d+%/); // Percentage
   });
 
   it('retries sendEmail failures with backoff', async () => {
@@ -226,14 +322,10 @@ describe('Daily Digest', () => {
       timezone: 'UTC',
     });
 
-    await testDb.insert(schema.events).values({
-      ...createTestEvent({
-        userId: TEST_USER_ID,
-        title: 'Retry Event',
-        startAt: new Date('2026-02-01T14:00:00Z'),
-        endAt: new Date('2026-02-01T15:00:00Z'),
-      }),
-    });
+    const category = await createTestCategory(TEST_USER_ID, 'Food');
+    const account = await createTestAccount(TEST_USER_ID);
+
+    await createYesterdayExpense(TEST_USER_ID, category.id, account.id, 5000, 'Retry Expense');
 
     sendEmailMock
       .mockResolvedValueOnce({ success: false, error: 'temporary' })

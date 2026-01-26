@@ -2,12 +2,12 @@ import 'dotenv/config';
 
 import bcrypt from 'bcryptjs';
 import { sql } from 'drizzle-orm';
-import { reset, seed } from 'drizzle-seed';
+import { reset } from 'drizzle-seed';
 import { db } from '../lib/db';
 import { computeClosingDate, getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
 import * as schema from '../lib/schema';
-import { addMonths, getCurrentYearMonth } from '../lib/utils';
 import { DEFAULT_CATEGORIES } from '../lib/user-setup/default-categories';
+import { addMonths, getCurrentYearMonth } from '../lib/utils';
 
 // Production safety check
 if (process.env.NODE_ENV === 'production') {

@@ -9,7 +9,7 @@
     "build:clean": "rm -rf .next && next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "tidy": "pnpm lint && pnpm test:run && pnpm build",
+    "tidy": "pnpm lint && pnpm test:run && pnpm build:clean",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",

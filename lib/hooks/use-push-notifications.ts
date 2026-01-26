@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { disableAllPushNotifications, registerFcmToken } from '@/lib/actions/push-notifications';
 import { firebaseConfig, VAPID_KEY } from '@/lib/firebase/config';
-import { registerFcmToken, disableAllPushNotifications } from '@/lib/actions/push-notifications';
+import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { useCallback, useEffect, useState } from 'react';
 
 type PushState = 'loading' | 'unsupported' | 'prompt' | 'denied' | 'granted' | 'error' | 'ios-not-pwa' | 'ios-unsupported';
 
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>('loading');
-  const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [, setCurrentToken] = useState<string | null>(null);
 
   const initializeMessagingImpl = useCallback(async () => {
     console.log('[Push] Starting initialization...');

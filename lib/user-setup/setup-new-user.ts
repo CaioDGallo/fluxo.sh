@@ -1,13 +1,13 @@
-import { db } from '@/lib/db';
 import { users } from '@/lib/auth-schema';
-import { accounts, categories, userSettings } from '@/lib/schema';
-import { DEFAULT_CATEGORIES } from './default-categories';
-import { DEFAULT_ACCOUNTS } from './default-accounts';
+import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/email/send';
 import { generateWelcomeHtml, generateWelcomeText } from '@/lib/email/welcome-template';
-import { type Locale, defaultLocale } from '@/lib/i18n/config';
+import { type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
+import { accounts, categories, userSettings } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
+import { DEFAULT_ACCOUNTS } from './default-accounts';
+import { DEFAULT_CATEGORIES } from './default-categories';
 
 export interface SetupNewUserResult {
   success: boolean;

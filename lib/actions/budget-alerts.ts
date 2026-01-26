@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { budgets, entries, userSettings, categories } from '@/lib/schema';
+import { budgets, entries, userSettings, categories, budgetAlerts } from '@/lib/schema';
 import { eq, and } from 'drizzle-orm';
 import { sendPushToUser } from '@/lib/services/push-sender';
 import { getCurrentYearMonth } from '@/lib/utils';
@@ -13,6 +13,8 @@ interface BudgetAlertResult {
   threshold?: number;
   error?: string;
 }
+
+const BUDGET_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 export async function checkBudgetAlerts(
   userId: string,
@@ -92,6 +94,28 @@ export async function checkBudgetAlerts(
       return { sent: false };
     }
 
+    const now = new Date();
+
+    const [lastAlert] = await db
+      .select()
+      .from(budgetAlerts)
+      .where(
+        and(
+          eq(budgetAlerts.userId, userId),
+          eq(budgetAlerts.categoryId, categoryId),
+          eq(budgetAlerts.yearMonth, currentMonth),
+          eq(budgetAlerts.threshold, threshold)
+        )
+      )
+      .limit(1);
+
+    if (lastAlert) {
+      const elapsed = now.getTime() - lastAlert.lastSentAt.getTime();
+      if (elapsed < BUDGET_ALERT_COOLDOWN_MS) {
+        return { sent: false };
+      }
+    }
+
     // Get category name
     const [category] = await db
       .select()
@@ -132,6 +156,29 @@ export async function checkBudgetAlerts(
       tag: `budget-alert-${categoryId}-${currentMonth}-${threshold}`,
       type: 'budget_alert',
     });
+
+    if (result.sent > 0) {
+      await db
+        .insert(budgetAlerts)
+        .values({
+          userId,
+          categoryId,
+          yearMonth: currentMonth,
+          threshold,
+          lastSentAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [
+            budgetAlerts.userId,
+            budgetAlerts.categoryId,
+            budgetAlerts.yearMonth,
+            budgetAlerts.threshold,
+          ],
+          set: {
+            lastSentAt: now,
+          },
+        });
+    }
 
     return {
       sent: result.sent > 0,

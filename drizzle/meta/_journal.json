@@ -246,6 +246,13 @@
       "when": 1769272878452,
       "tag": "0034_grey_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1769442337908,
+      "tag": "0035_budget_alerts",
+      "breakpoints": true
     }
   ]
 }

@@ -70,6 +70,25 @@ export const budgets = pgTable(
   })
 );
 
+// Budget alerts table (cooldowns per category/threshold)
+export const budgetAlerts = pgTable(
+  'budget_alerts',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    yearMonth: text('year_month').notNull(),
+    threshold: integer('threshold').notNull(),
+    lastSentAt: timestamp('last_sent_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueAlert: unique().on(table.userId, table.categoryId, table.yearMonth, table.threshold),
+  })
+);
+
 // Monthly Budgets table (total budget per month)
 export const monthlyBudgets = pgTable(
   'monthly_budgets',
@@ -383,6 +402,9 @@ export type NewCategory = typeof categories.$inferInsert;
 
 export type Budget = typeof budgets.$inferSelect;
 export type NewBudget = typeof budgets.$inferInsert;
+
+export type BudgetAlert = typeof budgetAlerts.$inferSelect;
+export type NewBudgetAlert = typeof budgetAlerts.$inferInsert;
 
 export type MonthlyBudget = typeof monthlyBudgets.$inferSelect;
 export type NewMonthlyBudget = typeof monthlyBudgets.$inferInsert;

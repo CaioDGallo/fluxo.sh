@@ -71,8 +71,9 @@ async function createInviteRecord(params: CreateInviteParams | CreateInviteRecor
   let userId: string | undefined | null = null;
   if ('createdById' in params) {
     userId = params.createdById ?? null;
-  } else {
-    const { createdBy, createdByEmail } = params;
+  } else if ('createdBy' in params || 'createdByEmail' in params) {
+    const createdBy = 'createdBy' in params ? params.createdBy : undefined;
+    const createdByEmail = 'createdByEmail' in params ? params.createdByEmail : undefined;
     userId = createdBy;
     if (!userId && createdByEmail) {
       const [user] = await db

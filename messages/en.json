@@ -1011,6 +1011,17 @@
       "feature3": "Set monthly budgets",
       "getStarted": "Get Started",
       "footer": "fluxo.sh - Your finances under control"
+    },
+    "waitlistApproved": {
+      "subject": "Your Fluxo.sh invite is ready",
+      "title": "Invite approved",
+      "greeting": "Hello!",
+      "intro": "Your access to Fluxo.sh was approved. Use the code below to create your account.",
+      "codeLabel": "Invite code",
+      "expires": "Valid for {{days}} days",
+      "instructions": "Open the signup page and paste the code.",
+      "cta": "Create account",
+      "footer": "fluxo.sh - Your finances under control"
     }
   },
   "netWorth": {

@@ -1049,6 +1049,17 @@
       "feature3": "Definir orçamentos mensais",
       "getStarted": "Começar",
       "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "waitlistApproved": {
+      "subject": "Seu convite do Fluxo.sh está pronto",
+      "title": "Convite liberado",
+      "greeting": "Olá!",
+      "intro": "Seu acesso ao Fluxo.sh foi aprovado. Use o código abaixo para criar sua conta.",
+      "codeLabel": "Código de convite",
+      "expires": "Válido por {{days}} dias",
+      "instructions": "Abra a página de cadastro e cole o código.",
+      "cta": "Criar conta",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
     }
   },
   "netWorth": {

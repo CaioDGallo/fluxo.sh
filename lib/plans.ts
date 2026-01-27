@@ -1,6 +1,8 @@
 export const PLAN_KEYS = ['free', 'pro'] as const;
+export const PLAN_INTERVALS = ['monthly', 'yearly'] as const;
 
 export type PlanKey = typeof PLAN_KEYS[number];
+export type PlanInterval = typeof PLAN_INTERVALS[number];
 
 export type PlanLimits = {
   maxCategories: number;
@@ -18,6 +20,7 @@ export type PlanDefinition = {
 };
 
 export const DEFAULT_PLAN_KEY: PlanKey = 'free';
+export const DEFAULT_PLAN_INTERVAL: PlanInterval = 'monthly';
 
 export const PLANS: Record<PlanKey, PlanDefinition> = {
   free: {
@@ -49,6 +52,13 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
 export function resolvePlanKey(value?: string | null): PlanKey {
   if (!value) return DEFAULT_PLAN_KEY;
   return PLAN_KEYS.includes(value as PlanKey) ? (value as PlanKey) : DEFAULT_PLAN_KEY;
+}
+
+export function resolvePlanInterval(value?: string | null): PlanInterval {
+  if (!value) return DEFAULT_PLAN_INTERVAL;
+  return PLAN_INTERVALS.includes(value as PlanInterval)
+    ? (value as PlanInterval)
+    : DEFAULT_PLAN_INTERVAL;
 }
 
 export function getPlanDefinition(value?: string | null): PlanDefinition {

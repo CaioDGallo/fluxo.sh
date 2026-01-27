@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
 import { setupNewUser } from '@/lib/user-setup/setup-new-user';
 import { checkSignupRateLimit } from '@/lib/rate-limit';
+import { createPlanSubscription } from '@/lib/plan-subscriptions';
 
 const INVITE_COOKIE_NAME = 'invite_code';
 const INVITE_COOKIE_MAX_AGE = 60 * 60; // 1 hour
@@ -128,6 +129,14 @@ export async function signup(data: {
     const currentInvite = await db.query.invites.findFirst({
       where: eq(invites.id, inviteValidation.inviteId),
     });
+
+    if (currentInvite) {
+      await createPlanSubscription({
+        userId,
+        planKey: currentInvite.planKey,
+        planInterval: currentInvite.planInterval,
+      });
+    }
 
     await db
       .update(invites)

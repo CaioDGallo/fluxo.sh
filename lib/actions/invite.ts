@@ -6,6 +6,14 @@ import { randomUUID } from 'crypto';
 import { getCurrentUserId } from '@/lib/auth';
 import { checkCrudRateLimit } from '@/lib/rate-limit';
 import { eq } from 'drizzle-orm';
+import {
+  DEFAULT_PLAN_KEY,
+  PLAN_INTERVALS,
+  PLAN_KEYS,
+  resolvePlanInterval,
+  type PlanInterval,
+  type PlanKey,
+} from '@/lib/plans';
 
 /**
  * Generates a human-readable invite code
@@ -26,6 +34,8 @@ export type CreateInviteParams = {
   maxUses?: number;
   createdBy?: string;
   createdByEmail?: string;
+  planKey?: PlanKey;
+  planInterval?: PlanInterval;
 };
 
 type CreateInviteRecordParams = {
@@ -33,6 +43,8 @@ type CreateInviteRecordParams = {
   expiresInDays?: number;
   maxUses?: number;
   createdById?: string | null;
+  planKey?: PlanKey;
+  planInterval?: PlanInterval;
 };
 
 export type CreateInviteResult = {
@@ -66,7 +78,15 @@ export async function createInviteWithoutAuth(
 }
 
 async function createInviteRecord(params: CreateInviteParams | CreateInviteRecordParams) {
-  const { email, expiresInDays, maxUses = 1 } = params;
+  const { email, expiresInDays, maxUses = 1, planKey, planInterval } = params;
+
+  if (planKey && !PLAN_KEYS.includes(planKey)) {
+    return { success: false, error: 'Plano inválido' };
+  }
+
+  if (planInterval && !PLAN_INTERVALS.includes(planInterval)) {
+    return { success: false, error: 'Periodicidade inválida' };
+  }
 
   let userId: string | undefined | null = null;
   if ('createdById' in params) {
@@ -115,10 +135,15 @@ async function createInviteRecord(params: CreateInviteParams | CreateInviteRecor
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
   }
 
+  const resolvedPlanInterval =
+    planKey && planKey !== DEFAULT_PLAN_KEY ? resolvePlanInterval(planInterval) : null;
+
   await db.insert(invites).values({
     id,
     code,
     email: email || null,
+    planKey: planKey ?? null,
+    planInterval: resolvedPlanInterval,
     createdBy: userId, // Track who created the invite
     expiresAt,
     maxUses,

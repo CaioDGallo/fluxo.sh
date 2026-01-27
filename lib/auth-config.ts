@@ -11,6 +11,7 @@ import { eq, and } from 'drizzle-orm';
 import { setupNewUser } from '@/lib/user-setup/setup-new-user';
 import { getStoredInviteCode, clearStoredInviteCode, validateInviteCode } from '@/lib/actions/signup';
 import { invites } from '@/lib/auth-schema';
+import { createPlanSubscription } from '@/lib/plan-subscriptions';
 
 // Extended user type with invite tracking
 interface ExtendedUser extends NextAuthUser {
@@ -182,6 +183,12 @@ export const authConfig: NextAuthOptions = {
               });
 
               if (currentInvite) {
+                await createPlanSubscription({
+                  userId,
+                  planKey: currentInvite.planKey,
+                  planInterval: currentInvite.planInterval,
+                });
+
                 await db
                   .update(invites)
                   .set({

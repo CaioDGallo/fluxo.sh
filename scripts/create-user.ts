@@ -3,6 +3,14 @@
 import 'dotenv/config';
 import { db } from '@/lib/db';
 import { users } from '@/lib/auth-schema';
+import { createPlanSubscription } from '@/lib/plan-subscriptions';
+import {
+  DEFAULT_PLAN_KEY,
+  PLAN_INTERVALS,
+  PLAN_KEYS,
+  type PlanInterval,
+  type PlanKey,
+} from '@/lib/plans';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -11,9 +19,11 @@ interface CreateUserArgs {
   password: string;
   firstName?: string;
   lastName?: string;
+  planKey?: PlanKey;
+  planInterval?: PlanInterval;
 }
 
-async function createUser({ email, password, firstName, lastName }: CreateUserArgs) {
+async function createUser({ email, password, firstName, lastName, planKey, planInterval }: CreateUserArgs) {
   try {
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,6 +73,19 @@ async function createUser({ email, password, firstName, lastName }: CreateUserAr
       console.log('Name:', newUser.name);
     }
     console.log('Created at:', newUser.createdAt);
+
+    if (planKey && planKey !== DEFAULT_PLAN_KEY) {
+      console.log('\n💳 Defining subscription plan...');
+      const subscription = await createPlanSubscription({
+        userId: newUser.id,
+        planKey,
+        planInterval,
+      });
+
+      if (subscription) {
+        console.log(`✅ Plan set to ${subscription.planKey} (${subscription.planInterval})`);
+      }
+    }
 
     // Setup new user with default categories and welcome email
     console.log('\n📝 Setting up user account...');
@@ -116,11 +139,14 @@ Required:
 Optional:
   --first-name <name>      User's first name
   --last-name <name>       User's last name
+  --plan <plan>            Plan key (${PLAN_KEYS.join(', ')})
+  --interval <interval>    Billing interval (${PLAN_INTERVALS.join(', ')})
   -h, --help              Show this help message
 
 Examples:
   tsx scripts/create-user.ts --email user@example.com --password Pass123!
   tsx scripts/create-user.ts --email user@example.com --password Pass123! --first-name John --last-name Doe
+  tsx scripts/create-user.ts --email user@example.com --password Pass123! --plan pro --interval yearly
     `);
     return null;
   }
@@ -144,6 +170,12 @@ Examples:
       case '--last-name':
         result.lastName = args[++i];
         break;
+      case '--plan':
+        result.planKey = args[++i]?.toLowerCase() as PlanKey;
+        break;
+      case '--interval':
+        result.planInterval = args[++i]?.toLowerCase() as PlanInterval;
+        break;
       default:
         console.error(`Unknown argument: ${args[i]}`);
         return null;
@@ -153,6 +185,21 @@ Examples:
   if (!result.email || !result.password) {
     console.error('❌ Error: --email and --password are required');
     console.log('Run with --help for usage information');
+    return null;
+  }
+
+  if (result.planInterval && !result.planKey) {
+    console.error('❌ Error: --interval requires --plan');
+    return null;
+  }
+
+  if (result.planKey && !PLAN_KEYS.includes(result.planKey)) {
+    console.error(`❌ Error: Invalid plan. Use: ${PLAN_KEYS.join(', ')}`);
+    return null;
+  }
+
+  if (result.planInterval && !PLAN_INTERVALS.includes(result.planInterval)) {
+    console.error(`❌ Error: Invalid interval. Use: ${PLAN_INTERVALS.join(', ')}`);
     return null;
   }
 

@@ -69,6 +69,8 @@ export const invites = pgTable('invites', {
   id: text('id').notNull().primaryKey(),
   code: text('code').notNull().unique(),
   email: text('email'), // Optional: restrict to specific email
+  planKey: text('plan_key'),
+  planInterval: text('plan_interval'),
   createdBy: text('created_by').references(() => users.id),
   expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }),
   usedAt: timestamp('used_at', { mode: 'date', withTimezone: true }),

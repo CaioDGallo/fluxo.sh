@@ -6,6 +6,7 @@ import { reset } from 'drizzle-seed';
 import { db } from '../lib/db';
 import { computeClosingDate, getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
 import * as schema from '../lib/schema';
+import { getWeeklyWindow } from '../lib/plan-usage';
 import { DEFAULT_CATEGORIES } from '../lib/user-setup/default-categories';
 import { addMonths, getCurrentYearMonth } from '../lib/utils';
 
@@ -38,9 +39,14 @@ const TEST_USER_ID = DEFAULT_USERS[0].id;
 const CURRENT_MONTH = getCurrentYearMonth();
 const PREV_MONTH = addMonths(CURRENT_MONTH, -1);
 const TWO_MONTHS_AGO = addMonths(CURRENT_MONTH, -2);
+const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
 
 const seedSchema = {
   users: schema.users,
+  invites: schema.invites,
+  billingCustomers: schema.billingCustomers,
+  billingSubscriptions: schema.billingSubscriptions,
+  usageCounters: schema.usageCounters,
   accounts: schema.accounts,
   categories: schema.categories,
   budgets: schema.budgets,
@@ -66,6 +72,9 @@ type SeedTableKey = keyof typeof seedSchema;
 type SeedRow = Record<string, unknown>;
 
 const serialTables = new Set<SeedTableKey>([
+  'billingCustomers',
+  'billingSubscriptions',
+  'usageCounters',
   'accounts',
   'categories',
   'budgets',
@@ -88,6 +97,10 @@ const serialTables = new Set<SeedTableKey>([
 
 const idCounters: Record<SeedTableKey, number> = {
   users: 0,
+  invites: 0,
+  billingCustomers: 0,
+  billingSubscriptions: 0,
+  usageCounters: 0,
   accounts: 0,
   categories: 0,
   budgets: 0,
@@ -137,6 +150,8 @@ async function seedRows(tableKey: SeedTableKey, rows: SeedRow[]) {
 async function resetSequences() {
   const sequenceTables = [
     { table: 'accounts', count: idCounters.accounts },
+    { table: 'billing_customers', count: idCounters.billingCustomers },
+    { table: 'billing_subscriptions', count: idCounters.billingSubscriptions },
     { table: 'categories', count: idCounters.categories },
     { table: 'budgets', count: idCounters.budgets },
     { table: 'monthly_budgets', count: idCounters.monthlyBudgets },
@@ -154,6 +169,7 @@ async function resetSequences() {
     { table: 'notifications', count: idCounters.notifications },
     { table: 'notification_jobs', count: idCounters.notificationJobs },
     { table: 'bill_reminders', count: idCounters.billReminders },
+    { table: 'usage_counters', count: idCounters.usageCounters },
   ];
 
   for (const { table, count } of sequenceTables) {
@@ -675,7 +691,122 @@ async function seedDatabase() {
     await seedRows('users', userRecords);
     console.log(`  ✓ ${userRecords.length} users created\n`);
 
-    // 3. Insert accounts
+    const now = new Date();
+
+    // 3. Insert invite codes
+    console.log('  ✉️  Inserting invite codes...');
+    const inviteExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const inviteRecords = [
+      {
+        id: '00000000-0000-4000-8000-000000000101',
+        code: 'FLUXO-PRO-MON',
+        email: null,
+        planKey: 'pro',
+        planInterval: 'monthly',
+        createdBy: TEST_USER_ID,
+        expiresAt: inviteExpiresAt,
+        usedAt: null,
+        usedBy: null,
+        maxUses: 1,
+        useCount: 0,
+        createdAt: now,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000102',
+        code: 'FLUXO-PRO-YEAR',
+        email: null,
+        planKey: 'pro',
+        planInterval: 'yearly',
+        createdBy: TEST_USER_ID,
+        expiresAt: inviteExpiresAt,
+        usedAt: null,
+        usedBy: null,
+        maxUses: 1,
+        useCount: 0,
+        createdAt: now,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000103',
+        code: 'FLUXO-FREE-1',
+        email: DEFAULT_USERS[1].email,
+        planKey: 'free',
+        planInterval: null,
+        createdBy: TEST_USER_ID,
+        expiresAt: null,
+        usedAt: null,
+        usedBy: null,
+        maxUses: 1,
+        useCount: 0,
+        createdAt: now,
+      },
+    ];
+    await seedRows('invites', inviteRecords);
+    console.log(`  ✓ ${inviteRecords.length} invite codes created\n`);
+
+    // 4. Insert billing customers and subscriptions
+    console.log('  💳 Inserting billing data...');
+    const subscriptionStart = new Date(now);
+    subscriptionStart.setDate(subscriptionStart.getDate() - 3);
+    const subscriptionEnd = new Date(subscriptionStart);
+    subscriptionEnd.setFullYear(subscriptionEnd.getFullYear() + 1);
+
+    const billingCustomerRecords = [
+      {
+        userId: TEST_USER_ID,
+        stripeCustomerId: 'cus_seed_pro_001',
+        createdAt: subscriptionStart,
+        updatedAt: now,
+      },
+    ];
+    const seededBillingCustomers = await seedRows('billingCustomers', billingCustomerRecords);
+
+    const billingSubscriptionRecords = [
+      {
+        userId: TEST_USER_ID,
+        planKey: 'pro',
+        status: 'active' as const,
+        currentPeriodStart: subscriptionStart,
+        currentPeriodEnd: subscriptionEnd,
+        cancelAtPeriodEnd: false,
+        stripeSubscriptionId: 'sub_seed_pro_yearly',
+        stripePriceId: 'price_pro_yearly',
+        stripeProductId: 'prod_pro',
+        trialEndsAt: null,
+        endedAt: null,
+        createdAt: subscriptionStart,
+        updatedAt: now,
+      },
+    ];
+    const seededBillingSubscriptions = await seedRows(
+      'billingSubscriptions',
+      billingSubscriptionRecords
+    );
+    console.log(`  ✓ ${seededBillingCustomers.length} billing customers created`);
+    console.log(`  ✓ ${seededBillingSubscriptions.length} billing subscriptions created\n`);
+
+    // 5. Insert usage counters
+    console.log('  📈 Inserting usage counters...');
+    const usageWindow = getWeeklyWindow(DEFAULT_TIMEZONE);
+    const usageCounterRecords = [
+      {
+        userId: TEST_USER_ID,
+        key: 'import_weekly',
+        periodStart: usageWindow.periodStart,
+        periodEnd: usageWindow.periodEnd,
+        count: 2,
+      },
+      {
+        userId: DEFAULT_USERS[1].id,
+        key: 'import_weekly',
+        periodStart: usageWindow.periodStart,
+        periodEnd: usageWindow.periodEnd,
+        count: 1,
+      },
+    ];
+    await seedRows('usageCounters', usageCounterRecords);
+    console.log(`  ✓ ${usageCounterRecords.length} usage counters created\n`);
+
+    // 6. Insert accounts
     console.log('  💳 Inserting accounts...');
     const accountRecords = accountsData.map((account) => ({
       ...account,
@@ -692,23 +823,37 @@ async function seedDatabase() {
     );
     console.log(`  ✓ ${seededAccounts.length} accounts created\n`);
 
-    // 4. Insert categories
+    // 7. Insert categories
     console.log('  🏷️  Inserting categories...');
-    const categoryRecords = categoriesData.map((category) => ({
-      ...category,
-      userId: TEST_USER_ID,
-    }));
+    const importDefaultSeen = new Set<string>();
+    const categoryRecords = categoriesData.map((category) => {
+      let isImportDefault = category.isImportDefault;
+
+      if (isImportDefault) {
+        if (importDefaultSeen.has(category.type)) {
+          isImportDefault = false;
+        } else {
+          importDefaultSeen.add(category.type);
+        }
+      }
+
+      return {
+        ...category,
+        isImportDefault,
+        userId: TEST_USER_ID,
+      };
+    });
     const seededCategories = await seedRows('categories', categoryRecords);
     const categoryMap = Object.fromEntries(seededCategories.map((category) => [category.name, category.id]));
     console.log(`  ✓ ${seededCategories.length} categories created\n`);
 
-    // 5. Insert budgets
+    // 8. Insert budgets
     console.log('  💰 Inserting budgets...');
     const budgetRecords = createBudgets(categoryMap, TEST_USER_ID);
     await seedRows('budgets', budgetRecords);
     console.log(`  ✓ ${budgetRecords.length} budgets created\n`);
 
-    // 6. Insert transactions and entries
+    // 9. Insert transactions and entries
     console.log('  📝 Inserting transactions and entries...');
     const transactionRecords = transactionsData.map((transaction) => ({
       userId: TEST_USER_ID,
@@ -732,7 +877,7 @@ async function seedDatabase() {
     console.log(`  ✓ ${seededTransactions.length} transactions created`);
     console.log(`  ✓ ${entryRecords.length} entries created\n`);
 
-    // 7. Insert faturas (credit card statements)
+    // 10. Insert faturas (credit card statements)
     console.log('  💳 Creating faturas...');
     const faturaGroups = new Map<string, { accountId: number; faturaMonth: string; total: number }>();
 
@@ -796,7 +941,7 @@ async function seedDatabase() {
     const seededFaturas = await seedRows('faturas', faturaRecords);
     console.log(`  ✓ ${faturaRecords.length} faturas created\n`);
 
-    // 8. Insert income
+    // 11. Insert income
     console.log('  💵 Inserting income...');
     const incomeRecords = incomeData.map((inc) => ({
       userId: TEST_USER_ID,
@@ -814,7 +959,7 @@ async function seedDatabase() {
     await seedRows('income', incomeRecords);
     console.log(`  ✓ ${incomeRecords.length} income entries created\n`);
 
-    // 9. Insert monthly budgets
+    // 12. Insert monthly budgets
     console.log('  💰 Inserting monthly budgets...');
     const monthlyBudgetRecords = [
       { userId: TEST_USER_ID, yearMonth: CURRENT_MONTH, amount: 400000 }, // R$ 4,000
@@ -824,7 +969,7 @@ async function seedDatabase() {
     await seedRows('monthlyBudgets', monthlyBudgetRecords);
     console.log(`  ✓ ${monthlyBudgetRecords.length} monthly budgets created\n`);
 
-    // 10. Insert transfers (fatura payments, internal transfers, deposits, withdrawals)
+    // 13. Insert transfers (fatura payments, internal transfers, deposits, withdrawals)
     console.log('  💸 Inserting transfers...');
     const transferRecords: Array<{
       userId: string;
@@ -949,7 +1094,7 @@ async function seedDatabase() {
     await seedRows('transfers', transferRecords);
     console.log(`  ✓ ${transferRecords.length} transfers created\n`);
 
-    // 11. Insert category frequency (for smart categorization)
+    // 14. Insert category frequency (for smart categorization)
     console.log('  🔍 Inserting category frequency data...');
     const categoryFrequencyRecords = [
       // Expense patterns
@@ -973,11 +1118,11 @@ async function seedDatabase() {
     await seedRows('categoryFrequency', categoryFrequencyRecords);
     console.log(`  ✓ ${categoryFrequencyRecords.length} category frequency records created\n`);
 
-    // 12. Insert user settings
+    // 15. Insert user settings
     console.log('  ⚙️  Inserting user settings...');
     const userSettingsRecords = DEFAULT_USERS.map((user) => ({
       userId: user.id,
-      timezone: 'America/Sao_Paulo',
+      timezone: DEFAULT_TIMEZONE,
       locale: 'pt-BR',
       notificationEmail: user.email,
       notificationsEnabled: true,
@@ -987,7 +1132,7 @@ async function seedDatabase() {
     await seedRows('userSettings', userSettingsRecords);
     console.log(`  ✓ ${userSettingsRecords.length} user settings created\n`);
 
-    // 13. Insert calendar sources
+    // 16. Insert calendar sources
     console.log('  📅 Inserting calendar sources...');
     const calendarSourceRecords = [
       {
@@ -1014,7 +1159,7 @@ async function seedDatabase() {
     const seededCalendarSources = await seedRows('calendarSources', calendarSourceRecords);
     console.log(`  ✓ ${calendarSourceRecords.length} calendar sources created\n`);
 
-    // 14. Insert events
+    // 17. Insert events
     console.log('  🎯 Inserting events...');
     const activeCalendarSourceId = seededCalendarSources[0].id as number;
     const eventRecords = [
@@ -1180,7 +1325,7 @@ async function seedDatabase() {
     const seededEvents = await seedRows('events', eventRecords);
     console.log(`  ✓ ${eventRecords.length} events created\n`);
 
-    // 15. Insert tasks
+    // 18. Insert tasks
     console.log('  ✅ Inserting tasks...');
     const taskRecords = [
       // Overdue tasks
@@ -1337,7 +1482,7 @@ async function seedDatabase() {
     const seededTasks = await seedRows('tasks', taskRecords);
     console.log(`  ✓ ${taskRecords.length} tasks created\n`);
 
-    // 16. Insert recurrence rules
+    // 19. Insert recurrence rules
     console.log('  🔄 Inserting recurrence rules...');
     const recurrenceRuleRecords = [
       // Daily standup (weekdays only) - for a recurring event we'll create separately if needed
@@ -1380,7 +1525,7 @@ async function seedDatabase() {
     await seedRows('recurrenceRules', recurrenceRuleRecords);
     console.log(`  ✓ ${recurrenceRuleRecords.length} recurrence rules created\n`);
 
-    // 17. Insert notifications (configuration for when to send notifications)
+    // 20. Insert notifications (configuration for when to send notifications)
     console.log('  🔔 Inserting notification configurations...');
     const notificationRecords = [
       // Event notifications
@@ -1400,7 +1545,7 @@ async function seedDatabase() {
     const seededNotifications = await seedRows('notifications', notificationRecords);
     console.log(`  ✓ ${notificationRecords.length} notification configurations created\n`);
 
-    // 18. Insert notification jobs (actual scheduled notifications in queue)
+    // 21. Insert notification jobs (actual scheduled notifications in queue)
     console.log('  📬 Inserting notification jobs...');
     const notificationJobRecords = [
       // Pending jobs (not yet sent)
@@ -1500,7 +1645,7 @@ async function seedDatabase() {
     await seedRows('notificationJobs', notificationJobRecords);
     console.log(`  ✓ ${notificationJobRecords.length} notification jobs created\n`);
 
-    // 19. Insert bill reminders
+    // 22. Insert bill reminders
     console.log('  📋 Inserting bill reminders...');
     const billReminderRecords = [
       // Monthly bills
@@ -1643,6 +1788,10 @@ async function seedDatabase() {
     console.log('✅ Seeding complete!\n');
     console.log('📊 Summary:');
     console.log(`   Users: ${userRecords.length}`);
+    console.log(`   Invite Codes: ${inviteRecords.length}`);
+    console.log(`   Billing Customers: ${seededBillingCustomers.length}`);
+    console.log(`   Billing Subscriptions: ${seededBillingSubscriptions.length}`);
+    console.log(`   Usage Counters: ${usageCounterRecords.length}`);
     console.log(`   Accounts: ${seededAccounts.length}`);
     console.log(`   Categories: ${seededCategories.length}`);
     console.log(`   Budgets: ${budgetRecords.length}`);

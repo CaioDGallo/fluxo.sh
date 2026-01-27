@@ -253,6 +253,13 @@
       "when": 1769442337908,
       "tag": "0035_budget_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1769509739622,
+      "tag": "0036_billing_plans",
+      "breakpoints": true
     }
   ]
 }

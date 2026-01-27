@@ -12,6 +12,7 @@ import { handleDbError } from '@/lib/db-errors';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackFirstCustomCategory, trackUserActivity } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
+import { getCustomCategoryCount, getUserEntitlements } from '@/lib/plan-entitlements';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -86,6 +87,18 @@ export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | '
     await guardCrudOperation(); // Rate limiting
 
     const userId = await getCurrentUserId();
+    const [{ limits }, customCategoryCount] = await Promise.all([
+      getUserEntitlements(userId),
+      getCustomCategoryCount(userId),
+    ]);
+
+    if (customCategoryCount >= limits.maxCategories) {
+      return {
+        success: false,
+        error: await t('errors.categoryLimitReached', { limit: limits.maxCategories }),
+      };
+    }
+
     const [created] = await db.insert(categories).values({ ...data, userId }).returning({ id: categories.id });
 
     // Analytics: Track first custom category creation

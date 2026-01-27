@@ -92,7 +92,11 @@
     "invalidBalance": "Invalid balance",
     "invalidBankLogo": "Invalid bank logo",
     "nameRequired": "Name is required",
-    "invalidDueDay": "Due day must be between 1 and 31"
+    "invalidDueDay": "Due day must be between 1 and 31",
+    "categoryLimitReached": "You reached the {{limit}} category limit for your plan",
+    "accountLimitReached": "You reached the {{limit}} account limit for your plan",
+    "creditCardLimitReached": "You reached the {{limit}} credit card limit for your plan",
+    "importLimitReached": "You reached the weekly limit of {{limit}} imports for your plan"
   },
   "navigation": {
     "fluxosh": "fluxo.sh",

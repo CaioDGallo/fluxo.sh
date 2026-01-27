@@ -92,7 +92,11 @@
     "invalidBalance": "Saldo inválido",
     "invalidBankLogo": "Logo de banco inválido",
     "nameRequired": "Nome é obrigatório",
-    "invalidDueDay": "Dia de vencimento deve estar entre 1 e 31"
+    "invalidDueDay": "Dia de vencimento deve estar entre 1 e 31",
+    "categoryLimitReached": "Você atingiu o limite de {{limit}} categorias do seu plano",
+    "accountLimitReached": "Você atingiu o limite de {{limit}} contas do seu plano",
+    "creditCardLimitReached": "Você atingiu o limite de {{limit}} cartões de crédito do seu plano",
+    "importLimitReached": "Você atingiu o limite semanal de {{limit}} importações do seu plano"
   },
   "navigation": {
     "fluxosh": "fluxo.sh",

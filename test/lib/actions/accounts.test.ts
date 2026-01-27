@@ -57,6 +57,12 @@ describe('Account Actions', () => {
     await clearAllTables();
     vi.clearAllMocks();
     getCurrentUserIdMock.mockResolvedValue(TEST_USER_ID);
+
+    await db.insert(schema.billingSubscriptions).values({
+      userId: TEST_USER_ID,
+      planKey: 'pro',
+      status: 'active',
+    });
   });
 
   describe('getAccounts', () => {

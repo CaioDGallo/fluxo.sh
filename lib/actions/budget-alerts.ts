@@ -8,6 +8,7 @@ import { getCurrentYearMonth } from '@/lib/utils';
 import { defaultLocale, locales, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { buildBudgetsUrl } from '@/lib/notifications/push-links';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
 
 interface BudgetAlertResult {
   sent: boolean;
@@ -94,6 +95,12 @@ export async function checkBudgetAlerts(
     }
 
     if (!shouldAlert || threshold === undefined) {
+      return { sent: false };
+    }
+
+    const { limits } = await getUserEntitlements(userId);
+
+    if (!limits.budgetAlertThresholds.includes(threshold)) {
       return { sent: false };
     }
 

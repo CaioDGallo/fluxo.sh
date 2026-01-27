@@ -10,6 +10,7 @@ import { defaultLocale, locales, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { buildBudgetsSettingsUrl, buildBudgetsUrl, buildDashboardUrl } from '@/lib/notifications/push-links';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
 
 export interface DailyPushResult {
   success: boolean;
@@ -195,10 +196,16 @@ async function sendUserDailyPush(
   const yesterdayDateStr = getUserYesterdayDateStr(timezone);
   const currentYearMonth = getCurrentYearMonth(timezone);
 
-  const [yesterdayTotal, snapshot] = await Promise.all([
+  const [yesterdayTotal, snapshot, entitlements] = await Promise.all([
     getYesterdayTotal(userId, yesterdayDateStr),
     getBudgetSnapshot(userId, currentYearMonth),
+    getUserEntitlements(userId),
   ]);
+
+  const allowCriticalAlerts = entitlements.limits.budgetAlertThresholds.includes(80);
+  if (!allowCriticalAlerts) {
+    snapshot.critical = [];
+  }
 
   if (!snapshot.monthlyOverview && snapshot.monthlySpent === 0 && yesterdayTotal === 0) {
     return { sent: false, skipped: true };

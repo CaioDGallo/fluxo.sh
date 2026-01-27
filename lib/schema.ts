@@ -22,6 +22,16 @@ export const notificationChannelEnum = pgEnum('notification_channel', ['email', 
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);
 export const calendarSourceStatusEnum = pgEnum('calendar_source_status', ['active', 'error', 'disabled']);
 export const billReminderStatusEnum = pgEnum('bill_reminder_status', ['active', 'paused', 'completed']);
+export const billingSubscriptionStatusEnum = pgEnum('billing_subscription_status', [
+  'incomplete',
+  'incomplete_expired',
+  'trialing',
+  'active',
+  'past_due',
+  'canceled',
+  'unpaid',
+  'paused',
+]);
 
 // Accounts table
 export const accounts = pgTable('accounts', {
@@ -359,6 +369,64 @@ export const userSettings = pgTable(
   })
 );
 
+// Billing customers table
+export const billingCustomers = pgTable(
+  'billing_customers',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    stripeCustomerId: text('stripe_customer_id').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUser: unique().on(table.userId),
+    uniqueStripeCustomer: unique().on(table.stripeCustomerId),
+  })
+);
+
+// Billing subscriptions table
+export const billingSubscriptions = pgTable(
+  'billing_subscriptions',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    planKey: text('plan_key').notNull(),
+    status: billingSubscriptionStatusEnum('status').notNull(),
+    currentPeriodStart: timestamp('current_period_start', { withTimezone: true }),
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    stripePriceId: text('stripe_price_id'),
+    stripeProductId: text('stripe_product_id'),
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueStripeSubscription: unique().on(table.stripeSubscriptionId),
+  })
+);
+
+// Usage counters table (plan limits)
+export const usageCounters = pgTable(
+  'usage_counters',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    key: text('key').notNull(),
+    periodStart: date('period_start').notNull(),
+    periodEnd: date('period_end').notNull(),
+    count: integer('count').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUsage: unique().on(table.userId, table.key, table.periodStart, table.periodEnd),
+  })
+);
+
 // Bill reminders table
 export const billReminders = pgTable('bill_reminders', {
   id: serial('id').primaryKey(),
@@ -447,6 +515,15 @@ export type NewNotificationJob = typeof notificationJobs.$inferInsert;
 
 export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
+
+export type BillingCustomer = typeof billingCustomers.$inferSelect;
+export type NewBillingCustomer = typeof billingCustomers.$inferInsert;
+
+export type BillingSubscription = typeof billingSubscriptions.$inferSelect;
+export type NewBillingSubscription = typeof billingSubscriptions.$inferInsert;
+
+export type UsageCounter = typeof usageCounters.$inferSelect;
+export type NewUsageCounter = typeof usageCounters.$inferInsert;
 
 export type BillReminder = typeof billReminders.$inferSelect;
 export type NewBillReminder = typeof billReminders.$inferInsert;

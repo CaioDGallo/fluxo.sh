@@ -183,6 +183,12 @@ describe('Daily Digest', () => {
       timezone: 'UTC',
     });
 
+    await testDb.insert(schema.billingSubscriptions).values({
+      userId: TEST_USER_ID,
+      planKey: 'pro',
+      status: 'active',
+    });
+
     const result = await sendAllDailyDigests();
 
     expect(sendEmailMock).not.toHaveBeenCalled();

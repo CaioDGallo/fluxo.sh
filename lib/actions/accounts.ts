@@ -13,6 +13,7 @@ import { isValidBankLogo } from '@/lib/bank-logos';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { guardCrudOperation } from '@/lib/rate-limit-guard';
+import { getAccountCounts, getUserEntitlements } from '@/lib/plan-entitlements';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -326,6 +327,25 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
     await validateBankLogo(data.bankLogo);
 
     const userId = await getCurrentUserId();
+    const [{ limits }, accountCounts] = await Promise.all([
+      getUserEntitlements(userId),
+      getAccountCounts(userId),
+    ]);
+
+    if (accountCounts.total >= limits.maxAccounts) {
+      return {
+        success: false,
+        error: await t('errors.accountLimitReached', { limit: limits.maxAccounts }),
+      };
+    }
+
+    if (data.type === 'credit_card' && accountCounts.creditCards >= limits.maxCreditCards) {
+      return {
+        success: false,
+        error: await t('errors.creditCardLimitReached', { limit: limits.maxCreditCards }),
+      };
+    }
+
     const accountData = {
       ...data,
       name,
@@ -397,6 +417,33 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
     }
 
     const userId = await getCurrentUserId();
+
+    if (updates.type === 'credit_card') {
+      const [currentAccount] = await db
+        .select({ type: accounts.type })
+        .from(accounts)
+        .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
+        .limit(1);
+
+      if (!currentAccount) {
+        return { success: false, error: await t('errors.accountNotFound') };
+      }
+
+      if (currentAccount.type !== 'credit_card') {
+        const [{ limits }, accountCounts] = await Promise.all([
+          getUserEntitlements(userId),
+          getAccountCounts(userId),
+        ]);
+
+        if (accountCounts.creditCards >= limits.maxCreditCards) {
+          return {
+            success: false,
+            error: await t('errors.creditCardLimitReached', { limit: limits.maxCreditCards }),
+          };
+        }
+      }
+    }
+
     await db.update(accounts).set(updates).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
     revalidatePath('/settings/accounts');
     revalidateTag('accounts', 'max');

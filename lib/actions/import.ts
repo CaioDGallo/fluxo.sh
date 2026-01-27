@@ -25,6 +25,8 @@ import { findRefundMatches } from '@/lib/import/refund-matcher';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackFirstExpense, trackFirstBulkImport, trackUserActivity } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
+import { getUserTimezone, getUsageCount, getWeeklyWindow, incrementUsageCount } from '@/lib/plan-usage';
 
 type SuggestionsInput = {
   expenseDescriptions: string[];
@@ -217,6 +219,21 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
   try {
     const userId = await getCurrentUserId();
 
+    const [entitlements, timezone] = await Promise.all([
+      getUserEntitlements(userId),
+      getUserTimezone(userId),
+    ]);
+
+    const importWindow = getWeeklyWindow(timezone);
+    const importCount = await getUsageCount(userId, 'import_weekly', importWindow);
+
+    if (importCount >= entitlements.limits.importWeekly) {
+      return {
+        success: false,
+        error: await t('errors.importLimitReached', { limit: entitlements.limits.importWeekly }),
+      };
+    }
+
     const rateLimit = await checkBulkRateLimit(userId);
     if (!rateLimit.allowed) {
       return { success: false, error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }) };
@@ -382,6 +399,12 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
     revalidatePath('/dashboard');
     revalidatePath('/faturas');
     revalidatePath('/settings/accounts');
+
+    try {
+      await incrementUsageCount(userId, 'import_weekly', importWindow);
+    } catch (error) {
+      console.error('[import:usage] Failed to increment weekly import counter:', error);
+    }
 
     return { success: true, imported: rows.length };
   } catch (error) {
@@ -740,6 +763,21 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
   try {
     const userId = await getCurrentUserId();
+
+    const [entitlements, timezone] = await Promise.all([
+      getUserEntitlements(userId),
+      getUserTimezone(userId),
+    ]);
+
+    const importWindow = getWeeklyWindow(timezone);
+    const importCount = await getUsageCount(userId, 'import_weekly', importWindow);
+
+    if (importCount >= entitlements.limits.importWeekly) {
+      return {
+        success: false,
+        error: await t('errors.importLimitReached', { limit: entitlements.limits.importWeekly }),
+      };
+    }
 
     const rateLimit = await checkBulkRateLimit(userId);
     if (!rateLimit.allowed) {
@@ -1132,6 +1170,12 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
     revalidatePath('/faturas');
     revalidatePath('/income');
     revalidatePath('/settings/accounts');
+
+    try {
+      await incrementUsageCount(userId, 'import_weekly', importWindow);
+    } catch (error) {
+      console.error('[import:usage] Failed to increment weekly import counter:', error);
+    }
 
     return {
       success: true,

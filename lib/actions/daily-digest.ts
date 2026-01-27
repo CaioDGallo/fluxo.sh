@@ -20,6 +20,7 @@ import { defaultLocale, locales, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { activeTransactionCondition } from '@/lib/query-helpers';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
 
 export interface DigestResult {
   success: boolean;
@@ -256,16 +257,22 @@ async function sendUserDigest(
     });
 
     // Fetch financial data
-    const [yesterday, budgets] = await Promise.all([
+    const [yesterday, budgets, entitlements] = await Promise.all([
       getYesterdaySpending(userId, yesterdayDateStr),
       getBudgetInsightsForUser(userId, currentYearMonth),
+      getUserEntitlements(userId),
     ]);
+
+    const allowCriticalAlerts = entitlements.limits.budgetAlertThresholds.includes(80);
+    if (!allowCriticalAlerts) {
+      budgets.critical = [];
+    }
 
     // Skip if no data (no spending AND no budget alerts)
     const hasBudgetAlerts =
       budgets.overBudget.length > 0 ||
-      budgets.critical.length > 0 ||
-      (budgets.monthlyOverview !== null && budgets.monthlyOverview.percentage >= 80);
+      (allowCriticalAlerts && budgets.critical.length > 0) ||
+      (allowCriticalAlerts && budgets.monthlyOverview !== null && budgets.monthlyOverview.percentage >= 80);
 
     if (yesterday.isEmpty && !hasBudgetAlerts) {
       logForDebugging('digest', 'Skipping user - no spending and no budget alerts', { userId });

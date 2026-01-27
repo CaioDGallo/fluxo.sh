@@ -54,6 +54,12 @@ describe('Budget Alerts', () => {
       pushNotificationsEnabled: true,
     });
 
+    await db.insert(schema.billingSubscriptions).values({
+      userId: TEST_USER_ID,
+      planKey: 'pro',
+      status: 'active',
+    });
+
     categoryId = category.id;
     accountId = account.id;
     currentMonth = getCurrentYearMonth();

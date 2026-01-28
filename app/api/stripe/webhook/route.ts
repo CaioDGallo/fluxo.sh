@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/db';
 import { billingCustomers, billingSubscriptions } from '@/lib/schema';
+import { users } from '@/lib/auth-schema';
 import { getPlanFromStripePrice, type PaidPlanKey } from '@/lib/billing/stripe-prices';
 
 export const runtime = 'nodejs';
@@ -91,7 +92,8 @@ export async function POST(req: Request) {
 
         const planKey = (subscription.metadata?.planKey as PaidPlanKey | undefined) || resolvedPlan?.planKey;
 
-        if (!planKey || planKey !== 'pro') {
+        // Process all plans, not just 'pro'
+        if (!planKey) {
           break;
         }
 
@@ -109,11 +111,19 @@ export async function POST(req: Request) {
 
         await upsertBillingCustomer(userId, stripeCustomerId);
 
+        // Set founder status if purchasing founder plan
+        if (planKey === 'founder') {
+          await db.update(users).set({ isFounder: true }).where(eq(users.id, userId));
+        }
+
+        // Map founder to saver for entitlements (same features)
+        const subscriptionPlanKey = planKey === 'founder' ? 'saver' : planKey;
+
         await db
           .insert(billingSubscriptions)
           .values({
             userId,
-            planKey,
+            planKey: subscriptionPlanKey,
             status: subscription.status,
             currentPeriodStart: toDate(item?.current_period_start),
             currentPeriodEnd: toDate(item?.current_period_end),
@@ -129,7 +139,7 @@ export async function POST(req: Request) {
             target: billingSubscriptions.stripeSubscriptionId,
             set: {
               userId,
-              planKey,
+              planKey: subscriptionPlanKey,
               status: subscription.status,
               currentPeriodStart: toDate(item?.current_period_start),
               currentPeriodEnd: toDate(item?.current_period_end),

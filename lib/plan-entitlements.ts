@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { accounts, billingSubscriptions, categories } from '@/lib/schema';
+import { users } from '@/lib/auth-schema';
 import { DEFAULT_CATEGORIES } from '@/lib/user-setup/default-categories';
 import { DEFAULT_PLAN_KEY, PLANS, resolvePlanKey, type PlanKey, type PlanLimits } from '@/lib/plans';
 import { and, desc, eq, inArray } from 'drizzle-orm';
@@ -59,4 +60,12 @@ export async function getAccountCounts(userId: string): Promise<{ total: number;
     total: rows.length,
     creditCards,
   };
+}
+
+export async function isUserFounder(userId: string): Promise<boolean> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { isFounder: true },
+  });
+  return user?.isFounder ?? false;
 }

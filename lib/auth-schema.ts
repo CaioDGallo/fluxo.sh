@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, primaryKey, pgEnum, serial } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, primaryKey, pgEnum, serial, boolean } from 'drizzle-orm/pg-core';
 
 // Auth.js adapter tables
 export const users = pgTable('users', {
@@ -8,6 +8,7 @@ export const users = pgTable('users', {
   emailVerified: timestamp('email_verified', { mode: 'date', withTimezone: true }),
   image: text('image'),
   passwordHash: text('password_hash').notNull(), // Custom field for credentials
+  isFounder: boolean('is_founder').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
 });
 

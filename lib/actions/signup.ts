@@ -131,9 +131,17 @@ export async function signup(data: {
     });
 
     if (currentInvite) {
+      // Set founder status if invite has founder plan
+      if (currentInvite.planKey === 'founder') {
+        await db.update(users).set({ isFounder: true }).where(eq(users.id, userId));
+      }
+
+      // Create subscription (map founder to saver for entitlements)
+      const subscriptionPlan = currentInvite.planKey === 'founder' ? 'saver' : currentInvite.planKey;
+
       await createPlanSubscription({
         userId,
-        planKey: currentInvite.planKey,
+        planKey: subscriptionPlan,
         planInterval: currentInvite.planInterval,
       });
     }

@@ -54,8 +54,8 @@ describe('Billing checkout page', () => {
 
     process.env = { ...originalEnv };
     process.env.NEXT_PUBLIC_APP_URL = baseUrl;
-    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_monthly';
-    process.env.STRIPE_PRICE_PRO_YEARLY = 'price_yearly';
+    process.env.STRIPE_PRICE_SAVER_MONTHLY = 'price_monthly';
+    process.env.STRIPE_PRICE_SAVER_YEARLY = 'price_yearly';
 
     redirectMock.mockImplementation((url: string) => {
       throw new Error(`REDIRECT:${url}`);
@@ -84,12 +84,12 @@ describe('Billing checkout page', () => {
     process.env = { ...originalEnv };
   });
 
-  it('redirects to /#planos when plan is invalid', async () => {
+  it('redirects to /dashboard when plan is invalid', async () => {
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
       BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'free' }) }),
-      '/#planos'
+      '/dashboard'
     );
 
     expect(getSessionMock).not.toHaveBeenCalled();
@@ -99,11 +99,11 @@ describe('Billing checkout page', () => {
     getSessionMock.mockResolvedValue(null);
 
     const { default: BillingCheckoutPage } = await loadPage();
-    const redirectUrl = '/billing/checkout?plan=pro&interval=yearly';
+    const redirectUrl = '/billing/checkout?plan=saver&interval=yearly';
     const expectedRedirect = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'yearly' }) }),
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'yearly' }) }),
       expectedRedirect
     );
 
@@ -116,7 +116,7 @@ describe('Billing checkout page', () => {
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'monthly' }) }),
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'monthly' }) }),
       '/dashboard'
     );
 
@@ -127,7 +127,7 @@ describe('Billing checkout page', () => {
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'monthly' }) }),
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'monthly' }) }),
       checkoutUrl
     );
 
@@ -139,18 +139,18 @@ describe('Billing checkout page', () => {
         mode: 'subscription',
         line_items: [{ price: 'price_monthly', quantity: 1 }],
         success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/#planos`,
+        cancel_url: `${baseUrl}/dashboard`,
         client_reference_id: 'user-123',
         customer_email: 'user@example.com',
         metadata: {
           userId: 'user-123',
-          planKey: 'pro',
+          planKey: 'saver',
           planInterval: 'monthly',
         },
         subscription_data: {
           metadata: {
             userId: 'user-123',
-            planKey: 'pro',
+            planKey: 'saver',
             planInterval: 'monthly',
           },
         },
@@ -165,7 +165,7 @@ describe('Billing checkout page', () => {
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'yearly' }) }),
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'yearly' }) }),
       checkoutUrl
     );
 
@@ -178,7 +178,7 @@ describe('Billing checkout page', () => {
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'weekly' }) }),
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'weekly' }) }),
       checkoutUrl
     );
 
@@ -187,14 +187,14 @@ describe('Billing checkout page', () => {
     expect(payload.metadata.planInterval).toBe('monthly');
   });
 
-  it('redirects back to pricing when checkout session has no url', async () => {
+  it('redirects to dashboard when checkout session has no url', async () => {
     checkoutCreateMock.mockResolvedValue({});
 
     const { default: BillingCheckoutPage } = await loadPage();
 
     await expectRedirect(
-      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'pro', interval: 'monthly' }) }),
-      '/#planos'
+      BillingCheckoutPage({ searchParams: Promise.resolve({ plan: 'saver', interval: 'monthly' }) }),
+      '/dashboard'
     );
   });
 });

@@ -47,7 +47,6 @@ export function PricingSection() {
   const yearlyDiscountLabel = t('pricingYearlyDiscountLabel');
   const yearlyDiscountValue = t('pricingYearlyDiscountValue', { months: YEARLY_DISCOUNT_MONTHS });
   const saverCheckoutUrl = `/billing/checkout?plan=saver&interval=${interval}`;
-  const proCheckoutUrl = `/billing/checkout?plan=pro&interval=${interval}`;
 
   const formatPrice = (cents: number) => formatter.format(cents / 100);
   const founderPrice = formatPrice(FOUNDER_PRICE_CENTS);

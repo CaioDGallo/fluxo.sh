@@ -21,8 +21,9 @@ describe('POST /api/stripe/webhook', () => {
 
   beforeAll(async () => {
     vi.resetModules();
-    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_monthly';
-    process.env.STRIPE_PRICE_PRO_YEARLY = 'price_yearly';
+    process.env.STRIPE_PRICE_SAVER_MONTHLY = 'price_monthly';
+    process.env.STRIPE_PRICE_SAVER_YEARLY = 'price_yearly';
+    process.env.STRIPE_PRICE_FOUNDER_YEARLY = 'price_founder_yearly';
 
     db = await setupTestDb();
 
@@ -139,7 +140,7 @@ describe('POST /api/stripe/webhook', () => {
     expect(customers).toHaveLength(0);
   });
 
-  it('stores subscription details for pro plan', async () => {
+  it('stores subscription details for saver plan', async () => {
     const periodStart = 1_700_000_000;
     const periodEnd = 1_702_592_000;
 
@@ -153,7 +154,7 @@ describe('POST /api/stripe/webhook', () => {
           cancel_at_period_end: false,
           trial_end: null,
           ended_at: null,
-          metadata: { userId: 'user-123', planKey: 'pro', planInterval: 'monthly' },
+          metadata: { userId: 'user-123', planKey: 'saver', planInterval: 'monthly' },
           items: {
             data: [
               {
@@ -183,7 +184,7 @@ describe('POST /api/stripe/webhook', () => {
     const subscriptions = await db.select().from(schema.billingSubscriptions);
     expect(subscriptions).toHaveLength(1);
     expect(subscriptions[0]?.userId).toBe('user-123');
-    expect(subscriptions[0]?.planKey).toBe('pro');
+    expect(subscriptions[0]?.planKey).toBe('saver');
     expect(subscriptions[0]?.status).toBe('active');
     expect(subscriptions[0]?.stripeSubscriptionId).toBe('sub_123');
     expect(subscriptions[0]?.stripePriceId).toBe('price_monthly');
@@ -234,7 +235,7 @@ describe('POST /api/stripe/webhook', () => {
       .where(eq(schema.billingSubscriptions.stripeSubscriptionId, 'sub_999'));
     expect(subscriptions).toHaveLength(1);
     expect(subscriptions[0]?.userId).toBe('user-999');
-    expect(subscriptions[0]?.planKey).toBe('pro');
+    expect(subscriptions[0]?.planKey).toBe('saver');
     expect(subscriptions[0]?.stripeProductId).toBe('prod_999');
   });
 
@@ -250,7 +251,7 @@ describe('POST /api/stripe/webhook', () => {
             cancel_at_period_end: false,
             trial_end: null,
             ended_at: null,
-            metadata: { userId: 'user-repeat', planKey: 'pro' },
+            metadata: { userId: 'user-repeat', planKey: 'saver' },
             items: {
               data: [
                 {
@@ -276,7 +277,7 @@ describe('POST /api/stripe/webhook', () => {
             cancel_at_period_end: true,
             trial_end: null,
             ended_at: null,
-            metadata: { userId: 'user-repeat', planKey: 'pro' },
+            metadata: { userId: 'user-repeat', planKey: 'saver' },
             items: {
               data: [
                 {
@@ -340,26 +341,26 @@ describe('POST /api/stripe/webhook', () => {
     expect(subscriptions).toHaveLength(0);
   });
 
-  it('skips non-pro subscriptions', async () => {
+  it('stores founder subscriptions as saver plan', async () => {
     constructEventMock.mockReturnValue({
       type: 'customer.subscription.created',
       data: {
         object: {
-          id: 'sub_free',
+          id: 'sub_founder',
           status: 'active',
-          customer: 'cus_free',
+          customer: 'cus_founder',
           cancel_at_period_end: false,
           trial_end: null,
           ended_at: null,
-          metadata: { userId: 'user-free', planKey: 'free' },
+          metadata: { userId: 'user-founder', planKey: 'founder' },
           items: {
             data: [
               {
                 current_period_start: 1_700_000_000,
                 current_period_end: 1_702_592_000,
                 price: {
-                  id: 'price_monthly',
-                  product: 'prod_free',
+                  id: 'price_founder_yearly',
+                  product: 'prod_founder',
                 },
               },
             ],
@@ -372,7 +373,9 @@ describe('POST /api/stripe/webhook', () => {
     expect(response.status).toBe(200);
 
     const subscriptions = await db.select().from(schema.billingSubscriptions);
-    expect(subscriptions).toHaveLength(0);
+    expect(subscriptions).toHaveLength(1);
+    expect(subscriptions[0]?.planKey).toBe('saver');
+    expect(subscriptions[0]?.stripePriceId).toBe('price_founder_yearly');
   });
 
   it('returns 500 when handler throws', async () => {

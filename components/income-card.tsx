@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useLongPress } from '@/lib/hooks/use-long-press';
 import { useSwipe } from '@/lib/hooks/use-swipe';
+import { useSwipeHint } from '@/lib/hooks/use-swipe-hint';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
+import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon, MoreVerticalIcon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 import { BankLogo } from '@/components/bank-logo';
 
@@ -195,6 +196,9 @@ export function IncomeCard(props: IncomeCardProps) {
     velocityThreshold: 0.15,
   });
 
+  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !swipe.isSwiping && !swipe.isRevealed;
+  const { hintOffset, isHinting } = useSwipeHint({ enabled: swipeHintEnabled });
+
   // Close revealed actions on click outside
   useEffect(() => {
     if (!swipe.isRevealed) return;
@@ -246,6 +250,8 @@ export function IncomeCard(props: IncomeCardProps) {
     }
   };
 
+  const contentOffset = isMobile && swipe.swipeOffset < 0 ? swipe.swipeOffset : hintOffset;
+
   return (
     <>
       <Card className={cn(
@@ -285,8 +291,8 @@ export function IncomeCard(props: IncomeCardProps) {
           onClick={handleCardClick}
           className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 relative bg-card select-none touch-pan-y"
           style={{
-            transform: isMobile && swipe.swipeOffset < 0 ? `translateX(${swipe.swipeOffset}px)` : undefined,
-            transition: swipe.isSwiping ? 'none' : 'transform 0.2s ease-out',
+            transform: contentOffset !== 0 ? `translateX(${contentOffset}px)` : undefined,
+            transition: swipe.isSwiping ? 'none' : 'transform 0.26s ease-out',
           }}
         >
           {/* Category icon - clickable */}
@@ -474,6 +480,18 @@ export function IncomeCard(props: IncomeCardProps) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+          )}
+
+          {isMobile && (
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-muted/80 text-muted-foreground opacity-0 translate-x-1 transition-[opacity,transform] duration-300",
+                isHinting && "opacity-100 translate-x-0"
+              )}
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} strokeWidth={2} />
             </div>
           )}
 

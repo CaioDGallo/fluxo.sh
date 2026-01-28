@@ -144,7 +144,7 @@ export function IncomeList() {
                   accounts={accounts}
                   recentAccounts={recentAccounts}
                   recentCategories={recentCategories}
-                  isOptimistic={inc._optimistic}
+                  isOptimistic={!!inc._optimistic}
                   selectionMode={true}
                   isSelected={selection.isSelected(inc.id)}
                   onLongPress={() => selection.enterSelectionMode(inc.id)}
@@ -158,7 +158,7 @@ export function IncomeList() {
                   accounts={accounts}
                   recentAccounts={recentAccounts}
                   recentCategories={recentCategories}
-                  isOptimistic={inc._optimistic}
+                  isOptimistic={!!inc._optimistic}
                   selectionMode={false}
                   onLongPress={() => selection.enterSelectionMode(inc.id)}
                 />

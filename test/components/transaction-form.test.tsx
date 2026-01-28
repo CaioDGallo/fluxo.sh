@@ -125,6 +125,7 @@ const baseTransaction: Transaction & { entries: Entry[] } = {
   externalId: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   ignored: false,
+  refundedAmount: null,
   entries: [baseEntry],
 };
 
@@ -142,7 +143,7 @@ describe('TransactionForm', () => {
     vi.clearAllMocks();
   });
 
-  it('renders expense installments slider and per-installment text', () => {
+  it('renders expense installments controls and per-installment text', () => {
     render(
       <TransactionForm
         mode="expense"
@@ -157,8 +158,12 @@ describe('TransactionForm', () => {
     );
 
     expect(screen.getByText('installments')).toBeInTheDocument();
-    expect(document.querySelector('[data-slot="slider"]')).toBeInTheDocument();
-    expect(screen.getByText(/2x de R\$\s*50,00/)).toBeInTheDocument();
+    expect(screen.getByLabelText('installments')).toBeInTheDocument();
+    expect(screen.getByLabelText('installmentsDecrease')).toBeInTheDocument();
+    expect(screen.getByLabelText('installmentsIncrease')).toBeInTheDocument();
+    expect(screen.getByText('installmentsSummary')).toBeInTheDocument();
+    expect(screen.getByText('1x')).toBeInTheDocument();
+    expect(screen.getByText('3x')).toBeInTheDocument();
   });
 
   it('disables submit when accounts or categories are missing', () => {

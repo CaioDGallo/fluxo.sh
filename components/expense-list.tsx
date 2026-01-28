@@ -185,7 +185,7 @@ export function ExpenseList() {
                   accounts={accounts}
                   recentAccounts={recentAccounts}
                   recentCategories={recentCategories}
-                  isOptimistic={expense._optimistic}
+                  isOptimistic={!!expense._optimistic}
                   selectionMode={true}
                   isSelected={selection.isSelected(expense.id)}
                   onLongPress={() => selection.enterSelectionMode(expense.id)}
@@ -200,7 +200,7 @@ export function ExpenseList() {
                   accounts={accounts}
                   recentAccounts={recentAccounts}
                   recentCategories={recentCategories}
-                  isOptimistic={expense._optimistic}
+                  isOptimistic={!!expense._optimistic}
                   selectionMode={false}
                   onLongPress={() => selection.enterSelectionMode(expense.id)}
                   unpaidFaturas={unpaidFaturas}

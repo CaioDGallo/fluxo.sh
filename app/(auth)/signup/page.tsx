@@ -323,18 +323,20 @@ export default function SignupPage() {
             </>
           )}
           <div className="mt-6 text-center text-xs text-muted-foreground">
-            {tLegal.rich('agreement', {
-              terms: (chunks) => (
-                <Link href="/terms" className="font-medium underline underline-offset-4">
-                  {chunks}
-                </Link>
-              ),
-              privacy: (chunks) => (
-                <Link href="/privacy" className="font-medium underline underline-offset-4">
-                  {chunks}
-                </Link>
-              ),
-            })}
+            <>
+              {tLegal.rich('agreement', {
+                terms: (chunks) => (
+                  <Link href="/terms" className="font-medium underline underline-offset-4">
+                    {chunks}
+                  </Link>
+                ),
+                privacy: (chunks) => (
+                  <Link href="/privacy" className="font-medium underline underline-offset-4">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </>
           </div>
         </CardContent>
       </Card>

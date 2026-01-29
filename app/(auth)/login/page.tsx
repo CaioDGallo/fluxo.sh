@@ -161,18 +161,20 @@ function LoginForm() {
             </Link>
           </div>
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            {tLegal.rich('agreement', {
-              terms: (chunks) => (
-                <Link href="/terms" className="font-medium underline underline-offset-4">
-                  {chunks}
-                </Link>
-              ),
-              privacy: (chunks) => (
-                <Link href="/privacy" className="font-medium underline underline-offset-4">
-                  {chunks}
-                </Link>
-              ),
-            })}
+            <>
+              {tLegal.rich('agreement', {
+                terms: (chunks) => (
+                  <Link href="/terms" className="font-medium underline underline-offset-4">
+                    {chunks}
+                  </Link>
+                ),
+                privacy: (chunks) => (
+                  <Link href="/privacy" className="font-medium underline underline-offset-4">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </>
           </div>
         </CardContent>
       </Card>

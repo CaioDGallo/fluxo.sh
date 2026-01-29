@@ -863,64 +863,84 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
     for (const row of installmentExpenses) {
       const info = row.installmentInfo!;
-      const baseKey = `${info.baseDescription.toLowerCase()}|${info.total}`;
 
-      // Find or create a group that doesn't have a conflicting installment
-      let targetKey = baseKey;
-      let suffix = 0;
+      let targetKey: string;
 
-      while (true) {
-        const existingData = groupInstallmentData.get(targetKey);
-        if (!existingData) {
-          // New group
+      if (row.rawFitId) {
+        // OFX: Each FITID is unique - no grouping needed
+        targetKey = row.rawFitId;
+
+        // Initialize group if needed
+        if (!installmentGroups.has(targetKey)) {
           installmentGroups.set(targetKey, []);
           groupInstallmentData.set(targetKey, new Map());
-          break;
         }
 
+        // Skip if duplicate installment number with same externalId
+        const existingData = groupInstallmentData.get(targetKey)!;
         const existing = existingData.get(info.current);
-        if (!existing) {
-          // No row with this installment number yet - check amount consistency
-          const existingAmounts = Array.from(existingData.values());
-          if (existingAmounts.length > 0) {
-            const refAmount = existingAmounts[0].amount;
-            const diff = Math.abs(row.amountCents - refAmount);
-            const percentDiff = diff / refAmount;
-
-            // Different purchase if >10% AND >R$1.00 difference
-            if (percentDiff > 0.10 && diff > 100) {
-              suffix++;
-              targetKey = `${baseKey}|${suffix}`;
-              continue;
-            }
-          }
-          break;
-        }
-
-        // Row with same installment number exists - check if it's the same purchase
-        const sameAmount = existing.amount === row.amountCents;
-        const sameExternalId = existing.externalId && existing.externalId === row.externalId;
-
-        if (sameAmount && sameExternalId) {
-          // Same purchase (duplicate row) - skip it entirely
-          break;
-        }
-
-        if (!sameAmount || !sameExternalId) {
-          // Different purchase - try next group suffix
-          suffix++;
-          targetKey = `${baseKey}|${suffix}`;
+        if (existing?.externalId && existing.externalId === row.externalId) {
           continue;
         }
+      } else {
+        // CSV: Group by description, handle conflicts with amount check
+        const baseKey = `${info.baseDescription.toLowerCase()}|${info.total}`;
+        targetKey = baseKey;
+        let suffix = 0;
 
-        break;
-      }
+        while (true) {
+          const existingData = groupInstallmentData.get(targetKey);
+          if (!existingData) {
+            // New group
+            installmentGroups.set(targetKey, []);
+            groupInstallmentData.set(targetKey, new Map());
+            break;
+          }
 
-      // Skip if duplicate row with same externalId
-      const existingData = groupInstallmentData.get(targetKey);
-      const existing = existingData?.get(info.current);
-      if (existing?.externalId && existing.externalId === row.externalId) {
-        continue;
+          const existing = existingData.get(info.current);
+          if (!existing) {
+            // No row with this installment number yet - check amount consistency
+            const existingAmounts = Array.from(existingData.values());
+            if (existingAmounts.length > 0) {
+              const refAmount = existingAmounts[0].amount;
+              const diff = Math.abs(row.amountCents - refAmount);
+              const percentDiff = diff / refAmount;
+
+              // Different purchase if >10% AND >R$1.00 difference
+              if (percentDiff > 0.10 && diff > 100) {
+                suffix++;
+                targetKey = `${baseKey}|${suffix}`;
+                continue;
+              }
+            }
+            break;
+          }
+
+          // Row with same installment number exists - check if it's the same purchase
+          const sameAmount = existing.amount === row.amountCents;
+          const sameExternalId = existing.externalId && existing.externalId === row.externalId;
+
+          if (sameAmount && sameExternalId) {
+            // Same purchase (duplicate row) - skip it entirely
+            break;
+          }
+
+          if (!sameAmount || !sameExternalId) {
+            // Different purchase - try next group suffix
+            suffix++;
+            targetKey = `${baseKey}|${suffix}`;
+            continue;
+          }
+
+          break;
+        }
+
+        // Skip if duplicate row with same externalId
+        const existingData = groupInstallmentData.get(targetKey);
+        const existing = existingData?.get(info.current);
+        if (existing?.externalId && existing.externalId === row.externalId) {
+          continue;
+        }
       }
 
       installmentGroups.get(targetKey)!.push(row);
@@ -1064,6 +1084,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
           refundOfTransactionId?: number;
           replenishCategoryId?: number;
           faturaMonth?: string;
+          isRefund: boolean;
         }> = [];
         const refundAmounts = new Map<number, number>(); // transactionId -> total refund amount
 
@@ -1100,6 +1121,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
             refundOfTransactionId,
             replenishCategoryId,
             faturaMonth,
+            isRefund: row.isRefundCandidate ?? false,
           });
 
           // Accumulate refund amounts

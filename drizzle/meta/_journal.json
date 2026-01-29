@@ -274,6 +274,13 @@
       "when": 1769625307206,
       "tag": "0038_groovy_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1769678819983,
+      "tag": "0039_worried_gideon",
+      "breakpoints": true
     }
   ]
 }

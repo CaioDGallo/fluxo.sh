@@ -1,0 +1,1 @@
+ALTER TABLE "income" ADD COLUMN "is_refund" boolean DEFAULT false NOT NULL;

@@ -1376,7 +1376,9 @@
     "backToHome": "Back to home",
     "lastUpdated": "Last updated: {date}",
     "lastUpdatedDate": "Jan 29, 2026",
-    "agreement": "By continuing, you agree to the {terms} and the {privacy}.",
+    "agreementPrefix": "By continuing, you agree to the ",
+    "agreementMiddle": " and the ",
+    "agreementSuffix": ".",
     "privacyTitle": "Privacy Policy",
     "termsTitle": "Terms of Service",
     "privacy": {

@@ -1417,7 +1417,9 @@
     "backToHome": "Voltar para o início",
     "lastUpdated": "Última atualização: {date}",
     "lastUpdatedDate": "29 jan 2026",
-    "agreement": "Ao continuar, você concorda com os {terms} e a {privacy}.",
+    "agreementPrefix": "Ao continuar, você concorda com os ",
+    "agreementMiddle": " e a ",
+    "agreementSuffix": ".",
     "privacyTitle": "Política de Privacidade",
     "termsTitle": "Termos de Serviço",
     "privacy": {

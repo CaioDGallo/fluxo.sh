@@ -1,20 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useIncomeContext, IncomeListProvider } from '@/lib/contexts/income-context';
-import { IncomeCard } from '@/components/income-card';
-import { formatDate } from '@/lib/utils';
-import { useSelection } from '@/lib/hooks/use-selection';
-import { SelectionActionBar } from '@/components/selection-action-bar';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { IncomeCard } from '@/components/income-card';
+import { SelectionActionBar } from '@/components/selection-action-bar';
+import { IncomeListProvider, useIncomeContext } from '@/lib/contexts/income-context';
+import { useSelection } from '@/lib/hooks/use-selection';
+import { formatDate } from '@/lib/utils';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
-import { useTranslations } from 'next-intl';
 
 export { IncomeListProvider };
 
 export function IncomeList() {
-  const tCommon = useTranslations('common');
   const context = useIncomeContext();
   const { filteredIncome, accounts, recentAccounts, categories, recentCategories, filters, searchQuery } = context;
   const selection = useSelection();

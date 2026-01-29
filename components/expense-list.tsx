@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useExpenseContext, ExpenseListProvider } from '@/lib/contexts/expense-context';
-import { ExpenseCard } from '@/components/expense-card';
-import { useSelection } from '@/lib/hooks/use-selection';
-import { SelectionActionBar } from '@/components/selection-action-bar';
 import { CategoryQuickPicker } from '@/components/category-quick-picker';
+import { ExpenseCard } from '@/components/expense-card';
+import { SelectionActionBar } from '@/components/selection-action-bar';
+import { ExpenseListProvider, useExpenseContext } from '@/lib/contexts/expense-context';
+import { useSelection } from '@/lib/hooks/use-selection';
 import { formatDate } from '@/lib/utils';
-import { toast } from 'sonner';
-import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
+import { HapticPatterns, triggerHaptic } from '@/lib/utils/haptics';
 import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export { ExpenseListProvider };
 
 export function ExpenseList() {
   const t = useTranslations('expenses');
-  const tCommon = useTranslations('common');
   const context = useExpenseContext();
   const { expenses, filteredExpenses, accounts, recentAccounts, categories, recentCategories, unpaidFaturas, filters, searchQuery } = context;
   const selection = useSelection();

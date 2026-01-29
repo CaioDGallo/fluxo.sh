@@ -1367,6 +1367,25 @@
       "invalidAmount": "Valor deve ser maior que zero",
       "budgetCreated": "Orçamento criado com sucesso!"
     },
+    "preferences": {
+      "title": "Preferências",
+      "description": "Personalize sua experiência no Fluxo.",
+      "theme": {
+        "label": "Tema",
+        "light": "Claro",
+        "dark": "Escuro",
+        "system": "Sistema"
+      },
+      "notifications": {
+        "label": "Notificações",
+        "description": "Receba lembretes de contas e alertas de orçamento",
+        "enable": "Ativar Notificações",
+        "enabling": "Ativando...",
+        "enabled": "Ativado"
+      },
+      "skip": "Pular",
+      "continue": "Continuar"
+    },
     "completion": {
       "title": "Tudo pronto!",
       "description": "Você concluiu a configuração inicial. Agora é hora de começar a usar o Fluxo.",

@@ -1326,6 +1326,25 @@
       "invalidAmount": "Amount must be greater than zero",
       "budgetCreated": "Budget created successfully!"
     },
+    "preferences": {
+      "title": "Preferences",
+      "description": "Customize your Fluxo experience.",
+      "theme": {
+        "label": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "notifications": {
+        "label": "Notifications",
+        "description": "Get bill reminders and budget alerts",
+        "enable": "Enable Notifications",
+        "enabling": "Enabling...",
+        "enabled": "Enabled"
+      },
+      "skip": "Skip",
+      "continue": "Continue"
+    },
     "completion": {
       "title": "All set!",
       "description": "You've completed the initial setup. Now it's time to start using Fluxo.",

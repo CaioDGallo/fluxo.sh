@@ -14,11 +14,12 @@ import { WelcomeStep } from './steps/welcome-step';
 import { AccountStep } from './steps/account-step';
 import { CategoryStep } from './steps/category-step';
 import { BudgetStep } from './steps/budget-step';
+import { PreferencesStep } from './steps/preferences-step';
 import { CompletionStep } from './steps/completion-step';
 import { skipOnboarding } from '@/lib/actions/onboarding';
 import { useTranslations } from 'next-intl';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 export function OnboardingWizard() {
   const t = useTranslations('onboarding');
@@ -49,6 +50,8 @@ export function OnboardingWizard() {
       case 3:
         return <BudgetStep />;
       case 4:
+        return <PreferencesStep />;
+      case 5:
         return <CompletionStep />;
       default:
         return <WelcomeStep />;

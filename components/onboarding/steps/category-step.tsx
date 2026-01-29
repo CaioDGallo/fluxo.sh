@@ -57,9 +57,9 @@ export function CategoryStep() {
   };
 
   return (
-    <WizardStep className="flex flex-col h-full">
+    <WizardStep className="flex flex-col min-h-0">
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto space-y-6 pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
         <div className="space-y-2">
           <h2 className="text-xl font-bold">{t('title')}</h2>
           <p className="text-sm text-muted-foreground">{t('description')}</p>
@@ -95,7 +95,7 @@ export function CategoryStep() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 pb-4">
             <Label>{t('iconLabel')}</Label>
             <IconPicker value={icon} onChange={setIcon} />
           </div>
@@ -103,7 +103,7 @@ export function CategoryStep() {
       </div>
 
       {/* Fixed buttons at bottom */}
-      <div className="flex gap-2 pt-4 border-t">
+      <div className="flex-shrink-0 flex gap-2 pt-4 border-t bg-background">
         <Button variant="ghost" onClick={nextStep} className="flex-1">
           {t('skip')}
         </Button>

@@ -150,7 +150,7 @@ describe('Account Actions', () => {
     it('revalidates accounts cache on create', async () => {
       await createAccount({ name: 'Test', type: 'checking' });
       expect(revalidatePathMock).toHaveBeenCalledWith('/settings/accounts');
-      expect(revalidateTagMock).toHaveBeenCalledWith('accounts', 'max');
+      expect(revalidateTagMock).toHaveBeenCalledWith(`user-${TEST_USER_ID}`, {});
     });
 
     it('validates required name', async () => {
@@ -252,7 +252,7 @@ describe('Account Actions', () => {
 
       await updateAccount(account.id, { name: 'Updated' });
       expect(revalidatePathMock).toHaveBeenCalledWith('/settings/accounts');
-      expect(revalidateTagMock).toHaveBeenCalledWith('accounts', 'max');
+      expect(revalidateTagMock).toHaveBeenCalledWith(`user-${TEST_USER_ID}`, {});
     });
 
     it('validates account id', async () => {
@@ -323,7 +323,7 @@ describe('Account Actions', () => {
 
       await deleteAccount(account.id);
       expect(revalidatePathMock).toHaveBeenCalledWith('/settings/accounts');
-      expect(revalidateTagMock).toHaveBeenCalledWith('accounts', 'max');
+      expect(revalidateTagMock).toHaveBeenCalledWith(`user-${TEST_USER_ID}`, {});
     });
 
     it('validates account id', async () => {
@@ -494,7 +494,7 @@ describe('Account Actions', () => {
 
       await reconcileCurrentUserBalances();
       expect(revalidatePathMock).toHaveBeenCalledWith('/settings/accounts');
-      expect(revalidateTagMock).toHaveBeenCalledWith('accounts', 'max');
+      expect(revalidateTagMock).toHaveBeenCalledWith(`user-${TEST_USER_ID}`, {});
 
       const updatedAccounts = await db
         .select()

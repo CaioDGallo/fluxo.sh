@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { getAccountsWithBalances, reconcileCurrentUserBalances } from '@/lib/actions/accounts';
+import { getAccountsWithBalances } from '@/lib/actions/accounts';
 import type { Account } from '@/lib/schema';
 import { AccountForm } from '@/components/account-form';
 import { AccountCard } from '@/components/account-card';
@@ -53,9 +53,6 @@ export default function AccountsPage() {
       <div className="mb-6 flex items-center flex-col md:flex-row space-y-4 md:space-y-0 justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
         <div className="flex items-center gap-2">
-          <form action={reconcileCurrentUserBalances}>
-            <Button variant="popout" className='hover:text-gray-900'>{t('recalculateBalances')}</Button>
-          </form>
           <AlertDialog open={addOpen} onOpenChange={setAddOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="hollow">{t('addAccount')}</Button>

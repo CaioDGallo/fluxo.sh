@@ -6,6 +6,7 @@ import {
   ArrowUpBigIcon,
   Home01Icon,
   Invoice03Icon,
+  MoneyReceiveFlow02Icon,
   MoreHorizontalIcon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -22,7 +23,7 @@ type TabItem = {
 };
 
 const tabs: TabItem[] = [
-  { key: 'dashboard', href: '/dashboard', icon: Home01Icon },
+  { key: 'dashboard', href: '/dashboard', icon: MoneyReceiveFlow02Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
   { key: 'expenses', href: '/expenses', icon: ArrowDownBigIcon },
   { key: 'income', href: '/income', icon: ArrowUpBigIcon },

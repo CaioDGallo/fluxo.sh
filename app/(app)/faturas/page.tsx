@@ -5,7 +5,6 @@ import { getCurrentYearMonth } from '@/lib/utils';
 import { MonthPicker } from '@/components/month-picker';
 import { FaturaList } from '@/components/fatura-list';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
-import { PullToRefreshWrapper } from '@/components/pull-to-refresh-wrapper';
 
 export default async function FaturasPage({
   searchParams,
@@ -27,9 +26,8 @@ export default async function FaturasPage({
   const checkingAccounts = accounts.filter(a => a.type !== 'credit_card');
 
   return (
-    <PullToRefreshWrapper>
-      <div>
-        <OnboardingTooltip hintKey="faturas" className="mb-4">
+    <div>
+      <OnboardingTooltip hintKey="faturas" className="mb-4">
           {tOnboarding('faturas')}
         </OnboardingTooltip>
 
@@ -43,6 +41,5 @@ export default async function FaturasPage({
           checkingAccounts={checkingAccounts}
         />
       </div>
-    </PullToRefreshWrapper>
   );
 }

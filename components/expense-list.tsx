@@ -9,10 +9,6 @@ import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
-import { usePullToRefresh } from '@/lib/hooks/use-pull-to-refresh';
-import { refreshUserData } from '@/lib/actions/refresh';
-import { PullToRefreshIndicator } from '@/components/pull-to-refresh-indicator';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 export { ExpenseListProvider };
@@ -24,18 +20,6 @@ export function ExpenseList() {
   const { expenses, filteredExpenses, accounts, recentAccounts, categories, recentCategories, unpaidFaturas, filters, searchQuery } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
-  const router = useRouter();
-
-  // Pull-to-refresh functionality
-  const pullToRefresh = usePullToRefresh({
-    onRefresh: async () => {
-      triggerHaptic(HapticPatterns.light);
-      await refreshUserData();
-      router.refresh();
-      await new Promise(resolve => setTimeout(resolve, 300));
-    },
-    disabled: selection.isSelectionMode, // Disable during selection mode
-  });
 
   // Group by date (same logic as original page)
   const groupedByDate = filteredExpenses.reduce(
@@ -126,45 +110,22 @@ export function ExpenseList() {
     // Show different message when searching vs no data
     if (searchQuery.trim()) {
       return (
-        <div className="space-y-4">
-          <PullToRefreshIndicator
-            isRefreshing={pullToRefresh.isRefreshing}
-            pullDistance={pullToRefresh.pullDistance}
-            label={tCommon('pullToRefresh')}
-            refreshingLabel={tCommon('refreshing')}
-          />
-          <div className="py-12 text-center">
-            <p className="text-gray-500">{t('noExpensesFound', { query: searchQuery })}</p>
-            <p className="mt-2 text-sm text-gray-400">{t('tryDifferentSearch')}</p>
-          </div>
+        <div className="py-12 text-center">
+          <p className="text-gray-500">{t('noExpensesFound', { query: searchQuery })}</p>
+          <p className="mt-2 text-sm text-gray-400">{t('tryDifferentSearch')}</p>
         </div>
       );
     }
     return (
-      <div className="space-y-4">
-        <PullToRefreshIndicator
-          isRefreshing={pullToRefresh.isRefreshing}
-          pullDistance={pullToRefresh.pullDistance}
-          label={tCommon('pullToRefresh')}
-          refreshingLabel={tCommon('refreshing')}
-        />
-        <div className="py-12 text-center">
-          <p className="text-gray-500">{t('noExpensesThisPeriod')}</p>
-          <p className="mt-2 text-sm text-gray-400">{t('useButtonToAdd')}</p>
-        </div>
+      <div className="py-12 text-center">
+        <p className="text-gray-500">{t('noExpensesThisPeriod')}</p>
+        <p className="mt-2 text-sm text-gray-400">{t('useButtonToAdd')}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <PullToRefreshIndicator
-        isRefreshing={pullToRefresh.isRefreshing}
-        pullDistance={pullToRefresh.pullDistance}
-        label={tCommon('pullToRefresh')}
-        refreshingLabel={tCommon('refreshing')}
-      />
-
       {dates.map((date) => (
         <div key={date}>
           <h2 className="mb-2 text-sm font-medium text-gray-500">

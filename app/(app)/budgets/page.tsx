@@ -7,7 +7,6 @@ import { CopyBudgetsButton } from '@/components/copy-budgets-button';
 import { getBudgetsWithSpending } from '@/lib/actions/budgets';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
-import { PullToRefreshWrapper } from '@/components/pull-to-refresh-wrapper';
 import Link from 'next/link';
 
 export default async function BudgetsPage({
@@ -24,9 +23,8 @@ export default async function BudgetsPage({
   const hasNoBudgets = data.budgets.length === 0;
 
   return (
-    <PullToRefreshWrapper>
-      <div>
-        <OnboardingTooltip hintKey="budgets" className="mb-4">
+    <div>
+      <OnboardingTooltip hintKey="budgets" className="mb-4">
           {tOnboarding('budgets')}
         </OnboardingTooltip>
 
@@ -107,6 +105,5 @@ export default async function BudgetsPage({
           </div>
         )}
       </div>
-    </PullToRefreshWrapper>
   );
 }

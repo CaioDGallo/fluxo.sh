@@ -4,7 +4,6 @@ import { getAccounts } from '@/lib/actions/accounts';
 import { getTransfers } from '@/lib/actions/transfers';
 import { getTranslations } from 'next-intl/server';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
-import { PullToRefreshWrapper } from '@/components/pull-to-refresh-wrapper';
 
 export default async function TransfersPage() {
   const t = await getTranslations('transfers');
@@ -15,9 +14,8 @@ export default async function TransfersPage() {
   ]);
 
   return (
-    <PullToRefreshWrapper>
-      <div>
-        <OnboardingTooltip hintKey="transfers" className="mb-4">
+    <div>
+      <OnboardingTooltip hintKey="transfers" className="mb-4">
           {tOnboarding('transfers')}
         </OnboardingTooltip>
 
@@ -31,6 +29,5 @@ export default async function TransfersPage() {
 
         <TransferList transfers={transfers} accounts={accounts} />
       </div>
-    </PullToRefreshWrapper>
   );
 }

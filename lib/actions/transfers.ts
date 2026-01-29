@@ -115,8 +115,10 @@ export async function createTransfer(data: CreateTransferData) {
     activityType: 'create_transfer',
   });
 
+  revalidateTag(`user-${userId}`, {});
   revalidatePath('/transfers');
   revalidatePath('/dashboard');
+  revalidatePath('/faturas');
   revalidatePath('/settings/accounts');
 }
 
@@ -213,8 +215,10 @@ export async function updateTransfer(transferId: number, data: CreateTransferDat
     activityType: 'edit_transfer',
   });
 
+  revalidateTag(`user-${userId}`, {});
   revalidatePath('/transfers');
   revalidatePath('/dashboard');
+  revalidatePath('/faturas');
   revalidatePath('/settings/accounts');
 }
 
@@ -258,8 +262,10 @@ export async function deleteTransfer(transferId: number) {
     activityType: 'delete_transfer',
   });
 
+  revalidateTag(`user-${userId}`, {});
   revalidatePath('/transfers');
   revalidatePath('/dashboard');
+  revalidatePath('/faturas');
   revalidatePath('/settings/accounts');
 }
 
@@ -383,6 +389,8 @@ export async function backfillFaturaTransfers(): Promise<{ created: number } | {
       }
     }
 
+    revalidateTag(`user-${userId}`, {});
+    revalidatePath('/faturas');
     revalidatePath('/transfers');
     revalidatePath('/dashboard');
     revalidatePath('/settings/accounts');
@@ -440,6 +448,8 @@ export async function toggleIgnoreTransfer(transferId: number) {
     revalidateTag(`user-${userId}`, {});
     revalidatePath('/transfers');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to toggle ignore transfer:', error);
     if (error instanceof Error) {

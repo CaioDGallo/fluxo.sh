@@ -114,6 +114,7 @@ export async function createRefund(data: CreateRefundData) {
     revalidatePath('/expenses');
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to create refund:', error);
     if (error instanceof Error) {
@@ -177,6 +178,7 @@ export async function deleteRefund(incomeId: number) {
     revalidatePath('/expenses');
     revalidatePath('/income');
     revalidatePath('/dashboard');
+    revalidatePath('/faturas');
   } catch (error) {
     console.error('Failed to delete refund:', error);
     if (error instanceof Error) {

@@ -26,11 +26,11 @@ import {
   ArrowRight01Icon,
   CalendarIcon,
   CreditCardIcon,
-  FileDownloadIcon,
-  Home01Icon,
-  Invoice03Icon,
-  Notification02Icon,
   Crown03Icon,
+  FileDownloadIcon,
+  Invoice03Icon,
+  MoneyReceiveFlow02Icon,
+  Notification02Icon,
   Settings01Icon,
   Settings02Icon,
   SparklesIcon,
@@ -42,18 +42,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { key: 'dashboard', href: '/dashboard', icon: Home01Icon },
+  { key: 'dashboard', href: '/dashboard', icon: MoneyReceiveFlow02Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
   { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
   { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'income', href: '/income', icon: Wallet01Icon },
-  { key: 'calendar', href: '/calendar', icon: CalendarIcon },
+  { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
 ];
 
 const settingsItems = [
-  { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
+  { key: 'calendar', href: '/calendar', icon: CalendarIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },

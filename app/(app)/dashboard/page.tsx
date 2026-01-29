@@ -11,7 +11,6 @@ import { getCurrentYearMonth } from '@/lib/utils';
 import { PWARedirectHandler } from '@/components/pwa-redirect-handler';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
 import { PushNotificationPrompt } from '@/components/push-notification-prompt';
-import { PullToRefreshWrapper } from '@/components/pull-to-refresh-wrapper';
 import Link from 'next/link';
 
 export default async function DashboardPage({
@@ -31,9 +30,8 @@ export default async function DashboardPage({
   const hasNoBudgets = data.categoryBreakdown.length === 0;
 
   return (
-    <PullToRefreshWrapper>
-      <div>
-        <PWARedirectHandler />
+    <div>
+      <PWARedirectHandler />
 
         <OnboardingTooltip hintKey="dashboard" className="mb-4">
           {tOnboarding('dashboard')}
@@ -105,6 +103,5 @@ export default async function DashboardPage({
           </div>
         )}
       </div>
-    </PullToRefreshWrapper>
   );
 }

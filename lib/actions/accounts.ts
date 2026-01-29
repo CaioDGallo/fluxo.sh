@@ -247,7 +247,7 @@ export async function reconcileCurrentUserBalances(): Promise<void> {
   await reconcileAccountBalancesForUser(userId);
 
   revalidatePath('/settings/accounts');
-  revalidateTag('accounts', 'max');
+  revalidateTag(`user-${userId}`, {});
 }
 
 export async function reconcileAllAccountBalances(): Promise<{ users: number; accounts: number }> {
@@ -370,7 +370,7 @@ export async function createAccount(data: Omit<NewAccount, 'id' | 'userId' | 'cr
     }
 
     revalidatePath('/settings/accounts');
-    revalidateTag('accounts', 'max');
+    revalidateTag(`user-${userId}`, {});
     return { success: true };
   } catch (error) {
     console.error('[accounts:create] Failed:', error);
@@ -447,7 +447,7 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
 
     await db.update(accounts).set(updates).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
     revalidatePath('/settings/accounts');
-    revalidateTag('accounts', 'max');
+    revalidateTag(`user-${userId}`, {});
     return { success: true };
   } catch (error) {
     console.error('[accounts:update] Failed:', error);
@@ -482,7 +482,7 @@ export async function deleteAccount(id: number) {
     }
 
     revalidatePath('/settings/accounts');
-    revalidateTag('accounts', 'max');
+    revalidateTag(`user-${userId}`, {});
   } catch (error) {
     console.error('[accounts:delete] Failed:', error);
     throw new Error(await handleDbError(error, 'errors.failedToDelete'));

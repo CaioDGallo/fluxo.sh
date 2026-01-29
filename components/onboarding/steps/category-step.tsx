@@ -95,7 +95,7 @@ export function CategoryStep() {
             </div>
           </div>
 
-          <div className="space-y-2 pb-4">
+          <div className="space-y-2 pb-4 max-h-32">
             <Label>{t('iconLabel')}</Label>
             <IconPicker value={icon} onChange={setIcon} />
           </div>
@@ -103,7 +103,7 @@ export function CategoryStep() {
       </div>
 
       {/* Fixed buttons at bottom */}
-      <div className="flex-shrink-0 flex gap-2 pt-4 border-t bg-background">
+      <div className="shrink-0 flex gap-2 pt-4 border-t bg-background">
         <Button variant="ghost" onClick={nextStep} className="flex-1">
           {t('skip')}
         </Button>

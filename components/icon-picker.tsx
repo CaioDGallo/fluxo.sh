@@ -93,7 +93,7 @@ type IconPickerProps = {
 
 export function IconPicker({ value, onChange }: IconPickerProps) {
   return (
-    <div className="grid grid-cols-8 gap-2">
+    <div className="grid grid-cols-7 gap-2">
       {Object.entries(CATEGORY_ICONS).map(([name, Icon]) => (
         <button
           key={name}

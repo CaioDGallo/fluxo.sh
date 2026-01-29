@@ -46,6 +46,13 @@ const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due'] as const
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+type StripeErrorLike = {
+  type?: string;
+  code?: string;
+  statusCode?: number;
+  param?: string;
+};
+
 async function deleteItemMetadata(
   tx: DbTransaction,
   itemType: 'event' | 'task' | 'bill_reminder',
@@ -64,6 +71,15 @@ async function deleteItemMetadata(
   await tx
     .delete(recurrenceRules)
     .where(and(eq(recurrenceRules.itemType, itemType), inArray(recurrenceRules.itemId, itemIds)));
+}
+
+function isMissingStripeSubscription(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const stripeError = error as StripeErrorLike;
+  return (
+    stripeError.code === 'resource_missing' ||
+    (stripeError.type === 'StripeInvalidRequestError' && stripeError.statusCode === 404 && stripeError.param === 'id')
+  );
 }
 
 export async function deleteAccount(): Promise<DeleteAccountResult> {
@@ -111,8 +127,14 @@ export async function deleteAccount(): Promise<DeleteAccountResult> {
 
       const { stripe } = await import('@/lib/stripe');
       await Promise.all(
-        activeSubscriptions.map((subscription) =>
-          stripe.subscriptions.cancel(subscription.stripeSubscriptionId!))
+        activeSubscriptions.map(async (subscription) => {
+          try {
+            await stripe.subscriptions.cancel(subscription.stripeSubscriptionId!);
+          } catch (error) {
+            if (isMissingStripeSubscription(error)) return;
+            throw error;
+          }
+        })
       );
     }
 

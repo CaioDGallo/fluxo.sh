@@ -19,6 +19,7 @@ export default function SignupPage() {
   const t = useTranslations('signup');
   const tAuth = useTranslations('auth');
   const tCommon = useTranslations('common');
+  const tLegal = useTranslations('legal');
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
@@ -321,6 +322,20 @@ export default function SignupPage() {
               </div>
             </>
           )}
+          <div className="mt-6 text-center text-xs text-muted-foreground">
+            {tLegal.rich('agreement', {
+              terms: (chunks) => (
+                <Link href="/terms" className="font-medium underline underline-offset-4">
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link href="/privacy" className="font-medium underline underline-offset-4">
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </div>
         </CardContent>
       </Card>
     </div>

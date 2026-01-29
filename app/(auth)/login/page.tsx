@@ -18,6 +18,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('login');
+  const tLegal = useTranslations('legal');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -158,6 +159,20 @@ function LoginForm() {
             <Link href="/signup" className="font-medium hover:underline">
               {t('signUp')}
             </Link>
+          </div>
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            {tLegal.rich('agreement', {
+              terms: (chunks) => (
+                <Link href="/terms" className="font-medium underline underline-offset-4">
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link href="/privacy" className="font-medium underline underline-offset-4">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
         </CardContent>
       </Card>

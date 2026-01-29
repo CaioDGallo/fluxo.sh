@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 export default async function SettingsPage() {
   const t = await getTranslations('settings');
+  const tLegal = await getTranslations('legal');
 
   return (
     <div>
@@ -36,6 +37,20 @@ export default async function SettingsPage() {
           <h2 className="font-semibold text-destructive">{t('data')}</h2>
           <p className="text-sm text-muted-foreground">{t('dataDescription')}</p>
         </Link>
+      </div>
+      <div className="mt-10 border-t border-border/70 pt-6">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/70">
+          {tLegal('sectionTitle')}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">{tLegal('sectionDescription')}</p>
+        <div className="mt-4 flex flex-wrap gap-4 text-sm">
+          <Link href="/privacy" className="underline underline-offset-4">
+            {tLegal('privacyLink')}
+          </Link>
+          <Link href="/terms" className="underline underline-offset-4">
+            {tLegal('termsLink')}
+          </Link>
+        </div>
       </div>
     </div>
   );

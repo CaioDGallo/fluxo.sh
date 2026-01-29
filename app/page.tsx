@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const t = await getTranslations('landing');
+  const tLegal = await getTranslations('legal');
 
   return (
     <LandingPageTracker>
@@ -308,6 +310,15 @@ export default async function Home() {
             <div>
               <p className="font-semibold">{t('footerTitle')}</p>
               <p className="text-foreground/80">{t('footerText')}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-foreground/70">
+                <Link href="/privacy" className="hover:text-foreground">
+                  {tLegal('privacyLink')}
+                </Link>
+                <span>•</span>
+                <Link href="/terms" className="hover:text-foreground">
+                  {tLegal('termsLink')}
+                </Link>
+              </div>
             </div>
             <div className="flex flex-wrap gap-4 uppercase tracking-[0.2em] text-[10px] text-foreground/80">
               <span>{t('footerMadeIn')}</span>

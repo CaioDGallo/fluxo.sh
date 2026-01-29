@@ -163,7 +163,7 @@ export async function acknowledgeBillReminder(id: number): Promise<ActionResult>
 
 export type BillReminderWithDue = BillReminder & { nextDue: Date };
 
-export async function getPendingBillReminders(): Promise<BillReminderWithDue[]> {
+export const getPendingBillReminders = cache(async (): Promise<BillReminderWithDue[]> => {
   const userId = await getCurrentUserId();
   const settings = await getUserSettings();
   const timeZone = settings?.timezone || 'UTC';
@@ -197,4 +197,4 @@ export async function getPendingBillReminders(): Promise<BillReminderWithDue[]> 
   }
 
   return remindersWithDue;
-}
+});

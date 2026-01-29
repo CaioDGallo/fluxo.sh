@@ -20,7 +20,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   ArrowLeftRightIcon,
@@ -65,7 +64,6 @@ const settingsItems = [
 export function AppSidebar() {
   const t = useTranslations('navigation');
   const pathname = usePathname();
-  const { toggleSidebar } = useSidebar();
 
   const isActive = (href: string) => pathname === href;
   const isSettingsActive = pathname.startsWith('/settings');
@@ -73,15 +71,21 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        {/* Expanded state: show full text */}
-        <div className="flex h-12 items-center px-4 font-semibold group-data-[collapsible=icon]:hidden">
+        {/* Expanded state: clickable brand link */}
+        <Link
+          href="/"
+          className="flex h-12 items-center px-4 font-semibold group-data-[collapsible=icon]:hidden hover:opacity-80 transition-opacity"
+        >
           {t('fluxosh')}
-        </div>
+        </Link>
+
         {/* Collapsed state: show clickable icon */}
         <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={toggleSidebar} tooltip={t('expandSidebar')}>
-              <HugeiconsIcon icon={SparklesIcon} />
+            <SidebarMenuButton asChild tooltip={t('home')}>
+              <Link href="/">
+                <HugeiconsIcon icon={SparklesIcon} />
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -95,7 +99,7 @@ export function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                    <Link href={item.href} prefetch={true}>
+                    <Link href={item.href} prefetch={false}>
                       <HugeiconsIcon icon={item.icon} />
                       <span>{t(item.key)}</span>
                     </Link>
@@ -120,7 +124,7 @@ export function AppSidebar() {
                       {settingsItems.map((item) => (
                         <SidebarMenuSubItem key={item.href}>
                           <SidebarMenuSubButton asChild isActive={isActive(item.href)}>
-                            <Link href={item.href} prefetch={true}>
+                            <Link href={item.href} prefetch={false}>
                               <HugeiconsIcon icon={item.icon} />
                               <span>{t(item.key)}</span>
                             </Link>

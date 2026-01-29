@@ -39,10 +39,10 @@ export type RecentCategory = Pick<
   'id' | 'name' | 'color' | 'icon'
 >;
 
-export async function getRecentCategories(
+export const getRecentCategories = cache(async (
   type: 'expense' | 'income',
   limit = 3
-): Promise<RecentCategory[]> {
+): Promise<RecentCategory[]> => {
   const userId = await getCurrentUserId();
 
   const sqlQuery = type === 'expense'
@@ -80,7 +80,7 @@ export async function getRecentCategories(
   const results = await db.execute(sqlQuery);
 
   return results.rows as RecentCategory[];
-}
+});
 
 export async function createCategory(data: Omit<NewCategory, 'id' | 'userId' | 'createdAt'>): Promise<ActionResult<{ id: number }>> {
   try {

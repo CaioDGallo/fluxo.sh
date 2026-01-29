@@ -12,6 +12,7 @@ import {
   Calendar03Icon,
   CreditCardIcon,
   FileDownloadIcon,
+  Home01Icon,
   Invoice03Icon,
   Message01Icon,
   Notification02Icon,
@@ -29,6 +30,7 @@ import { FeedbackSheet } from './feedback-sheet';
 import { LogoutButton } from './logout-button';
 
 const moreItems = [
+  { key: 'home', href: '/', icon: Home01Icon },
   { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },

@@ -101,6 +101,7 @@
   "navigation": {
     "fluxosh": "fluxo.sh",
     "navigation": "Navegação",
+    "home": "Início",
     "dashboard": "Meu Fluxo",
     "budgets": "Orçamentos",
     "expenses": "Despesas",

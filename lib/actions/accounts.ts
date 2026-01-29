@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { db } from '@/lib/db';
 import { accounts, entries, income, transfers, transactions, type NewAccount } from '@/lib/schema';
 import { eq, and, isNotNull, sql } from 'drizzle-orm';
@@ -77,17 +78,17 @@ async function validateBankLogo(logo: unknown) {
   }
 }
 
-export async function getAccounts() {
+export const getAccounts = cache(async () => {
   const userId = await getCurrentUserId();
   return await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.name);
-}
+});
 
 export type RecentAccount = Pick<
   typeof accounts.$inferSelect,
   'id' | 'name' | 'type' | 'bankLogo'
 >;
 
-export async function getRecentAccounts(limit = 3): Promise<RecentAccount[]> {
+export const getRecentAccounts = cache(async (limit = 3): Promise<RecentAccount[]> => {
   const userId = await getCurrentUserId();
   const sqlQuery = sql<RecentAccount>`
     SELECT id, name, type, "bankLogo"
@@ -136,7 +137,7 @@ export async function getRecentAccounts(limit = 3): Promise<RecentAccount[]> {
   const results = await db.execute(sqlQuery);
 
   return results.rows as RecentAccount[];
-}
+});
 
 type DbClient = Pick<typeof db, 'select' | 'update'>;
 

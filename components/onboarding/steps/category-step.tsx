@@ -57,49 +57,53 @@ export function CategoryStep() {
   };
 
   return (
-    <WizardStep className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">{t('title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('description')}</p>
-      </div>
-
-      <div className="space-y-4">
+    <WizardStep className="flex flex-col h-full">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto space-y-6 pb-4">
         <div className="space-y-2">
-          <Label htmlFor="category-name">{t('nameLabel')}</Label>
-          <Input
-            id="category-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t('namePlaceholder')}
-          />
+          <h2 className="text-xl font-bold">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
 
-        <div className="space-y-2">
-          <Label>{t('colorLabel')}</Label>
-          <div className="flex gap-2">
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className="size-8 rounded-full border-2 transition-all hover:scale-110"
-                style={{
-                  backgroundColor: c,
-                  borderColor: color === c ? 'currentColor' : 'transparent',
-                }}
-                aria-label={`Color ${c}`}
-              />
-            ))}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="category-name">{t('nameLabel')}</Label>
+            <Input
+              id="category-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('namePlaceholder')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t('colorLabel')}</Label>
+            <div className="flex gap-2">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className="size-8 rounded-full border-2 transition-all hover:scale-110"
+                  style={{
+                    backgroundColor: c,
+                    borderColor: color === c ? 'currentColor' : 'transparent',
+                  }}
+                  aria-label={`Color ${c}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t('iconLabel')}</Label>
+            <IconPicker value={icon} onChange={setIcon} />
           </div>
         </div>
-
-        <div className="space-y-2">
-          <Label>{t('iconLabel')}</Label>
-          <IconPicker value={icon} onChange={setIcon} />
-        </div>
       </div>
 
-      <div className="flex gap-2">
+      {/* Fixed buttons at bottom */}
+      <div className="flex gap-2 pt-4 border-t">
         <Button variant="ghost" onClick={nextStep} className="flex-1">
           {t('skip')}
         </Button>

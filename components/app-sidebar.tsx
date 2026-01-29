@@ -31,7 +31,7 @@ import {
   Home01Icon,
   Invoice03Icon,
   Notification02Icon,
-  Package01Icon,
+  Crown03Icon,
   Settings01Icon,
   Settings02Icon,
   SparklesIcon,
@@ -54,7 +54,7 @@ const navItems = [
 ];
 
 const settingsItems = [
-  { key: 'plan', href: '/settings/plan', icon: Package01Icon },
+  { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },

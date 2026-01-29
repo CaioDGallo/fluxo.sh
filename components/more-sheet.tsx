@@ -15,7 +15,7 @@ import {
   Invoice03Icon,
   Message01Icon,
   Notification02Icon,
-  Package01Icon,
+  Crown03Icon,
   Settings02Icon,
   SparklesIcon,
   Wallet01Icon
@@ -33,7 +33,7 @@ const moreItems = [
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
   { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
-  { key: 'plan', href: '/settings/plan', icon: Package01Icon },
+  { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },

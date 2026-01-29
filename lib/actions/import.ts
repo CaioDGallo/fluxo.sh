@@ -441,7 +441,8 @@ async function findExistingInstallmentTransaction(
   baseDescription: string,
   totalInstallments: number,
   installmentAmounts: Map<number, number>,
-  excludeTransactionIds: Set<number>
+  excludeTransactionIds: Set<number>,
+  rawFitId?: string
 ): Promise<{
   id: number;
   existingEntryNumbers: number[];
@@ -453,6 +454,7 @@ async function findExistingInstallmentTransaction(
   const results = await dbClient
     .select({
       id: transactions.id,
+      externalId: transactions.externalId,
     })
     .from(transactions)
     .where(
@@ -468,7 +470,25 @@ async function findExistingInstallmentTransaction(
   const candidateResults = results.filter((tx) => !excludeTransactionIds.has(tx.id));
   if (candidateResults.length === 0) return null;
 
-  const tx = candidateResults[0];
+  // For OFX imports with rawFitId, only match if transaction has same FITID prefix
+  let tx = null;
+  for (const candidate of candidateResults) {
+    if (rawFitId && candidate.externalId) {
+      // OFX: Check if existing transaction has matching FITID prefix
+      // externalId format: {FITID}-{amount} (e.g., "694072e2-...-3000")
+      const existingFitId = candidate.externalId.split('-')[0];
+      const importFitId = rawFitId.split('-')[0];
+
+      // Only match if same purchase (same FITID prefix)
+      if (existingFitId !== importFitId) {
+        continue; // Different purchase, skip this candidate
+      }
+    }
+    tx = candidate;
+    break;
+  }
+
+  if (!tx) return null;
 
   // Get existing entries with their amounts and IDs for this transaction
   const existingEntries = await dbClient
@@ -626,7 +646,8 @@ async function processInstallmentGroup(
     baseDescription,
     total,
     rowAmounts,
-    newlyCreatedTransactionIds
+    newlyCreatedTransactionIds,
+    rows[0].rawFitId
   );
   const getInstallmentAmount = (
     installmentNumber: number,

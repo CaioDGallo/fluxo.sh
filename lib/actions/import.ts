@@ -880,7 +880,20 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
         const existing = existingData.get(info.current);
         if (!existing) {
-          // No row with this installment number yet - no conflict
+          // No row with this installment number yet - check amount consistency
+          const existingAmounts = Array.from(existingData.values());
+          if (existingAmounts.length > 0) {
+            const refAmount = existingAmounts[0].amount;
+            const diff = Math.abs(row.amountCents - refAmount);
+            const percentDiff = diff / refAmount;
+
+            // Different purchase if >10% AND >R$1.00 difference
+            if (percentDiff > 0.10 && diff > 100) {
+              suffix++;
+              targetKey = `${baseKey}|${suffix}`;
+              continue;
+            }
+          }
           break;
         }
 

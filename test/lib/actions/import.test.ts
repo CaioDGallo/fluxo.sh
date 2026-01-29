@@ -1302,5 +1302,57 @@ describe('Import Actions', () => {
       // First fatura (parcela 2) should contain both first installment entries
       expect(faturas[0].totalAmount).toBe(14318 + 19998);
     });
+
+    it('separates installments from same store with different amounts', async () => {
+      const creditCard = await seedAccount(testAccounts.creditCardWithBilling);
+      await seedCategory('expense');
+      await seedCategory('income');
+
+      // Santo Sete: R$30 parcela 1/5 and R$96 parcela 2/5 should NOT merge
+      const result = await importMixed({
+        accountId: creditCard.id,
+        rows: [
+          {
+            date: '2025-12-16',
+            description: 'Santo Sete - Parcela 1/5',
+            amountCents: 3000,
+            rowIndex: 0,
+            type: 'expense',
+            installmentInfo: { current: 1, total: 5, baseDescription: 'Santo Sete' },
+          },
+          {
+            date: '2025-12-01',
+            description: 'Santo Sete - Parcela 2/5',
+            amountCents: 9600,
+            rowIndex: 1,
+            type: 'expense',
+            installmentInfo: { current: 2, total: 5, baseDescription: 'Santo Sete' },
+          },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.importedExpenses).toBe(2);
+      }
+
+      // Should create TWO separate transactions
+      const transactions = await db.select().from(schema.transactions);
+      expect(transactions).toHaveLength(2);
+
+      // Total amounts: 3000*5=15000, 9600*5=48000
+      expect(transactions.map((t) => t.totalAmount).sort()).toEqual([15000, 48000]);
+
+      // Each transaction should have entries with consistent amounts
+      for (const transaction of transactions) {
+        const entries = await db
+          .select()
+          .from(schema.entries)
+          .where(eq(schema.entries.transactionId, transaction.id));
+
+        const entryAmount = entries[0].amount;
+        expect(entries.every((e) => e.amount === entryAmount)).toBe(true);
+      }
+    });
   });
 });

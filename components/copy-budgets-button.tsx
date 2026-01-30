@@ -66,7 +66,7 @@ export function CopyBudgetsButton({ currentMonth }: CopyBudgetsButtonProps) {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
       <Button onClick={handleCopy} disabled={isLoading} variant="hollow">
         {isLoading ? (
           <span className="inline-flex items-center gap-2">

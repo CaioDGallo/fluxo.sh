@@ -6,6 +6,7 @@ import { syncAllUsersCalendars } from '@/lib/actions/calendar-sync';
 import { sendAllDailyDigests } from '@/lib/actions/daily-digest';
 import { scheduleBillReminderNotifications } from '@/lib/actions/bill-reminder-jobs';
 import { sendAllDailyPushes } from '@/lib/actions/daily-push';
+import { sendRenewalReminders } from '@/lib/actions/renewal-reminders';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,17 +33,19 @@ export async function GET(request: Request) {
   const runCalendarSync = !jobOverride || jobOverride === 'calendar-sync' || jobOverride === 'all';
   const runDailyDigest = !jobOverride || jobOverride === 'daily-digest' || jobOverride === 'all';
   const runDailyPush = !jobOverride || jobOverride === 'daily-push' || jobOverride === 'all';
+  const runRenewalReminders = !jobOverride || jobOverride === 'renewal-reminders' || jobOverride === 'all';
 
   try {
     const billReminderResult = runBillReminders ? await scheduleBillReminderNotifications() : null;
     const notificationResult = runNotifications ? await processPendingNotificationJobs() : null;
 
-    const [balanceResult, statusResult, calendarSyncResult, dailyDigestResult, dailyPushResult] = await Promise.all([
+    const [balanceResult, statusResult, calendarSyncResult, dailyDigestResult, dailyPushResult, renewalRemindersResult] = await Promise.all([
       runBalanceReconciliation ? reconcileAllAccountBalances() : Promise.resolve(null),
       runStatusUpdates ? updatePastItemStatuses() : Promise.resolve(null),
       runCalendarSync ? syncAllUsersCalendars() : Promise.resolve(null),
       runDailyDigest ? sendAllDailyDigests() : Promise.resolve(null),
       runDailyPush ? sendAllDailyPushes() : Promise.resolve(null),
+      runRenewalReminders ? sendRenewalReminders() : Promise.resolve(null),
     ]);
 
     console.log('[cron:daily] All jobs completed');
@@ -56,6 +59,7 @@ export async function GET(request: Request) {
       calendarSync: calendarSyncResult,
       dailyDigest: dailyDigestResult,
       dailyPush: dailyPushResult,
+      renewalReminders: renewalRemindersResult,
     });
   } catch (error) {
     console.error('[cron:daily] Failed:', error);

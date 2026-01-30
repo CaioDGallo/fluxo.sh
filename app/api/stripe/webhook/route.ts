@@ -23,6 +23,14 @@ import {
   generateSubscriptionEndedHtml,
   generateSubscriptionEndedText,
 } from '@/lib/email/subscription-ended-template';
+import {
+  generatePaymentReceiptHtml,
+  generatePaymentReceiptText,
+} from '@/lib/email/payment-receipt-template';
+import {
+  generatePlanChangedHtml,
+  generatePlanChangedText,
+} from '@/lib/email/plan-changed-template';
 import { PLANS } from '@/lib/plans';
 
 export const runtime = 'nodejs';
@@ -333,6 +341,126 @@ export async function POST(req: Request) {
             text,
           });
         }
+
+        // 5. Plan Changed (plan key changed)
+        if (
+          event.type === 'customer.subscription.updated' &&
+          previousSubscription &&
+          previousSubscription.planKey !== subscriptionPlanKey
+        ) {
+          const oldPlanName = PLANS[previousSubscription.planKey as keyof typeof PLANS].name;
+          const newPlanName = PLANS[subscriptionPlanKey as keyof typeof PLANS].name;
+          // Determine upgrade vs downgrade (simple heuristic: compare plan keys alphabetically)
+          // In practice: pro > saver > free, but since subscriptionPlanKey excludes 'free', any change from 'free' is upgrade
+          const isUpgrade = previousSubscription.planKey === 'free' || subscriptionPlanKey === 'pro';
+          const effectiveDateObj = currentPeriodEnd || new Date();
+          const effectiveDateStr = formatDate(effectiveDateObj, locale);
+
+          const html = generatePlanChangedHtml({
+            oldPlanName,
+            newPlanName,
+            isUpgrade,
+            effectiveDate: effectiveDateStr,
+            newLimits: PLANS[subscriptionPlanKey].limits,
+            appUrl,
+            locale,
+          });
+          const text = generatePlanChangedText({
+            oldPlanName,
+            newPlanName,
+            isUpgrade,
+            effectiveDate: effectiveDateStr,
+            newLimits: PLANS[subscriptionPlanKey].limits,
+            appUrl,
+            locale,
+          });
+
+          await sendBillingEmail({
+            userId,
+            userEmail: user.email,
+            emailType: 'plan_changed',
+            referenceId: subscription.id,
+            subject: locale === 'pt-BR' ? 'Plano atualizado' : 'Plan updated',
+            html,
+            text,
+          });
+        }
+
+        break;
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const stripeCustomerId = getCustomerId(invoice.customer);
+
+        if (!stripeCustomerId) break;
+
+        // Get user from customer
+        const existingCustomer = await db.query.billingCustomers.findFirst({
+          where: eq(billingCustomers.stripeCustomerId, stripeCustomerId),
+        });
+        const userId = existingCustomer?.userId;
+
+        if (!userId) break;
+
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!user?.email) break;
+
+        // Get subscription to determine plan
+        // Using bracket notation to avoid type errors since subscription may be expanded or not
+        const subscriptionField = (invoice as any).subscription as
+          | string
+          | { id: string }
+          | null
+          | undefined;
+        const subscriptionId =
+          typeof subscriptionField === 'string' ? subscriptionField : subscriptionField?.id;
+        if (!subscriptionId) break;
+
+        const subscription = await db.query.billingSubscriptions.findFirst({
+          where: eq(billingSubscriptions.stripeSubscriptionId, subscriptionId),
+        });
+        if (!subscription) break;
+
+        const locale = await getUserLocale(userId);
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
+        const planName = PLANS[subscription.planKey as keyof typeof PLANS].name;
+        const invoiceNumber = invoice.number || invoice.id.substring(3, 11);
+        const date = formatDate(new Date(invoice.created * 1000), locale);
+        const amountDisplay = formatAmount(invoice.amount_paid, invoice.currency.toUpperCase());
+        const invoiceUrl = invoice.hosted_invoice_url || `${appUrl}/settings/billing`;
+
+        const html = generatePaymentReceiptHtml({
+          invoiceNumber,
+          date,
+          planName,
+          amountDisplay,
+          invoiceUrl,
+          appUrl,
+          locale,
+        });
+        const text = generatePaymentReceiptText({
+          invoiceNumber,
+          date,
+          planName,
+          amountDisplay,
+          invoiceUrl,
+          appUrl,
+          locale,
+        });
+
+        await sendBillingEmail({
+          userId,
+          userEmail: user.email,
+          emailType: 'payment_receipt',
+          referenceId: invoice.id,
+          subject:
+            locale === 'pt-BR'
+              ? `Recibo de pagamento - ${amountDisplay}`
+              : `Payment receipt - ${amountDisplay}`,
+          html,
+          text,
+        });
 
         break;
       }

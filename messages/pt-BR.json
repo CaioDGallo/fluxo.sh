@@ -1131,6 +1131,43 @@
       "winBack": "Quer todo o poder do Fluxo de volta?",
       "upgrade": "Assinar novamente",
       "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "paymentReceipt": {
+      "subject": "Recibo de pagamento - {{amount}}",
+      "title": "Pagamento recebido",
+      "greeting": "Obrigado pelo seu pagamento!",
+      "intro": "Seu pagamento foi processado com sucesso.",
+      "invoiceLabel": "Fatura",
+      "dateLabel": "Data",
+      "planLabel": "Plano",
+      "amountLabel": "Valor pago",
+      "viewInvoice": "Ver fatura",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "renewalReminder": {
+      "subject": "Sua assinatura renova em breve",
+      "title": "Renovação próxima",
+      "greeting": "Lembrete de renovação",
+      "intro": "Sua assinatura {{plan}} será renovada automaticamente em {{date}}.",
+      "amountLabel": "Valor a ser cobrado",
+      "dateLabel": "Data da cobrança",
+      "paymentMethod": "Método de pagamento",
+      "manageSubscription": "Gerenciar assinatura",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "planChanged": {
+      "subject": "Plano atualizado",
+      "title": "Mudança de plano",
+      "greeting": "Seu plano foi alterado",
+      "upgraded": "Parabéns! Você fez upgrade do plano {{oldPlan}} para {{newPlan}}.",
+      "downgraded": "Seu plano foi alterado de {{oldPlan}} para {{newPlan}}.",
+      "effectiveDate": "Vigência",
+      "newLimits": "Novos limites:",
+      "categories": "Categorias",
+      "accounts": "Contas",
+      "imports": "Importações semanais",
+      "viewPlan": "Ver detalhes do plano",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
     }
   },
   "netWorth": {

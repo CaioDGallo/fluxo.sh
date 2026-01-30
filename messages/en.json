@@ -1093,6 +1093,43 @@
       "winBack": "Want all the power of Fluxo back?",
       "upgrade": "Subscribe again",
       "footer": "fluxo.sh - Your finances under control"
+    },
+    "paymentReceipt": {
+      "subject": "Payment receipt - {{amount}}",
+      "title": "Payment received",
+      "greeting": "Thank you for your payment!",
+      "intro": "Your payment was processed successfully.",
+      "invoiceLabel": "Invoice",
+      "dateLabel": "Date",
+      "planLabel": "Plan",
+      "amountLabel": "Amount paid",
+      "viewInvoice": "View invoice",
+      "footer": "fluxo.sh - Your finances under control"
+    },
+    "renewalReminder": {
+      "subject": "Your subscription renews soon",
+      "title": "Renewal coming up",
+      "greeting": "Renewal reminder",
+      "intro": "Your {{plan}} subscription will automatically renew on {{date}}.",
+      "amountLabel": "Amount to be charged",
+      "dateLabel": "Billing date",
+      "paymentMethod": "Payment method",
+      "manageSubscription": "Manage subscription",
+      "footer": "fluxo.sh - Your finances under control"
+    },
+    "planChanged": {
+      "subject": "Plan updated",
+      "title": "Plan change",
+      "greeting": "Your plan has been changed",
+      "upgraded": "Congratulations! You upgraded from {{oldPlan}} to {{newPlan}}.",
+      "downgraded": "Your plan was changed from {{oldPlan}} to {{newPlan}}.",
+      "effectiveDate": "Effective date",
+      "newLimits": "New limits:",
+      "categories": "Categories",
+      "accounts": "Accounts",
+      "imports": "Weekly imports",
+      "viewPlan": "View plan details",
+      "footer": "fluxo.sh - Your finances under control"
     }
   },
   "netWorth": {

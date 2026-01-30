@@ -407,8 +407,9 @@ export async function POST(req: Request) {
         if (!user?.email) break;
 
         // Get subscription to determine plan
-        // Using bracket notation to avoid type errors since subscription may be expanded or not
-        const subscriptionField = (invoice as any).subscription as
+        // Using type assertion since subscription may be expanded or not
+        const subscriptionField = (invoice as { subscription?: string | { id: string } })
+          .subscription as
           | string
           | { id: string }
           | null

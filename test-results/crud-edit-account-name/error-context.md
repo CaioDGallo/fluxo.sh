@@ -1,0 +1,177 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - link:
+              - /url: /
+              - text: fluxo.sh
+          - generic:
+            - generic:
+              - generic: Navegação
+              - generic:
+                - list:
+                  - listitem:
+                    - link:
+                      - /url: /dashboard
+                      - img
+                      - generic: Meu Fluxo
+                  - listitem:
+                    - link:
+                      - /url: /budgets
+                      - img
+                      - generic: Orçamentos
+                  - listitem:
+                    - link:
+                      - /url: /expenses
+                      - img
+                      - generic: Despesas
+                  - listitem:
+                    - link:
+                      - /url: /transfers
+                      - img
+                      - generic: Transferências
+                  - listitem:
+                    - link:
+                      - /url: /income
+                      - img
+                      - generic: Receitas
+                  - listitem:
+                    - link:
+                      - /url: /settings/plan
+                      - img
+                      - generic: Plano
+                  - listitem:
+                    - link:
+                      - /url: /reminders
+                      - img
+                      - generic: Lembretes
+                  - listitem:
+                    - link:
+                      - /url: /faturas
+                      - img
+                      - generic: Faturas
+                  - generic:
+                    - listitem:
+                      - button [expanded]:
+                        - img
+                        - generic: Configurações
+                        - img
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link:
+                              - /url: /calendar
+                              - img
+                              - generic: Calendário
+                          - listitem:
+                            - link:
+                              - /url: /settings/accounts
+                              - img
+                              - generic: Contas
+                          - listitem:
+                            - link:
+                              - /url: /settings/categories
+                              - img
+                              - generic: Categorias
+                          - listitem:
+                            - link:
+                              - /url: /settings/budgets
+                              - img
+                              - generic: Orçamentos
+                          - listitem:
+                            - link:
+                              - /url: /settings/export
+                              - img
+                              - generic: Exportar
+                          - listitem:
+                            - link:
+                              - /url: /settings
+                              - img
+                              - generic: Configurações
+          - generic:
+            - list:
+              - listitem:
+                - button:
+                  - img
+                  - generic: Sair
+    - main:
+      - generic:
+        - button:
+          - img
+          - generic: Toggle Sidebar
+      - main:
+        - generic:
+          - generic:
+            - heading [level=1]: Contas
+            - generic:
+              - button [expanded]: Adicionar Conta
+          - generic:
+            - paragraph: Nenhuma conta ainda. Adicione sua primeira conta acima.
+  - region "Notifications alt+T"
+  - generic [ref=e5] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e6]:
+      - img [ref=e7]
+    - generic [ref=e10]:
+      - button "Open issues overlay" [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: "1"
+          - generic [ref=e14]: "2"
+        - generic [ref=e15]:
+          - text: Issue
+          - generic [ref=e16]: s
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - alert
+  - alertdialog:
+    - generic:
+      - heading [level=2]: Adicionar Conta
+    - generic:
+      - generic:
+        - group:
+          - generic: Nome
+          - textbox:
+            - /placeholder: NuBank CC
+        - group:
+          - generic: Tipo
+          - combobox:
+            - generic: Conta Corrente
+            - img
+          - combobox
+        - group:
+          - generic: Logo do banco
+          - button:
+            - generic:
+              - img
+            - generic: Selecionar logo
+        - group:
+          - generic: Saldo Inicial
+          - textbox:
+            - /placeholder: 1000,00
+            - text: R$ 0,00
+        - generic:
+          - button: Cancelar
+          - button: Criar
+  - dialog "Primeiros passos" [ref=e22]:
+    - generic [ref=e24]:
+      - heading "Primeiros passos" [level=2] [ref=e25]
+      - button "Pular" [active] [ref=e26]
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - text: Bem-vindo ao Fluxo!
+          - generic [ref=e39]: Bem-vindo ao Fluxo!
+        - paragraph [ref=e40]: Em poucos passos, vamos deixar suas contas e orçamentos prontos para você fechar o mês com clareza.
+      - generic [ref=e41]:
+        - heading "O que o Fluxo faz por você:" [level=3] [ref=e42]
+        - list [ref=e43]:
+          - listitem [ref=e44]: • Registrar despesas e receitas (com parcelas)
+          - listitem [ref=e45]: • Definir orçamentos e ver o que ainda cabe no mês
+          - listitem [ref=e46]: • Acompanhar faturas, fechamento e vencimento
+          - listitem [ref=e47]: • Ver o saldo real do mês (sem planilha)
+      - button "Continuar" [ref=e48]
+```

@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { billingSubscriptions } from '@/lib/schema';
 import { users } from '@/lib/auth-schema';
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import { sendBillingEmail, getUserLocale } from '@/lib/email/billing-emails';
 import {
   generateRenewalReminderHtml,

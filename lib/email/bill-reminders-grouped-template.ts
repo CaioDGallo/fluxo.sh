@@ -1,6 +1,7 @@
 import { type Locale, defaultLocale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { formatCurrencyWithLocale } from '@/lib/utils';
+import { escapeHtml } from './utils';
 
 export interface GroupedBillRemindersEmailData {
   reminders: Array<{
@@ -27,16 +28,6 @@ const COLORS = {
   high: '#f97316',
   medium: '#eab308',
 };
-
-function escapeHtml(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 export function generateGroupedBillRemindersHtml(data: GroupedBillRemindersEmailData): string {
   const locale = data.locale ?? defaultLocale;

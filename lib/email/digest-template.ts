@@ -1,6 +1,7 @@
 import { type Locale, defaultLocale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { centsToDisplay } from '@/lib/utils';
+import { escapeHtml } from './utils';
 
 export interface CategorySpending {
   categoryName: string;
@@ -104,16 +105,6 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
   HeartAddIcon: '❤️',
   Hospital01Icon: '🏥',
 };
-
-function escapeHtml(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 function formatCurrency(cents: number, locale: Locale): string {
   const value = Number(centsToDisplay(cents));

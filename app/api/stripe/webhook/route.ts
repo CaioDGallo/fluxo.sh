@@ -385,8 +385,8 @@ export async function POST(req: Request) {
         ) {
           const oldPlanName = getPlanDefinition(previousSubscription.planKey).name;
           const newPlanName = getPlanDefinition(subscriptionPlanKey).name;
-          // Determine upgrade vs downgrade (simple heuristic: compare plan keys alphabetically)
-          // In practice: pro > saver > free, but since subscriptionPlanKey excludes 'free', any change from 'free' is upgrade
+          // Determine upgrade vs downgrade: upgrades are transitions from 'free' OR transitions to 'pro'
+          // Since subscriptionPlanKey excludes 'free', valid upgrade paths are: free→saver, free→pro, saver→pro
           const isUpgrade = previousSubscription.planKey === 'free' || subscriptionPlanKey === 'pro';
           const effectiveDateObj = currentPeriodEnd || new Date();
           const effectiveDateStr = formatDate(effectiveDateObj, locale);

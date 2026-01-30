@@ -27,6 +27,21 @@ function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
+/**
+ * Calculates the current weekly usage window (Monday-Sunday) for a given timezone.
+ *
+ * Uses 'en-CA' locale for ISO 8601-compliant date formatting (YYYY-MM-DD) which ensures
+ * consistent date parsing across all locales. The week starts on Monday (ISO week standard)
+ * calculated via `(dayOfWeek + 6) % 7` modulo arithmetic.
+ *
+ * All dates are converted to UTC to avoid DST-related edge cases when calculating week boundaries.
+ * For example, a user in São Paulo (UTC-3) on 2024-01-15 (Monday) gets a window of
+ * 2024-01-15 to 2024-01-21 (Sunday), regardless of DST transitions during that week.
+ *
+ * @param timezone - IANA timezone identifier (e.g., 'America/Sao_Paulo', 'UTC')
+ * @param now - Current timestamp (defaults to Date.now(), injectable for testing)
+ * @returns Week boundaries in ISO date format (YYYY-MM-DD)
+ */
 export function getWeeklyWindow(timezone: string, now = new Date()): UsageWindow {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
@@ -134,6 +149,18 @@ export async function incrementUsageCount(
     const planName = getPlanDefinition(entitlements.planKey).name;
     const featureName = locale === 'pt-BR' ? 'importações' : 'imports';
 
+    /**
+     * Usage threshold email logic: 80% warning, 100% limit reached.
+     *
+     * Why 80%? Industry standard for proactive warnings (AWS, Stripe, Vercel use 75-80%).
+     * Gives users buffer to upgrade or adjust usage before hitting hard limits. Earlier warnings
+     * (50%, 60%) create alert fatigue; later warnings (90%) provide insufficient reaction time.
+     *
+     * One-time trigger: Emails send ONLY when crossing threshold (previousPercentage < threshold
+     * && newPercentage >= threshold). Prevents spam from repeated increments at same level.
+     * For example: crossing 79% → 81% sends one email; subsequent increments at 81%, 82% send nothing.
+     * This is enforced via `previousPercentage < 80 && newPercentage >= 80` condition.
+     */
     // Send 80% warning email (only once when crossing threshold)
     if (previousPercentage < 80 && newPercentage >= 80 && newPercentage < 100) {
       const html = generateUsageWarningHtml({

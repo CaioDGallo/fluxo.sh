@@ -163,7 +163,8 @@ describe('GET /api/cron/daily', () => {
     );
   });
 
-  it('returns 500 when a job throws', async () => {
+  it('returns 200 with partial success when a job throws', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     updatePastItemStatuses.mockRejectedValue(new Error('boom'));
 
     const request = new Request('http://localhost/api/cron/daily?job=status-updates', {
@@ -173,7 +174,15 @@ describe('GET /api/cron/daily', () => {
     const response = await GET(request);
     const body = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(body).toEqual({ error: 'Internal server error' });
+    // Promise.allSettled allows partial success - cron continues even if one job fails
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.statusUpdates).toBe(null); // Failed job returns null
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[cron:daily] status-updates failed:'),
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });

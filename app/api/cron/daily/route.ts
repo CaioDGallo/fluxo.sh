@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const billReminderResult = runBillReminders ? await scheduleBillReminderNotifications() : null;
     const notificationResult = runNotifications ? await processPendingNotificationJobs() : null;
 
-    const [balanceResult, statusResult, calendarSyncResult, dailyDigestResult, dailyPushResult, renewalRemindersResult] = await Promise.all([
+    const results = await Promise.allSettled([
       runBalanceReconciliation ? reconcileAllAccountBalances() : Promise.resolve(null),
       runStatusUpdates ? updatePastItemStatuses() : Promise.resolve(null),
       runCalendarSync ? syncAllUsersCalendars() : Promise.resolve(null),
@@ -47,6 +47,22 @@ export async function GET(request: Request) {
       runDailyPush ? sendAllDailyPushes() : Promise.resolve(null),
       runRenewalReminders ? sendRenewalReminders() : Promise.resolve(null),
     ]);
+
+    // Extract values and log failures
+    const balanceResult = results[0].status === 'fulfilled' ? results[0].value : null;
+    const statusResult = results[1].status === 'fulfilled' ? results[1].value : null;
+    const calendarSyncResult = results[2].status === 'fulfilled' ? results[2].value : null;
+    const dailyDigestResult = results[3].status === 'fulfilled' ? results[3].value : null;
+    const dailyPushResult = results[4].status === 'fulfilled' ? results[4].value : null;
+    const renewalRemindersResult = results[5].status === 'fulfilled' ? results[5].value : null;
+
+    // Log any failures
+    const jobNames = ['balance-reconciliation', 'status-updates', 'calendar-sync', 'daily-digest', 'daily-push', 'renewal-reminders'];
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`[cron:daily] ${jobNames[index]} failed:`, result.reason);
+      }
+    });
 
     console.log('[cron:daily] All jobs completed');
 

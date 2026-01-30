@@ -1,5 +1,6 @@
 import { type Locale, defaultLocale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
+import { escapeHtml } from './utils';
 
 export interface PaymentFailedEmailData {
   planName: string;
@@ -17,16 +18,6 @@ const COLORS = {
   accent: '#3b82f6',
   error: '#ef4444',
 };
-
-function escapeHtml(text: string | null | undefined): string {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 export function generatePaymentFailedHtml(data: PaymentFailedEmailData): string {
   const locale = data.locale ?? defaultLocale;

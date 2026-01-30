@@ -1,7 +1,7 @@
-import 'temporal-polyfill/global';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildBillReminderSchedule } from '@/lib/bill-reminder-schedule';
 import type { BillReminder } from '@/lib/schema';
+import 'temporal-polyfill/global';
+import { describe, expect, it } from 'vitest';
 
 // Helper to create mock bill reminder with defaults
 function createMockReminder(overrides: Partial<BillReminder> = {}): BillReminder {

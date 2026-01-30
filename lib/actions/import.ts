@@ -1,33 +1,33 @@
 'use server';
 
-import { db } from '@/lib/db';
-import { transactions, entries, accounts, categories, income, transfers, categoryFrequency } from '@/lib/schema';
-import { eq, and, inArray, desc, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
-import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
-import { computeClosingDate, computeFaturaWindowStart, getFaturaMonth, getFaturaMonthFromClosingDate, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
-import { addMonths } from '@/lib/utils';
-import { computeEntryDates, calculateBasePurchaseDate, type AccountInfo, type EntryDateInfo } from '@/lib/import-helpers';
-import {
-  ensureFaturaExists,
-  updateFaturaTotal,
-  batchEnsureFaturasExist,
-  batchUpdateFaturaTotals,
-  batchRecalculateInstallmentDates,
-} from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getDefaultImportCategories } from '@/lib/actions/categories';
-import { getCurrentUserId } from '@/lib/auth';
-import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { t } from '@/lib/i18n/server-errors';
-import { handleDbError } from '@/lib/db-errors';
 import { bulkIncrementCategoryFrequency } from '@/lib/actions/category-frequency';
-import { findRefundMatches } from '@/lib/import/refund-matcher';
-import { getPostHogClient } from '@/lib/posthog-server';
-import { trackFirstExpense, trackFirstBulkImport, trackUserActivity } from '@/lib/analytics';
+import {
+  batchEnsureFaturasExist,
+  batchRecalculateInstallmentDates,
+  batchUpdateFaturaTotals,
+  ensureFaturaExists,
+  updateFaturaTotal,
+} from '@/lib/actions/faturas';
+import { trackFirstBulkImport, trackFirstExpense, trackUserActivity } from '@/lib/analytics';
+import { getCurrentUserId } from '@/lib/auth';
 import { users } from '@/lib/auth-schema';
+import { db } from '@/lib/db';
+import { handleDbError } from '@/lib/db-errors';
+import { computeClosingDate, getFaturaMonth, getFaturaMonthFromClosingDate, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { t } from '@/lib/i18n/server-errors';
+import { calculateBasePurchaseDate, computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
+import { findRefundMatches } from '@/lib/import/refund-matcher';
+import type { CategorySuggestion, ValidatedImportRow } from '@/lib/import/types';
 import { getUserEntitlements } from '@/lib/plan-entitlements';
-import { getUserTimezone, getUsageCount, getWeeklyWindow, incrementUsageCount } from '@/lib/plan-usage';
+import { getUsageCount, getUserTimezone, getWeeklyWindow, incrementUsageCount } from '@/lib/plan-usage';
+import { getPostHogClient } from '@/lib/posthog-server';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
+import { accounts, categories, categoryFrequency, entries, income, transactions, transfers } from '@/lib/schema';
+import { addMonths } from '@/lib/utils';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 
 type SuggestionsInput = {
   expenseDescriptions: string[];
@@ -194,13 +194,13 @@ type ImportExpenseData = {
 
 type ImportResult =
   | {
-      success: true;
-      imported: number;
-    }
+    success: true;
+    imported: number;
+  }
   | {
-      success: false;
-      error: string;
-    };
+    success: false;
+    error: string;
+  };
 
 export async function importExpenses(data: ImportExpenseData): Promise<ImportResult> {
   const { rows, accountId, categoryId } = data;
@@ -423,15 +423,15 @@ type ImportMixedData = {
 
 type ImportMixedResult =
   | {
-      success: true;
-      importedExpenses: number;
-      importedIncome: number;
-      skippedDuplicates: number;
-    }
+    success: true;
+    importedExpenses: number;
+    importedIncome: number;
+    skippedDuplicates: number;
+  }
   | {
-      success: false;
-      error: string;
-    };
+    success: false;
+    error: string;
+  };
 
 // Helper: Find existing installment transaction by description and total installments
 type DbClient = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -441,7 +441,7 @@ async function findExistingInstallmentTransaction(
   userId: string,
   baseDescription: string,
   totalInstallments: number,
-  installmentAmounts: Map<number, number>,
+  _installmentAmounts: Map<number, number>,
   excludeTransactionIds: Set<number>,
   rawFitId?: string
 ): Promise<{

@@ -6,7 +6,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 let db: ReturnType<typeof getTestDb>;
 let incrementUsageCount: typeof import('@/lib/plan-usage').incrementUsageCount;
-let getUsageCount: typeof import('@/lib/plan-usage').getUsageCount;
 let getWeeklyWindow: typeof import('@/lib/plan-usage').getWeeklyWindow;
 
 // Mock dependencies
@@ -21,7 +20,6 @@ describe('Plan Usage - Threshold Tests', () => {
 
     const planUsage = await import('@/lib/plan-usage');
     incrementUsageCount = planUsage.incrementUsageCount;
-    getUsageCount = planUsage.getUsageCount;
     getWeeklyWindow = planUsage.getWeeklyWindow;
   });
 

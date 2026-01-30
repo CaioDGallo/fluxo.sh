@@ -6,6 +6,24 @@ import { db } from '@/lib/db';
 import { billingCustomers, billingSubscriptions } from '@/lib/schema';
 import { users } from '@/lib/auth-schema';
 import { getPlanFromStripePrice, type PaidPlanKey } from '@/lib/billing/stripe-prices';
+import { sendBillingEmail, getUserLocale } from '@/lib/email/billing-emails';
+import {
+  generateSubscriptionPurchasedHtml,
+  generateSubscriptionPurchasedText,
+} from '@/lib/email/subscription-purchased-template';
+import {
+  generatePaymentFailedHtml,
+  generatePaymentFailedText,
+} from '@/lib/email/payment-failed-template';
+import {
+  generateSubscriptionCanceledHtml,
+  generateSubscriptionCanceledText,
+} from '@/lib/email/subscription-canceled-template';
+import {
+  generateSubscriptionEndedHtml,
+  generateSubscriptionEndedText,
+} from '@/lib/email/subscription-ended-template';
+import { PLANS } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +45,22 @@ function getProductId(
 function toDate(seconds: number | null | undefined): Date | null {
   if (!seconds) return null;
   return new Date(seconds * 1000);
+}
+
+function formatDate(date: Date | null, locale: string = 'pt-BR'): string {
+  if (!date) return '';
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+}
+
+function formatAmount(amountCents: number, currency: string = 'BRL'): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency,
+  }).format(amountCents / 100);
 }
 
 async function upsertBillingCustomer(userId: string, stripeCustomerId: string) {
@@ -109,6 +143,11 @@ export async function POST(req: Request) {
           break;
         }
 
+        // Get existing subscription to detect changes
+        const previousSubscription = await db.query.billingSubscriptions.findFirst({
+          where: eq(billingSubscriptions.stripeSubscriptionId, subscription.id),
+        });
+
         await upsertBillingCustomer(userId, stripeCustomerId);
 
         // Set founder status if purchasing founder plan
@@ -151,6 +190,150 @@ export async function POST(req: Request) {
               updatedAt: new Date(),
             },
           });
+
+        // Send billing emails
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!user?.email) break;
+
+        const locale = await getUserLocale(userId);
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
+        const planName = PLANS[planKey].name;
+        const interval = item?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+        const billingPeriod = interval === 'yearly' ? 'Anual' : 'Mensal';
+        const currentPeriodEnd = toDate(item?.current_period_end);
+        const nextBillingDate = currentPeriodEnd ? formatDate(currentPeriodEnd, locale) : '';
+
+        // 1. Subscription Purchased (created event)
+        if (event.type === 'customer.subscription.created' && subscription.status === 'active') {
+          const amountDisplay = item?.price?.unit_amount
+            ? formatAmount(item.price.unit_amount, item.price.currency.toUpperCase())
+            : '';
+
+          const html = generateSubscriptionPurchasedHtml({
+            planName,
+            billingPeriod,
+            amountDisplay,
+            nextBillingDate,
+            appUrl,
+            locale,
+          });
+          const text = generateSubscriptionPurchasedText({
+            planName,
+            billingPeriod,
+            amountDisplay,
+            nextBillingDate,
+            appUrl,
+            locale,
+          });
+
+          await sendBillingEmail({
+            userId,
+            userEmail: user.email,
+            emailType: 'subscription_purchased',
+            referenceId: subscription.id,
+            subject:
+              locale === 'pt-BR'
+                ? `Assinatura ativada - ${planName}`
+                : `Subscription activated - ${planName}`,
+            html,
+            text,
+          });
+        }
+
+        // 2. Payment Failed (status changed to past_due)
+        if (
+          event.type === 'customer.subscription.updated' &&
+          subscription.status === 'past_due' &&
+          previousSubscription?.status !== 'past_due'
+        ) {
+          const gracePeriodDate = currentPeriodEnd
+            ? formatDate(currentPeriodEnd, locale)
+            : formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), locale);
+
+          const html = generatePaymentFailedHtml({
+            planName,
+            gracePeriodDate,
+            appUrl,
+            locale,
+          });
+          const text = generatePaymentFailedText({
+            planName,
+            gracePeriodDate,
+            appUrl,
+            locale,
+          });
+
+          await sendBillingEmail({
+            userId,
+            userEmail: user.email,
+            emailType: 'payment_failed',
+            referenceId: subscription.id,
+            subject:
+              locale === 'pt-BR'
+                ? 'Ação necessária: Falha no pagamento'
+                : 'Action required: Payment failed',
+            html,
+            text,
+          });
+        }
+
+        // 3. Subscription Canceled (cancelAtPeriodEnd became true)
+        if (
+          event.type === 'customer.subscription.updated' &&
+          subscription.cancel_at_period_end &&
+          !previousSubscription?.cancelAtPeriodEnd
+        ) {
+          const accessUntilDate = currentPeriodEnd ? formatDate(currentPeriodEnd, locale) : '';
+
+          const html = generateSubscriptionCanceledHtml({
+            planName,
+            accessUntilDate,
+            appUrl,
+            locale,
+          });
+          const text = generateSubscriptionCanceledText({
+            planName,
+            accessUntilDate,
+            appUrl,
+            locale,
+          });
+
+          await sendBillingEmail({
+            userId,
+            userEmail: user.email,
+            emailType: 'subscription_canceled',
+            referenceId: subscription.id,
+            subject: locale === 'pt-BR' ? 'Assinatura cancelada' : 'Subscription canceled',
+            html,
+            text,
+          });
+        }
+
+        // 4. Subscription Ended (deleted event)
+        if (event.type === 'customer.subscription.deleted') {
+          const html = generateSubscriptionEndedHtml({
+            planName,
+            appUrl,
+            locale,
+          });
+          const text = generateSubscriptionEndedText({
+            planName,
+            appUrl,
+            locale,
+          });
+
+          await sendBillingEmail({
+            userId,
+            userEmail: user.email,
+            emailType: 'subscription_ended',
+            referenceId: subscription.id,
+            subject:
+              locale === 'pt-BR' ? 'Sua assinatura foi encerrada' : 'Your subscription has ended',
+            html,
+            text,
+          });
+        }
+
         break;
       }
 

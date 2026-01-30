@@ -1083,6 +1083,54 @@
       "instructions": "Abra a página de cadastro e cole o código.",
       "cta": "Criar conta",
       "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "subscriptionPurchased": {
+      "subject": "Assinatura ativada - {{plan}}",
+      "title": "Pagamento confirmado",
+      "greeting": "Sua assinatura foi ativada!",
+      "intro": "Obrigado por assinar o Fluxo.sh. Seu pagamento foi processado com sucesso.",
+      "planLabel": "Plano",
+      "periodLabel": "Período de cobrança",
+      "amountLabel": "Valor",
+      "nextBillingLabel": "Próxima cobrança",
+      "manageSub": "Gerenciar assinatura",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "paymentFailed": {
+      "subject": "Ação necessária: Falha no pagamento",
+      "title": "Falha no pagamento",
+      "greeting": "Tivemos um problema com seu pagamento",
+      "intro": "Não conseguimos processar o pagamento da sua assinatura {{plan}}. Por favor, atualize seu método de pagamento para continuar com acesso total.",
+      "actionNeeded": "Para evitar interrupção do serviço:",
+      "step1": "Atualize seu método de pagamento",
+      "step2": "Tentaremos cobrar novamente automaticamente",
+      "gracePeriod": "Você tem acesso até {{date}} para regularizar",
+      "updatePayment": "Atualizar pagamento",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "subscriptionCanceled": {
+      "subject": "Assinatura cancelada",
+      "title": "Cancelamento confirmado",
+      "greeting": "Sua assinatura foi cancelada",
+      "intro": "Confirmamos o cancelamento da sua assinatura {{plan}}. Você terá acesso completo até {{date}}.",
+      "accessUntil": "Acesso até",
+      "whatHappens": "O que acontece depois:",
+      "point1": "Sua conta será migrada para o plano gratuito",
+      "point2": "Seus dados permanecerão seguros",
+      "point3": "Você pode reativar a qualquer momento",
+      "reactivate": "Reativar assinatura",
+      "footer": "Sentiremos sua falta!"
+    },
+    "subscriptionEnded": {
+      "subject": "Sua assinatura foi encerrada",
+      "title": "Assinatura encerrada",
+      "greeting": "Sua assinatura {{plan}} foi encerrada",
+      "intro": "Como sua assinatura expirou, sua conta foi migrada para o plano gratuito.",
+      "freePlan": "O que você tem no plano gratuito:",
+      "limitation": "Recursos limitados disponíveis",
+      "winBack": "Quer todo o poder do Fluxo de volta?",
+      "upgrade": "Assinar novamente",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
     }
   },
   "netWorth": {

@@ -281,6 +281,13 @@
       "when": 1769678819983,
       "tag": "0039_worried_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1769793464462,
+      "tag": "0040_kind_makkari",
+      "breakpoints": true
     }
   ]
 }

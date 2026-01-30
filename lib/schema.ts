@@ -462,6 +462,18 @@ export const fcmTokens = pgTable('fcm_tokens', {
   userIdx: sql`CREATE INDEX IF NOT EXISTS fcm_tokens_user_idx ON fcm_tokens (user_id)`,
 }));
 
+// Sent emails table (deduplication for transactional emails)
+export const sentEmails = pgTable('sent_emails', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  emailType: text('email_type').notNull(), // 'subscription_purchased', 'payment_failed', etc.
+  referenceId: text('reference_id').notNull(), // subscriptionId, invoiceId, etc.
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueEmail: unique().on(table.userId, table.emailType, table.referenceId),
+  userIdx: sql`CREATE INDEX IF NOT EXISTS sent_emails_user_idx ON sent_emails (user_id)`,
+}));
+
 // Type exports for TypeScript
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
@@ -531,6 +543,9 @@ export type NewBillReminder = typeof billReminders.$inferInsert;
 
 export type FcmToken = typeof fcmTokens.$inferSelect;
 export type NewFcmToken = typeof fcmTokens.$inferInsert;
+
+export type SentEmail = typeof sentEmails.$inferSelect;
+export type NewSentEmail = typeof sentEmails.$inferInsert;
 
 // Relations
 import { relations } from 'drizzle-orm';

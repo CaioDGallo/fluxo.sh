@@ -1045,6 +1045,54 @@
       "instructions": "Open the signup page and paste the code.",
       "cta": "Create account",
       "footer": "fluxo.sh - Your finances under control"
+    },
+    "subscriptionPurchased": {
+      "subject": "Subscription activated - {{plan}}",
+      "title": "Payment confirmed",
+      "greeting": "Your subscription is now active!",
+      "intro": "Thank you for subscribing to Fluxo.sh. Your payment was processed successfully.",
+      "planLabel": "Plan",
+      "periodLabel": "Billing period",
+      "amountLabel": "Amount",
+      "nextBillingLabel": "Next billing date",
+      "manageSub": "Manage subscription",
+      "footer": "fluxo.sh - Your finances under control"
+    },
+    "paymentFailed": {
+      "subject": "Action required: Payment failed",
+      "title": "Payment failed",
+      "greeting": "We had a problem with your payment",
+      "intro": "We couldn't process the payment for your {{plan}} subscription. Please update your payment method to continue with full access.",
+      "actionNeeded": "To avoid service interruption:",
+      "step1": "Update your payment method",
+      "step2": "We'll automatically retry the charge",
+      "gracePeriod": "You have access until {{date}} to resolve this",
+      "updatePayment": "Update payment",
+      "footer": "fluxo.sh - Your finances under control"
+    },
+    "subscriptionCanceled": {
+      "subject": "Subscription canceled",
+      "title": "Cancellation confirmed",
+      "greeting": "Your subscription has been canceled",
+      "intro": "We've confirmed the cancellation of your {{plan}} subscription. You'll have full access until {{date}}.",
+      "accessUntil": "Access until",
+      "whatHappens": "What happens next:",
+      "point1": "Your account will be moved to the free plan",
+      "point2": "Your data will remain safe",
+      "point3": "You can reactivate anytime",
+      "reactivate": "Reactivate subscription",
+      "footer": "We'll miss you!"
+    },
+    "subscriptionEnded": {
+      "subject": "Your subscription has ended",
+      "title": "Subscription ended",
+      "greeting": "Your {{plan}} subscription has ended",
+      "intro": "As your subscription expired, your account was moved to the free plan.",
+      "freePlan": "What you have on the free plan:",
+      "limitation": "Limited features available",
+      "winBack": "Want all the power of Fluxo back?",
+      "upgrade": "Subscribe again",
+      "footer": "fluxo.sh - Your finances under control"
     }
   },
   "netWorth": {

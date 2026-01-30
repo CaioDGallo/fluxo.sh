@@ -1,6 +1,18 @@
 import { db } from '@/lib/db';
 import { usageCounters, userSettings } from '@/lib/schema';
+import { users } from '@/lib/auth-schema';
 import { and, eq, sql } from 'drizzle-orm';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
+import { PLANS } from '@/lib/plans';
+import { sendBillingEmail, getUserLocale } from '@/lib/email/billing-emails';
+import {
+  generateUsageWarningHtml,
+  generateUsageWarningText,
+} from '@/lib/email/usage-warning-template';
+import {
+  generateUsageLimitHtml,
+  generateUsageLimitText,
+} from '@/lib/email/usage-limit-template';
 
 export type UsageKey = 'import_weekly';
 
@@ -75,6 +87,9 @@ export async function incrementUsageCount(
   window: UsageWindow,
   incrementBy = 1
 ): Promise<number> {
+  // Get previous count before incrementing
+  const previousCount = await getUsageCount(userId, key, window);
+
   const [record] = await db
     .insert(usageCounters)
     .values({
@@ -98,5 +113,104 @@ export async function incrementUsageCount(
     })
     .returning({ count: usageCounters.count });
 
-  return record?.count ?? incrementBy;
+  const newCount = record?.count ?? incrementBy;
+
+  // Check if we should send usage emails
+  try {
+    const entitlements = await getUserEntitlements(userId);
+    const limit =
+      key === 'import_weekly' ? entitlements.limits.importWeekly : entitlements.limits.importWeekly;
+
+    const previousPercentage = Math.floor((previousCount / limit) * 100);
+    const newPercentage = Math.floor((newCount / limit) * 100);
+
+    // Get user email
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user?.email) return newCount;
+
+    const locale = await getUserLocale(userId);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
+    const planName = PLANS[entitlements.planKey as keyof typeof PLANS].name;
+    const featureName = locale === 'pt-BR' ? 'importações' : 'imports';
+
+    // Send 80% warning email (only once when crossing threshold)
+    if (previousPercentage < 80 && newPercentage >= 80 && newPercentage < 100) {
+      const html = generateUsageWarningHtml({
+        featureName,
+        currentUsage: newCount,
+        limit,
+        percentage: 80,
+        remaining: limit - newCount,
+        appUrl,
+        locale,
+      });
+      const text = generateUsageWarningText({
+        featureName,
+        currentUsage: newCount,
+        limit,
+        percentage: 80,
+        remaining: limit - newCount,
+        appUrl,
+        locale,
+      });
+
+      await sendBillingEmail({
+        userId,
+        userEmail: user.email,
+        emailType: 'usage_warning',
+        referenceId: `${key}-${window.periodStart}-80`,
+        subject:
+          locale === 'pt-BR'
+            ? `Alerta: 80% do limite de ${featureName} usado`
+            : `Alert: 80% of ${featureName} limit used`,
+        html,
+        text,
+      });
+    }
+
+    // Send 100% limit email (only once when reaching limit)
+    if (previousPercentage < 100 && newPercentage >= 100) {
+      const endDate = new Date(`${window.periodEnd}T23:59:59Z`);
+      const nextWeekStart = new Date(endDate);
+      nextWeekStart.setUTCDate(endDate.getUTCDate() + 1);
+      const resetDate = new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }).format(nextWeekStart);
+
+      const html = generateUsageLimitHtml({
+        featureName,
+        limit,
+        planName,
+        resetDate,
+        appUrl,
+        locale,
+      });
+      const text = generateUsageLimitText({
+        featureName,
+        limit,
+        planName,
+        resetDate,
+        appUrl,
+        locale,
+      });
+
+      await sendBillingEmail({
+        userId,
+        userEmail: user.email,
+        emailType: 'usage_limit',
+        referenceId: `${key}-${window.periodStart}-100`,
+        subject:
+          locale === 'pt-BR' ? `Limite de ${featureName} atingido` : `${featureName} limit reached`,
+        html,
+        text,
+      });
+    }
+  } catch (error) {
+    // Log but don't fail the increment operation if email sending fails
+    console.error('[plan-usage] Failed to send usage email:', error);
+  }
+
+  return newCount;
 }

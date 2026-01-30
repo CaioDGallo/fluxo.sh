@@ -1130,6 +1130,36 @@
       "imports": "Weekly imports",
       "viewPlan": "View plan details",
       "footer": "fluxo.sh - Your finances under control"
+    },
+    "usageWarning": {
+      "subject": "Alert: {{percentage}}% of {{feature}} limit used",
+      "title": "{{percentage}}% usage limit reached",
+      "greeting": "You're approaching your limit",
+      "intro": "You've used {{current}} of {{limit}} available {{feature}} this week ({{percentage}}%).",
+      "featureLabel": "Feature",
+      "currentUsage": "Current usage",
+      "limit": "Limit",
+      "remaining": "Remaining",
+      "whatHappens": "When you reach the limit:",
+      "blocked": "New imports will be blocked until next week",
+      "upgrade": "Consider upgrading to continue without interruptions",
+      "viewPlans": "View plans",
+      "footer": "fluxo.sh - Your finances under control"
+    },
+    "usageLimit": {
+      "subject": "{{feature}} limit reached",
+      "title": "Limit reached",
+      "greeting": "You've reached your weekly limit",
+      "intro": "You've used all {{limit}} {{feature}} available on your {{plan}} plan this week.",
+      "blocked": "What's blocked:",
+      "blockedAction": "New bank imports",
+      "whenReset": "When your limit resets:",
+      "resetDate": "Your limit will renew on {{date}}",
+      "upgradeNow": "Or upgrade now to continue:",
+      "unlimitedFeature": "Unlimited imports",
+      "moreFeatures": "More features and increased limits",
+      "viewPlans": "View available plans",
+      "footer": "fluxo.sh - Your finances under control"
     }
   },
   "netWorth": {

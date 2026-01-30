@@ -1168,6 +1168,36 @@
       "imports": "Importações semanais",
       "viewPlan": "Ver detalhes do plano",
       "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "usageWarning": {
+      "subject": "Alerta: {{percentage}}% do limite de {{feature}} usado",
+      "title": "Limite de uso em {{percentage}}%",
+      "greeting": "Você está chegando ao limite",
+      "intro": "Você usou {{current}} de {{limit}} {{feature}} disponíveis esta semana ({{percentage}}%).",
+      "featureLabel": "Recurso",
+      "currentUsage": "Uso atual",
+      "limit": "Limite",
+      "remaining": "Restante",
+      "whatHappens": "Quando atingir o limite:",
+      "blocked": "Novas importações serão bloqueadas até a próxima semana",
+      "upgrade": "Considere fazer upgrade para continuar sem interrupções",
+      "viewPlans": "Ver planos",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
+    },
+    "usageLimit": {
+      "subject": "Limite de {{feature}} atingido",
+      "title": "Limite atingido",
+      "greeting": "Você atingiu o limite semanal",
+      "intro": "Você usou todas as {{limit}} {{feature}} disponíveis no seu plano {{plan}} esta semana.",
+      "blocked": "O que está bloqueado:",
+      "blockedAction": "Novas importações de banco",
+      "whenReset": "Quando o limite volta:",
+      "resetDate": "Seu limite será renovado em {{date}}",
+      "upgradeNow": "Ou faça upgrade agora para continuar:",
+      "unlimitedFeature": "Importações ilimitadas",
+      "moreFeatures": "Mais recursos e limites aumentados",
+      "viewPlans": "Ver planos disponíveis",
+      "footer": "fluxo.sh - Suas finanças no seu controle"
     }
   },
   "netWorth": {

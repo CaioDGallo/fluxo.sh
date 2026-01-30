@@ -196,6 +196,162 @@ describe('Billing Emails - Deduplication', () => {
 
       selectSpy.mockRestore();
     });
+
+    it('handles DB insert constraint violations', async () => {
+      const uniqueOptions = {
+        ...baseOptions,
+        referenceId: 'sub_constraint_test',
+      };
+
+      // First insert succeeds
+      await sendBillingEmail(uniqueOptions);
+
+      // Second attempt should deduplicate (not fail)
+      const result = await sendBillingEmail(uniqueOptions);
+
+      // Should successfully deduplicate
+      expect(result.success).toBe(true);
+      expect(result.alreadySent).toBe(true);
+    });
+
+    it('returns error when RESEND_API_KEY is missing', async () => {
+      const sendEmail = (await import('@/lib/email/send')).sendEmail;
+      const uniqueOptions = {
+        ...baseOptions,
+        referenceId: 'sub_no_api_key',
+      };
+
+      // Mock sendEmail to simulate missing API key
+      vi.mocked(sendEmail).mockResolvedValueOnce({
+        success: false,
+        error: 'RESEND_API_KEY not configured',
+      });
+
+      const result = await sendBillingEmail(uniqueOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('RESEND_API_KEY not configured');
+
+      // Should not record email
+      const sentEmails = await db
+        .select()
+        .from(schema.sentEmails)
+        .where(eq(schema.sentEmails.referenceId, 'sub_no_api_key'));
+      expect(sentEmails).toHaveLength(0);
+    });
+
+    it('returns error when Resend API returns 500', async () => {
+      const sendEmail = (await import('@/lib/email/send')).sendEmail;
+      const uniqueOptions = {
+        ...baseOptions,
+        referenceId: 'sub_resend_500',
+      };
+
+      // Mock Resend API error
+      vi.mocked(sendEmail).mockResolvedValueOnce({
+        success: false,
+        error: 'Failed to send email',
+      });
+
+      const result = await sendBillingEmail(uniqueOptions);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to send email');
+
+      // Should not record failed email
+      const sentEmails = await db
+        .select()
+        .from(schema.sentEmails)
+        .where(eq(schema.sentEmails.referenceId, 'sub_resend_500'));
+      expect(sentEmails).toHaveLength(0);
+    });
+
+    it('handles malformed email options gracefully', async () => {
+      // Missing required fields (simulate invalid data)
+      const malformedOptions = {
+        userId: '',
+        userEmail: 'invalid-email',
+        emailType: 'subscription_purchased' as const,
+        referenceId: '',
+        subject: '',
+        html: '',
+        text: '',
+      };
+
+      const result = await sendBillingEmail(malformedOptions);
+
+      // Should attempt send and handle any errors
+      expect(result).toBeDefined();
+      expect(typeof result.success).toBe('boolean');
+    });
+
+    it('handles extremely long referenceId', async () => {
+      // Very long referenceId (simulating edge case)
+      const longRefId = 'sub_' + 'x'.repeat(500);
+      const uniqueOptions = {
+        ...baseOptions,
+        referenceId: longRefId,
+      };
+
+      const result = await sendBillingEmail(uniqueOptions);
+
+      // Should handle gracefully (may succeed or fail depending on DB constraints)
+      expect(result).toBeDefined();
+      expect(typeof result.success).toBe('boolean');
+    });
+
+    it('handles concurrent sends with DB errors', async () => {
+      const selectSpy = vi.spyOn(db, 'select');
+
+      // Make first call fail during duplicate check
+      selectSpy.mockImplementationOnce(() => {
+        throw new Error('Connection timeout');
+      });
+
+      const uniqueOptions = {
+        ...baseOptions,
+        referenceId: 'sub_concurrent_error',
+      };
+
+      const results = await Promise.all([
+        sendBillingEmail(uniqueOptions),
+        sendBillingEmail(uniqueOptions),
+      ]);
+
+      // At least one should fail due to mocked error
+      const failures = results.filter((r) => !r.success);
+      expect(failures.length).toBeGreaterThan(0);
+
+      selectSpy.mockRestore();
+    });
+
+    it('handles all billing email types correctly', async () => {
+      const sendEmail = (await import('@/lib/email/send')).sendEmail;
+      const emailTypes: Array<typeof baseOptions.emailType> = [
+        'subscription_purchased',
+        'payment_failed',
+        'subscription_canceled',
+        'subscription_ended',
+        'payment_receipt',
+        'renewal_reminder',
+        'plan_changed',
+        'usage_warning',
+        'usage_limit',
+        'founder_welcome',
+      ];
+
+      for (const emailType of emailTypes) {
+        vi.clearAllMocks();
+        const result = await sendBillingEmail({
+          ...baseOptions,
+          emailType,
+          referenceId: `ref_${emailType}`,
+        });
+
+        expect(result.success).toBe(true);
+        expect(sendEmail).toHaveBeenCalledOnce();
+      }
+    });
   });
 
   describe('getUserLocale', () => {

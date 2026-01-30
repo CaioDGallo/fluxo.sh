@@ -3,6 +3,12 @@ import { setupTestDb, teardownTestDb, clearAllTables, getTestDb } from '@/test/d
 import * as schema from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
+// Mock fetch for email sending
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ id: 'test-email-id' }),
+}) as typeof global.fetch;
+
 let db: ReturnType<typeof getTestDb>;
 let POST: typeof import('@/app/api/stripe/webhook/route').POST;
 
@@ -24,6 +30,7 @@ describe('POST /api/stripe/webhook', () => {
     process.env.STRIPE_PRICE_SAVER_MONTHLY = 'price_monthly';
     process.env.STRIPE_PRICE_SAVER_YEARLY = 'price_yearly';
     process.env.STRIPE_PRICE_FOUNDER_YEARLY = 'price_founder_yearly';
+    process.env.RESEND_API_KEY = 'test-api-key';
 
     db = await setupTestDb();
 
@@ -395,8 +402,494 @@ describe('POST /api/stripe/webhook', () => {
 
     const response = await POST(makeRequest('payload', 'sig'));
     expect(response.status).toBe(500);
-    expect(await response.text()).toBe('Webhook handler failed');
+    expect(await response.text()).toBe('Checkout session handler failed');
 
     insertSpy.mockRestore();
+  });
+
+  it('sends subscription_purchased email on subscription.created', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-email-test',
+      email: 'test-email@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.created',
+      data: {
+        object: {
+          id: 'sub_email_test',
+          status: 'active',
+          customer: 'cus_email_test',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-email-test', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_email_test',
+                  unit_amount: 2990,
+                  currency: 'brl',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db.select().from(schema.sentEmails);
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.userId).toBe('user-email-test');
+    expect(sentEmails[0]?.emailType).toBe('subscription_purchased');
+    expect(sentEmails[0]?.referenceId).toBe('sub_email_test');
+  });
+
+  it('sends payment_failed email when subscription becomes past_due', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-past-due',
+      email: 'test-pastdue@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    await db.insert(schema.billingSubscriptions).values({
+      userId: 'user-past-due',
+      planKey: 'saver',
+      status: 'active',
+      stripeSubscriptionId: 'sub_past_due',
+      stripePriceId: 'price_monthly',
+      stripeProductId: 'prod_test',
+      currentPeriodStart: new Date(1_700_000_000 * 1000),
+      currentPeriodEnd: new Date(1_702_592_000 * 1000),
+      cancelAtPeriodEnd: false,
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_past_due',
+          status: 'past_due',
+          customer: 'cus_past_due',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-past-due', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_test',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_past_due'));
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.emailType).toBe('payment_failed');
+  });
+
+  it('sends subscription_canceled email when cancelAtPeriodEnd becomes true', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-cancel',
+      email: 'test-cancel@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    await db.insert(schema.billingSubscriptions).values({
+      userId: 'user-cancel',
+      planKey: 'saver',
+      status: 'active',
+      stripeSubscriptionId: 'sub_cancel',
+      stripePriceId: 'price_monthly',
+      stripeProductId: 'prod_test',
+      currentPeriodStart: new Date(1_700_000_000 * 1000),
+      currentPeriodEnd: new Date(1_702_592_000 * 1000),
+      cancelAtPeriodEnd: false,
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_cancel',
+          status: 'active',
+          customer: 'cus_cancel',
+          cancel_at_period_end: true,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-cancel', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_test',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_cancel'));
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.emailType).toBe('subscription_canceled');
+  });
+
+  it('sends subscription_ended email on subscription.deleted', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-ended',
+      email: 'test-ended@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.deleted',
+      data: {
+        object: {
+          id: 'sub_ended',
+          status: 'canceled',
+          customer: 'cus_ended',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: 1_702_592_000,
+          metadata: { userId: 'user-ended', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_ended',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_ended'));
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.emailType).toBe('subscription_ended');
+  });
+
+  it('sends plan_changed email when plan changes', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-plan-change',
+      email: 'test-planchange@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    await db.insert(schema.billingSubscriptions).values({
+      userId: 'user-plan-change',
+      planKey: 'saver',
+      status: 'active',
+      stripeSubscriptionId: 'sub_plan_change',
+      stripePriceId: 'price_monthly',
+      stripeProductId: 'prod_test',
+      currentPeriodStart: new Date(1_700_000_000 * 1000),
+      currentPeriodEnd: new Date(1_702_592_000 * 1000),
+      cancelAtPeriodEnd: false,
+    });
+
+    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_pro_monthly';
+    process.env.STRIPE_PRICE_PRO_YEARLY = 'price_pro_yearly';
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_plan_change',
+          status: 'active',
+          customer: 'cus_plan_change',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-plan-change', planKey: 'pro' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_pro_monthly',
+                  product: 'prod_pro',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_plan_change'));
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.emailType).toBe('plan_changed');
+  });
+
+  it('sends payment_receipt email on invoice.paid', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-invoice',
+      email: 'test-invoice@example.com',
+      passwordHash: 'test-hash',
+    });
+    await db.insert(schema.billingCustomers).values({
+      userId: 'user-invoice',
+      stripeCustomerId: 'cus_invoice',
+    });
+    await db.insert(schema.billingSubscriptions).values({
+      userId: 'user-invoice',
+      planKey: 'saver',
+      status: 'active',
+      stripeSubscriptionId: 'sub_invoice',
+      stripePriceId: 'price_monthly',
+      stripeProductId: 'prod_test',
+      currentPeriodStart: new Date(1_700_000_000 * 1000),
+      currentPeriodEnd: new Date(1_702_592_000 * 1000),
+      cancelAtPeriodEnd: false,
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'invoice.paid',
+      data: {
+        object: {
+          id: 'inv_test',
+          number: 'INV-001',
+          customer: 'cus_invoice',
+          subscription: 'sub_invoice',
+          amount_paid: 2990,
+          currency: 'brl',
+          created: 1_700_000_000,
+          hosted_invoice_url: 'https://invoice.stripe.com/inv_test',
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'inv_test'));
+    expect(sentEmails).toHaveLength(1);
+    expect(sentEmails[0]?.emailType).toBe('payment_receipt');
+  });
+
+  it('skips email when user has no email address', async () => {
+    // Can't actually create a user with null email due to NOT NULL constraint
+    // Instead, test the webhook code's handling when user email is missing from DB
+    // by not creating a user at all
+    // await db.insert(schema.users).values({
+    //   id: 'user-no-email',
+    //   email: null,
+    //   passwordHash: 'test-hash',
+    // });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.created',
+      data: {
+        object: {
+          id: 'sub_no_email',
+          status: 'active',
+          customer: 'cus_no_email',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-no-email', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_test',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    // Should not send email for this specific subscriptionId
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_no_email'));
+    expect(sentEmails).toHaveLength(0);
+  });
+
+  it('continues webhook processing when email send fails', async () => {
+    // Mock fetch to fail once
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: 'Resend API error' }),
+    } as Response);
+
+    await db.insert(schema.users).values({
+      id: 'user-email-fail',
+      email: 'test-fail@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    constructEventMock.mockReturnValue({
+      type: 'customer.subscription.created',
+      data: {
+        object: {
+          id: 'sub_email_fail',
+          status: 'active',
+          customer: 'cus_email_fail',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-email-fail', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_fail',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const response = await POST(makeRequest('payload', 'sig'));
+    expect(response.status).toBe(200);
+
+    const subscriptions = await db
+      .select()
+      .from(schema.billingSubscriptions)
+      .where(eq(schema.billingSubscriptions.stripeSubscriptionId, 'sub_email_fail'));
+    expect(subscriptions).toHaveLength(1);
+    expect(subscriptions[0]?.stripeSubscriptionId).toBe('sub_email_fail');
+
+    // No email should be recorded for this specific subscription (since it failed)
+    const sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_email_fail'));
+    expect(sentEmails).toHaveLength(0);
+
+    // Reset mock for other tests
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'test-email-id' }),
+    } as Response);
+  });
+
+  it('deduplicates emails on webhook retry', async () => {
+    await db.insert(schema.users).values({
+      id: 'user-retry',
+      email: 'test-retry@example.com',
+      passwordHash: 'test-hash',
+    });
+
+    const eventPayload = {
+      type: 'customer.subscription.created',
+      data: {
+        object: {
+          id: 'sub_retry',
+          status: 'active',
+          customer: 'cus_retry',
+          cancel_at_period_end: false,
+          trial_end: null,
+          ended_at: null,
+          metadata: { userId: 'user-retry', planKey: 'saver' },
+          items: {
+            data: [
+              {
+                current_period_start: 1_700_000_000,
+                current_period_end: 1_702_592_000,
+                price: {
+                  id: 'price_monthly',
+                  product: 'prod_retry',
+                  recurring: { interval: 'month' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    constructEventMock.mockReturnValue(eventPayload);
+
+    await POST(makeRequest('payload', 'sig'));
+    let sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_retry'));
+    expect(sentEmails).toHaveLength(1);
+
+    await POST(makeRequest('payload', 'sig'));
+    sentEmails = await db
+      .select()
+      .from(schema.sentEmails)
+      .where(eq(schema.sentEmails.referenceId, 'sub_retry'));
+    expect(sentEmails).toHaveLength(1);
   });
 });

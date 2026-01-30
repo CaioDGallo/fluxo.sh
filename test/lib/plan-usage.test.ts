@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { setupTestDb, teardownTestDb, clearAllTables, getTestDb } from '@/test/db-utils';
-import * as schema from '@/lib/schema';
 import { users } from '@/lib/auth-schema';
+import * as schema from '@/lib/schema';
+import { clearAllTables, getTestDb, setupTestDb, teardownTestDb } from '@/test/db-utils';
 import { eq } from 'drizzle-orm';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let db: ReturnType<typeof getTestDb>;
 let incrementUsageCount: typeof import('@/lib/plan-usage').incrementUsageCount;
@@ -67,19 +67,18 @@ describe('Plan Usage - Threshold Tests', () => {
   describe('80% warning threshold', () => {
     it('sends warning email when crossing 80%', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-warn-80', 'userwarn80@test.com');
+      await createTestUser('user-warn-80', 'userwarn80@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
-      const limit = 5; // Free plan limit
 
-      // Increment to 79% (3/5 = 60%, then 4/5 = 80%)
-      await incrementUsageCount('user-warn-80', 'import_weekly', window, 3);
+      // Increment to 78% (39/50), then cross 80% (40/50 = 80%)
+      await incrementUsageCount('user-warn-80', 'import_weekly', window, 39);
       vi.clearAllMocks();
 
       // Cross 80% threshold
       const count = await incrementUsageCount('user-warn-80', 'import_weekly', window, 1);
 
-      expect(count).toBe(4);
+      expect(count).toBe(40);
       expect(sendEmail).toHaveBeenCalledOnce();
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
@@ -93,20 +92,20 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Increment to 60% (3/5)
-      await incrementUsageCount('user-before-80', 'import_weekly', window, 3);
+      // Increment to 33% (1/3 for Free plan)
+      await incrementUsageCount('user-before-80', 'import_weekly', window, 1);
 
       expect(sendEmail).not.toHaveBeenCalled();
     });
 
     it('sends warning only once at 80%', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-once-80', 'useronce80@test.com');
+      await createTestUser('user-once-80', 'useronce80@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Cross 80% threshold
-      await incrementUsageCount('user-once-80', 'import_weekly', window, 4);
+      // Cross 80% threshold (40/50 = 80%)
+      await incrementUsageCount('user-once-80', 'import_weekly', window, 40);
       expect(sendEmail).toHaveBeenCalledOnce();
       vi.clearAllMocks();
 
@@ -122,8 +121,8 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Jump directly to 100% (5/5) from 0%
-      await incrementUsageCount('user-jump-100', 'import_weekly', window, 5);
+      // Jump directly to 100% (3/3 for Free plan) from 0%
+      await incrementUsageCount('user-jump-100', 'import_weekly', window, 3);
 
       // Should send 100% limit email, not 80% warning
       expect(sendEmail).toHaveBeenCalledOnce();
@@ -137,7 +136,6 @@ describe('Plan Usage - Threshold Tests', () => {
       await createTestUser('user-saver-80', 'usersaver80@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
-      const limit = 50; // Saver plan limit
 
       // Increment to 80% (40/50)
       await incrementUsageCount('user-saver-80', 'import_weekly', window, 40);
@@ -155,10 +153,10 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Reach 100% (5/5)
-      const count = await incrementUsageCount('user-limit-100', 'import_weekly', window, 5);
+      // Reach 100% (3/3 for Free plan)
+      const count = await incrementUsageCount('user-limit-100', 'import_weekly', window, 3);
 
-      expect(count).toBe(5);
+      expect(count).toBe(3);
       expect(sendEmail).toHaveBeenCalledOnce();
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
@@ -172,8 +170,8 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Reach 100%
-      await incrementUsageCount('user-once-100', 'import_weekly', window, 5);
+      // Reach 100% (3/3 for Free plan)
+      await incrementUsageCount('user-once-100', 'import_weekly', window, 3);
       expect(sendEmail).toHaveBeenCalledOnce();
       vi.clearAllMocks();
 
@@ -185,12 +183,12 @@ describe('Plan Usage - Threshold Tests', () => {
 
     it('does not send limit email before 100%', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-before-100', 'userbefore100@test.com');
+      await createTestUser('user-before-100', 'userbefore100@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Increment to 80% (4/5)
-      await incrementUsageCount('user-before-100', 'import_weekly', window, 4);
+      // Increment to 80% (40/50 for Saver plan)
+      await incrementUsageCount('user-before-100', 'import_weekly', window, 40);
 
       // Should only send 80% warning, not limit
       expect(sendEmail).toHaveBeenCalledOnce();
@@ -205,8 +203,8 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Reach 100%
-      await incrementUsageCount('user-reset-date', 'import_weekly', window, 5);
+      // Reach 100% (3/3 for Free plan)
+      await incrementUsageCount('user-reset-date', 'import_weekly', window, 3);
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
       expect(call?.html).toBeDefined();
@@ -218,19 +216,19 @@ describe('Plan Usage - Threshold Tests', () => {
   describe('threshold interaction (80% → 100%)', () => {
     it('sends both emails when progressing 80% → 100%', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-both-emails', 'userbothemails@test.com');
+      await createTestUser('user-both-emails', 'userbothemails@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Cross 80%
-      await incrementUsageCount('user-both-emails', 'import_weekly', window, 4);
+      // Cross 80% (40/50 for Saver plan)
+      await incrementUsageCount('user-both-emails', 'import_weekly', window, 40);
       expect(sendEmail).toHaveBeenCalledTimes(1);
       expect(vi.mocked(sendEmail).mock.calls[0]?.[0]?.subject).toContain('80%');
 
       vi.clearAllMocks();
 
-      // Cross 100%
-      await incrementUsageCount('user-both-emails', 'import_weekly', window, 1);
+      // Cross 100% (50/50)
+      await incrementUsageCount('user-both-emails', 'import_weekly', window, 10);
       expect(sendEmail).toHaveBeenCalledTimes(1);
       expect(vi.mocked(sendEmail).mock.calls[0]?.[0]?.subject).toContain('Limite');
     });
@@ -257,12 +255,12 @@ describe('Plan Usage - Threshold Tests', () => {
   describe('concurrent increment race conditions', () => {
     it('does not send duplicate emails on concurrent increments crossing 80%', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-concurrent-80', 'userconcurrent80@test.com');
+      await createTestUser('user-concurrent-80', 'userconcurrent80@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Pre-load to 79%
-      await incrementUsageCount('user-concurrent-80', 'import_weekly', window, 3);
+      // Pre-load to 78% (39/50 for Saver plan)
+      await incrementUsageCount('user-concurrent-80', 'import_weekly', window, 39);
       vi.clearAllMocks();
 
       // Simulate concurrent increments that both cross 80%
@@ -289,13 +287,12 @@ describe('Plan Usage - Threshold Tests', () => {
     });
 
     it('handles concurrent increments at 100% limit', async () => {
-      const sendEmail = (await import('@/lib/email/send')).sendEmail;
       await createTestUser('user-concurrent-100', 'userconcurrent100@test.com');
 
       const window = getWeeklyWindow('UTC');
 
-      // Pre-load to 99%
-      await incrementUsageCount('user-concurrent-100', 'import_weekly', window, 4);
+      // Pre-load to 67% (2/3 for Free plan)
+      await incrementUsageCount('user-concurrent-100', 'import_weekly', window, 2);
       vi.clearAllMocks();
 
       // Concurrent increments crossing 100%
@@ -318,17 +315,17 @@ describe('Plan Usage - Threshold Tests', () => {
   describe('email content validation', () => {
     it('includes correct usage statistics in 80% warning', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-stats', 'userstats@test.com');
+      await createTestUser('user-stats', 'userstats@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Cross 80% (4/5)
-      await incrementUsageCount('user-stats', 'import_weekly', window, 4);
+      // Cross 80% (40/50 for Saver plan)
+      await incrementUsageCount('user-stats', 'import_weekly', window, 40);
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
-      expect(call?.html).toContain('4'); // current usage
-      expect(call?.html).toContain('5'); // limit
-      expect(call?.html).toContain('1'); // remaining
+      expect(call?.html).toContain('40'); // current usage
+      expect(call?.html).toContain('50'); // limit
+      expect(call?.html).toContain('10'); // remaining
     });
 
     it('includes plan name in limit email', async () => {
@@ -337,8 +334,8 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Reach 100%
-      await incrementUsageCount('user-plan-name', 'import_weekly', window, 5);
+      // Reach 100% (3/3 for Free plan)
+      await incrementUsageCount('user-plan-name', 'import_weekly', window, 3);
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
       expect(call?.html).toContain('Free'); // Plan name
@@ -348,12 +345,12 @@ describe('Plan Usage - Threshold Tests', () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
 
       // Create user with pt-BR locale
-      await createTestUser('user-br', 'userbr@test.com');
+      await createTestUser('user-br', 'userbr@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Cross 80% (4/5 = 80%)
-      await incrementUsageCount('user-br', 'import_weekly', window, 4);
+      // Cross 80% (40/50 = 80% for Saver plan)
+      await incrementUsageCount('user-br', 'import_weekly', window, 40);
 
       const call = vi.mocked(sendEmail).mock.calls[0]?.[0];
       // Should send 80% warning (not limit)
@@ -370,14 +367,14 @@ describe('Plan Usage - Threshold Tests', () => {
         error: 'API error',
       });
 
-      await createTestUser('user-email-fail', 'useremailfail@test.com');
+      await createTestUser('user-email-fail', 'useremailfail@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Should still increment despite email failure
-      const count = await incrementUsageCount('user-email-fail', 'import_weekly', window, 4);
+      // Should still increment despite email failure (40/50 = 80% for Saver plan)
+      const count = await incrementUsageCount('user-email-fail', 'import_weekly', window, 40);
 
-      expect(count).toBe(4);
+      expect(count).toBe(40);
       expect(sendEmail).toHaveBeenCalled();
     });
 
@@ -400,33 +397,33 @@ describe('Plan Usage - Threshold Tests', () => {
 
       const window = getWeeklyWindow('UTC');
 
-      // Should still work even if email sending is skipped
-      const count = await incrementUsageCount('user-no-email', 'import_weekly', window, 4);
+      // Should still work even if email sending is skipped (2/3 = 67% for Free plan)
+      const count = await incrementUsageCount('user-no-email', 'import_weekly', window, 2);
 
-      expect(count).toBe(4);
+      expect(count).toBe(2);
     });
 
     it('handles missing user gracefully', async () => {
       const window = getWeeklyWindow('UTC');
 
       // Increment for non-existent user (shouldn't crash)
-      const count = await incrementUsageCount('user-nonexistent', 'import_weekly', window, 4);
+      const count = await incrementUsageCount('user-nonexistent', 'import_weekly', window, 3);
 
-      expect(count).toBe(4);
+      expect(count).toBe(3);
     });
   });
 
   describe('percentage calculation edge cases', () => {
     it('handles exact 80% threshold', async () => {
       const sendEmail = (await import('@/lib/email/send')).sendEmail;
-      await createTestUser('user-exact-80', 'userexact80@test.com');
+      await createTestUser('user-exact-80', 'userexact80@test.com', 'saver');
 
       const window = getWeeklyWindow('UTC');
 
-      // Start from 0%, increment to exactly 80% (4/5 = 80%)
-      const count = await incrementUsageCount('user-exact-80', 'import_weekly', window, 4);
+      // Start from 0%, increment to exactly 80% (40/50 = 80% for Saver plan)
+      const count = await incrementUsageCount('user-exact-80', 'import_weekly', window, 40);
 
-      expect(count).toBe(4);
+      expect(count).toBe(40);
       expect(sendEmail).toHaveBeenCalledOnce();
     });
 

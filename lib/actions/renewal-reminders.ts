@@ -27,10 +27,10 @@ export async function sendRenewalReminders() {
 
   // Calculate date range for "3 days from now"
   const startOfDay = new Date(threeDaysFromNow);
-  startOfDay.setHours(0, 0, 0, 0);
+  startOfDay.setUTCHours(0, 0, 0, 0);
 
   const endOfDay = new Date(threeDaysFromNow);
-  endOfDay.setHours(23, 59, 59, 999);
+  endOfDay.setUTCHours(23, 59, 59, 999);
 
   try {
     // Find active subscriptions that will renew in 3 days

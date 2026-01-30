@@ -6,6 +6,8 @@ const reconcileAllAccountBalances = vi.fn();
 const updatePastItemStatuses = vi.fn();
 const syncAllUsersCalendars = vi.fn();
 const sendAllDailyDigests = vi.fn();
+const sendRenewalReminders = vi.fn();
+const sendAllDailyPushes = vi.fn();
 
 vi.mock('@/lib/actions/notification-jobs', () => ({ processPendingNotificationJobs }));
 vi.mock('@/lib/actions/bill-reminder-jobs', () => ({ scheduleBillReminderNotifications }));
@@ -13,6 +15,8 @@ vi.mock('@/lib/actions/accounts', () => ({ reconcileAllAccountBalances }));
 vi.mock('@/lib/actions/status-updates', () => ({ updatePastItemStatuses }));
 vi.mock('@/lib/actions/calendar-sync', () => ({ syncAllUsersCalendars }));
 vi.mock('@/lib/actions/daily-digest', () => ({ sendAllDailyDigests }));
+vi.mock('@/lib/actions/renewal-reminders', () => ({ sendRenewalReminders }));
+vi.mock('@/lib/actions/daily-push', () => ({ sendAllDailyPushes }));
 
 let GET: typeof import('@/app/api/cron/daily/route').GET;
 
@@ -33,6 +37,8 @@ describe('GET /api/cron/daily', () => {
     updatePastItemStatuses.mockResolvedValue({ eventsCompleted: 1, tasksMarkedOverdue: 1 });
     syncAllUsersCalendars.mockResolvedValue([{ success: true }]);
     sendAllDailyDigests.mockResolvedValue({ success: true, usersProcessed: 1, emailsSent: 1, emailsFailed: 0, errors: [] });
+    sendRenewalReminders.mockResolvedValue({ success: true, sent: 1, skipped: 0, errors: 0 });
+    sendAllDailyPushes.mockResolvedValue({ success: true, sent: 1 });
   });
 
   afterEach(() => {

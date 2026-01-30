@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { ValidatedImportRow, CategorySuggestion } from '@/lib/import/types';
 import { computeClosingDate, computeFaturaWindowStart, getFaturaMonth, getFaturaMonthFromClosingDate, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { addMonths } from '@/lib/utils';
+import { computeEntryDates, calculateBasePurchaseDate, type AccountInfo, type EntryDateInfo } from '@/lib/import-helpers';
 import {
   ensureFaturaExists,
   updateFaturaTotal,
@@ -513,104 +514,8 @@ async function findExistingInstallmentTransaction(
   };
 }
 
-// Helper: Compute entry dates for installment
-type EntryDateInfo = {
-  purchaseDate: string; // YYYY-MM-DD
-  faturaMonth: string; // YYYY-MM
-  dueDate: string; // YYYY-MM-DD
-};
-
-type AccountInfo = {
-  type: string;
-  closingDay: number | null;
-  paymentDueDay: number | null;
-};
-
-/**
- * Computes the entry dates for an installment.
- *
- * For credit cards with billing config:
- * - First installment (installmentNumber=1): uses actual purchase date
- * - Subsequent installments: uses fatura window start date
- *
- * @param basePurchaseDate - The original purchase date (for first installment)
- * @param installmentNumber - Which installment (1, 2, 3, ...)
- * @param account - Account info with closingDay and paymentDueDay
- * @param ofxClosingDate - Optional OFX closing date to use for fatura assignment
- * @param overrideBaseFaturaMonth - Optional base fatura month to use instead of calculating from dates
- * @returns Entry dates (purchaseDate, faturaMonth, dueDate)
- */
-function computeEntryDates(
-  basePurchaseDate: string,
-  installmentNumber: number,
-  account: AccountInfo,
-  ofxClosingDate?: string,
-  overrideBaseFaturaMonth?: string
-): EntryDateInfo {
-  const baseDate = new Date(basePurchaseDate + 'T00:00:00Z');
-
-  const hasBillingConfig =
-    account.type === 'credit_card' && account.closingDay && account.paymentDueDay;
-
-  if (hasBillingConfig) {
-    // Calculate base fatura month from the original purchase date
-    let baseFaturaMonth: string;
-    if (overrideBaseFaturaMonth) {
-      // Use provided base fatura month (already calculated correctly for historic installments)
-      baseFaturaMonth = overrideBaseFaturaMonth;
-    } else if (ofxClosingDate) {
-      const closingDate = new Date(ofxClosingDate + 'T00:00:00Z');
-      baseFaturaMonth = getFaturaMonthFromClosingDate(baseDate, closingDate);
-    } else {
-      baseFaturaMonth = getFaturaMonth(baseDate, account.closingDay!);
-    }
-
-    // Calculate the fatura month for this installment
-    const faturaMonth = addMonths(baseFaturaMonth, installmentNumber - 1);
-    const dueDate = getFaturaPaymentDueDate(faturaMonth, account.paymentDueDay!, account.closingDay!);
-
-    let purchaseDate: string;
-    if (installmentNumber === 1) {
-      // First installment: use actual purchase date
-      purchaseDate = basePurchaseDate;
-    } else {
-      // Subsequent installments: use fatura window start date
-      // This places them at the first day of their respective billing period
-      purchaseDate = computeFaturaWindowStart(faturaMonth, account.closingDay!);
-    }
-
-    return { purchaseDate, faturaMonth, dueDate };
-  }
-
-  // Fallback for non-CC accounts: increment months on purchase date
-  const installmentDate = new Date(baseDate);
-  installmentDate.setUTCMonth(installmentDate.getUTCMonth() + (installmentNumber - 1));
-  const purchaseDate = installmentDate.toISOString().split('T')[0];
-
-  return {
-    purchaseDate,
-    faturaMonth: purchaseDate.slice(0, 7),
-    dueDate: purchaseDate,
-  };
-}
-
-// Helper: Calculate base purchase date from imported rows
-function calculateBasePurchaseDate(rows: ValidatedImportRow[]): string {
-  // Find earliest installment in import
-  const earliest = rows.reduce((min, r) =>
-    r.installmentInfo!.current < min.installmentInfo!.current ? r : min,
-    rows[0]
-  );
-
-  const info = earliest.installmentInfo!;
-  const importedDate = new Date(earliest.date + 'T00:00:00Z');
-
-  // Work backwards: Parcela 3 date - 2 months = Parcela 1 date
-  const baseDate = new Date(importedDate);
-  baseDate.setUTCMonth(baseDate.getUTCMonth() - (info.current - 1));
-
-  return baseDate.toISOString().split('T')[0];
-}
+// Type definitions and helper functions moved to @/lib/import-helpers
+// to allow testing without "use server" async requirement
 
 // Helper: Process a group of installment rows
 async function processInstallmentGroup(

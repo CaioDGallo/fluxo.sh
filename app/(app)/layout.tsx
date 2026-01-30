@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider';
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard';
+import { PwaInstallBanner } from '@/components/pwa-install-banner';
 
 export default async function AppLayout({
   children,
@@ -38,6 +39,9 @@ export default async function AppLayout({
 
         {/* Onboarding Wizard */}
         <OnboardingWizard />
+
+        {/* PWA Install Banner */}
+        <PwaInstallBanner />
       </SidebarProvider>
     </OnboardingProvider>
   );

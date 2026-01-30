@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HeroTitle } from '@/components/hero-title';
-import { PwaInstallBanner } from '@/components/pwa-install-banner';
 import { PricingSection } from '@/components/landing/pricing-section';
 import { LandingHeader } from '@/components/landing/landing-header';
 import { LandingPageTracker } from '@/components/tracking/landing-page-tracker';
@@ -329,8 +328,6 @@ export default async function Home() {
             </div>
           </div>
         </footer>
-
-        <PwaInstallBanner />
       </div>
     </LandingPageTracker>
   );

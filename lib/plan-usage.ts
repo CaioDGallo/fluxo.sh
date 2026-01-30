@@ -3,8 +3,10 @@ import { usageCounters, userSettings } from '@/lib/schema';
 import { users } from '@/lib/auth-schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { getUserEntitlements } from '@/lib/plan-entitlements';
-import { PLANS } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
 import { sendBillingEmail, getUserLocale } from '@/lib/email/billing-emails';
+import { logError } from '@/lib/logger';
+import { ErrorIds } from '@/constants/errorIds';
 import {
   generateUsageWarningHtml,
   generateUsageWarningText,
@@ -118,8 +120,7 @@ export async function incrementUsageCount(
   // Check if we should send usage emails
   try {
     const entitlements = await getUserEntitlements(userId);
-    const limit =
-      key === 'import_weekly' ? entitlements.limits.importWeekly : entitlements.limits.importWeekly;
+    const limit = entitlements.limits.importWeekly;
 
     const previousPercentage = Math.floor((previousCount / limit) * 100);
     const newPercentage = Math.floor((newCount / limit) * 100);
@@ -130,7 +131,7 @@ export async function incrementUsageCount(
 
     const locale = await getUserLocale(userId);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
-    const planName = PLANS[entitlements.planKey as keyof typeof PLANS].name;
+    const planName = getPlanDefinition(entitlements.planKey).name;
     const featureName = locale === 'pt-BR' ? 'importações' : 'imports';
 
     // Send 80% warning email (only once when crossing threshold)
@@ -209,7 +210,11 @@ export async function incrementUsageCount(
     }
   } catch (error) {
     // Log but don't fail the increment operation if email sending fails
-    console.error('[plan-usage] Failed to send usage email:', error);
+    logError(ErrorIds.BILLING_USAGE_EMAIL_FAILED, 'Failed to send usage threshold email', error, {
+      userId,
+      key,
+      window,
+    });
   }
 
   return newCount;

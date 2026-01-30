@@ -5,6 +5,8 @@ import { sentEmails, userSettings } from '@/lib/schema';
 import { sendEmail } from '@/lib/email/send';
 import { defaultLocale, type Locale } from '@/lib/i18n/config';
 import { eq, and } from 'drizzle-orm';
+import { logError } from '@/lib/logger';
+import { ErrorIds } from '@/constants/errorIds';
 
 export type BillingEmailType =
   | 'subscription_purchased'
@@ -48,7 +50,7 @@ export async function getUserLocale(userId: string): Promise<Locale> {
 
     return (settings?.locale as Locale) ?? defaultLocale;
   } catch (error) {
-    console.error('[billing-emails:getUserLocale] Failed:', error);
+    logError(ErrorIds.DB_READ_FAILED, 'Failed to get user locale for billing email', error, { userId });
     return defaultLocale;
   }
 }
@@ -112,7 +114,12 @@ export async function sendBillingEmail(
 
     return { success: true };
   } catch (error) {
-    console.error('[billing-emails:send] Failed:', error);
+    logError(ErrorIds.BILLING_EMAIL_SEND_FAILED, 'Failed to send billing email', error, {
+      userId,
+      userEmail,
+      emailType,
+      referenceId,
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send billing email',

@@ -7,6 +7,8 @@ import { billingCustomers, billingSubscriptions } from '@/lib/schema';
 import { users } from '@/lib/auth-schema';
 import { getPlanFromStripePrice, type PaidPlanKey } from '@/lib/billing/stripe-prices';
 import { sendBillingEmail, getUserLocale } from '@/lib/email/billing-emails';
+import { logError } from '@/lib/logger';
+import { ErrorIds } from '@/constants/errorIds';
 import {
   generateSubscriptionPurchasedHtml,
   generateSubscriptionPurchasedText,
@@ -31,7 +33,7 @@ import {
   generatePlanChangedHtml,
   generatePlanChangedText,
 } from '@/lib/email/plan-changed-template';
-import { PLANS } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 
@@ -88,6 +90,27 @@ async function upsertBillingCustomer(userId: string, stripeCustomerId: string) {
     });
 }
 
+async function sendAndLogBillingEmail(
+  options: Parameters<typeof sendBillingEmail>[0],
+  context: string
+) {
+  const result = await sendBillingEmail(options);
+  if (!result.success && !result.alreadySent) {
+    logError(
+      ErrorIds.BILLING_EMAIL_SEND_FAILED,
+      `Billing email send failed during webhook: ${options.emailType}`,
+      result.error,
+      {
+        webhookContext: context,
+        emailType: options.emailType,
+        userId: options.userId,
+        referenceId: options.referenceId,
+      }
+    );
+  }
+  return result;
+}
+
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -105,13 +128,13 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (error) {
-    console.error('[stripe] webhook signature failed', error);
+    logError(ErrorIds.BILLING_WEBHOOK_SIGNATURE_FAILED, 'Stripe webhook signature verification failed', error);
     return new NextResponse('Invalid signature', { status: 400 });
   }
 
-  try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      try {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id || session.metadata?.userId;
         const stripeCustomerId = getCustomerId(session.customer);
@@ -119,14 +142,21 @@ export async function POST(req: Request) {
         if (userId && stripeCustomerId) {
           await upsertBillingCustomer(userId, stripeCustomerId);
         }
-        break;
+      } catch (error) {
+        logError(ErrorIds.BILLING_WEBHOOK_HANDLER_FAILED, 'Checkout session webhook handler failed', error, {
+          eventType: 'checkout.session.completed',
+        });
+        return new NextResponse('Checkout session handler failed', { status: 500 });
       }
+      break;
+    }
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const stripeCustomerId = getCustomerId(subscription.customer);
+        try {
+          const subscription = event.data.object as Stripe.Subscription;
+          const stripeCustomerId = getCustomerId(subscription.customer);
         const item = subscription.items.data[0];
         const stripePriceId = item?.price?.id || null;
         const stripeProductId = getProductId(item?.price?.product);
@@ -136,6 +166,7 @@ export async function POST(req: Request) {
 
         // Process all plans, not just 'pro'
         if (!planKey) {
+          console.log(`[stripe:${event.type}] Skipped: No planKey found (subscriptionId: ${subscription.id})`);
           break;
         }
 
@@ -148,6 +179,7 @@ export async function POST(req: Request) {
         }
 
         if (!userId || !stripeCustomerId) {
+          console.log(`[stripe:${event.type}] Skipped: Missing userId or stripeCustomerId (subscriptionId: ${subscription.id})`);
           break;
         }
 
@@ -201,11 +233,14 @@ export async function POST(req: Request) {
 
         // Send billing emails
         const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        if (!user?.email) break;
+        if (!user?.email) {
+          console.log(`[stripe:${event.type}] Skipped emails: User has no email (userId: ${userId})`);
+          break;
+        }
 
         const locale = await getUserLocale(userId);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
-        const planName = PLANS[planKey].name;
+        const planName = getPlanDefinition(planKey).name;
         const interval = item?.price?.recurring?.interval === 'year' ? 'yearly' : 'monthly';
         const billingPeriod = interval === 'yearly' ? 'Anual' : 'Mensal';
         const currentPeriodEnd = toDate(item?.current_period_end);
@@ -234,7 +269,7 @@ export async function POST(req: Request) {
             locale,
           });
 
-          await sendBillingEmail({
+          await sendAndLogBillingEmail({
             userId,
             userEmail: user.email,
             emailType: 'subscription_purchased',
@@ -245,7 +280,7 @@ export async function POST(req: Request) {
                 : `Subscription activated - ${planName}`,
             html,
             text,
-          });
+          }, 'subscription.created');
         }
 
         // 2. Payment Failed (status changed to past_due)
@@ -271,7 +306,7 @@ export async function POST(req: Request) {
             locale,
           });
 
-          await sendBillingEmail({
+          await sendAndLogBillingEmail({
             userId,
             userEmail: user.email,
             emailType: 'payment_failed',
@@ -282,7 +317,7 @@ export async function POST(req: Request) {
                 : 'Action required: Payment failed',
             html,
             text,
-          });
+          }, 'subscription.updated:payment_failed');
         }
 
         // 3. Subscription Canceled (cancelAtPeriodEnd became true)
@@ -306,7 +341,7 @@ export async function POST(req: Request) {
             locale,
           });
 
-          await sendBillingEmail({
+          await sendAndLogBillingEmail({
             userId,
             userEmail: user.email,
             emailType: 'subscription_canceled',
@@ -314,7 +349,7 @@ export async function POST(req: Request) {
             subject: locale === 'pt-BR' ? 'Assinatura cancelada' : 'Subscription canceled',
             html,
             text,
-          });
+          }, 'subscription.updated:canceled');
         }
 
         // 4. Subscription Ended (deleted event)
@@ -330,7 +365,7 @@ export async function POST(req: Request) {
             locale,
           });
 
-          await sendBillingEmail({
+          await sendAndLogBillingEmail({
             userId,
             userEmail: user.email,
             emailType: 'subscription_ended',
@@ -339,7 +374,7 @@ export async function POST(req: Request) {
               locale === 'pt-BR' ? 'Sua assinatura foi encerrada' : 'Your subscription has ended',
             html,
             text,
-          });
+          }, 'subscription.deleted');
         }
 
         // 5. Plan Changed (plan key changed)
@@ -348,8 +383,8 @@ export async function POST(req: Request) {
           previousSubscription &&
           previousSubscription.planKey !== subscriptionPlanKey
         ) {
-          const oldPlanName = PLANS[previousSubscription.planKey as keyof typeof PLANS].name;
-          const newPlanName = PLANS[subscriptionPlanKey as keyof typeof PLANS].name;
+          const oldPlanName = getPlanDefinition(previousSubscription.planKey).name;
+          const newPlanName = getPlanDefinition(subscriptionPlanKey).name;
           // Determine upgrade vs downgrade (simple heuristic: compare plan keys alphabetically)
           // In practice: pro > saver > free, but since subscriptionPlanKey excludes 'free', any change from 'free' is upgrade
           const isUpgrade = previousSubscription.planKey === 'free' || subscriptionPlanKey === 'pro';
@@ -361,7 +396,7 @@ export async function POST(req: Request) {
             newPlanName,
             isUpgrade,
             effectiveDate: effectiveDateStr,
-            newLimits: PLANS[subscriptionPlanKey].limits,
+            newLimits: getPlanDefinition(subscriptionPlanKey).limits,
             appUrl,
             locale,
           });
@@ -370,12 +405,12 @@ export async function POST(req: Request) {
             newPlanName,
             isUpgrade,
             effectiveDate: effectiveDateStr,
-            newLimits: PLANS[subscriptionPlanKey].limits,
+            newLimits: getPlanDefinition(subscriptionPlanKey).limits,
             appUrl,
             locale,
           });
 
-          await sendBillingEmail({
+          await sendAndLogBillingEmail({
             userId,
             userEmail: user.email,
             emailType: 'plan_changed',
@@ -383,17 +418,26 @@ export async function POST(req: Request) {
             subject: locale === 'pt-BR' ? 'Plano atualizado' : 'Plan updated',
             html,
             text,
-          });
+          }, 'subscription.updated:plan_changed');
         }
-
-        break;
+      } catch (error) {
+        logError(ErrorIds.BILLING_WEBHOOK_HANDLER_FAILED, 'Subscription webhook handler failed', error, {
+          eventType: event.type,
+        });
+        return new NextResponse('Subscription handler failed', { status: 500 });
       }
+      break;
+    }
 
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const stripeCustomerId = getCustomerId(invoice.customer);
+        try {
+          const invoice = event.data.object as Stripe.Invoice;
+          const stripeCustomerId = getCustomerId(invoice.customer);
 
-        if (!stripeCustomerId) break;
+          if (!stripeCustomerId) {
+            console.log(`[stripe:invoice.paid] Skipped: No stripeCustomerId (invoiceId: ${invoice.id})`);
+            break;
+          }
 
         // Get user from customer
         const existingCustomer = await db.query.billingCustomers.findFirst({
@@ -401,10 +445,16 @@ export async function POST(req: Request) {
         });
         const userId = existingCustomer?.userId;
 
-        if (!userId) break;
+        if (!userId) {
+          console.log(`[stripe:invoice.paid] Skipped: No userId found for customer (invoiceId: ${invoice.id})`);
+          break;
+        }
 
         const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        if (!user?.email) break;
+        if (!user?.email) {
+          console.log(`[stripe:invoice.paid] Skipped: User has no email (userId: ${userId}, invoiceId: ${invoice.id})`);
+          break;
+        }
 
         // Get subscription to determine plan
         // Using type assertion since subscription may be expanded or not
@@ -416,16 +466,22 @@ export async function POST(req: Request) {
           | undefined;
         const subscriptionId =
           typeof subscriptionField === 'string' ? subscriptionField : subscriptionField?.id;
-        if (!subscriptionId) break;
+        if (!subscriptionId) {
+          console.log(`[stripe:invoice.paid] Skipped: No subscriptionId on invoice (invoiceId: ${invoice.id})`);
+          break;
+        }
 
         const subscription = await db.query.billingSubscriptions.findFirst({
           where: eq(billingSubscriptions.stripeSubscriptionId, subscriptionId),
         });
-        if (!subscription) break;
+        if (!subscription) {
+          console.log(`[stripe:invoice.paid] Skipped: Subscription not found in DB (subscriptionId: ${subscriptionId}, invoiceId: ${invoice.id})`);
+          break;
+        }
 
         const locale = await getUserLocale(userId);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
-        const planName = PLANS[subscription.planKey as keyof typeof PLANS].name;
+        const planName = getPlanDefinition(subscription.planKey).name;
         const invoiceNumber = invoice.number || invoice.id.substring(3, 11);
         const date = formatDate(new Date(invoice.created * 1000), locale);
         const amountDisplay = formatAmount(invoice.amount_paid, invoice.currency.toUpperCase());
@@ -450,7 +506,7 @@ export async function POST(req: Request) {
           locale,
         });
 
-        await sendBillingEmail({
+        await sendAndLogBillingEmail({
           userId,
           userEmail: user.email,
           emailType: 'payment_receipt',
@@ -461,18 +517,19 @@ export async function POST(req: Request) {
               : `Payment receipt - ${amountDisplay}`,
           html,
           text,
-        });
-
+        }, 'invoice.paid');
+        } catch (error) {
+          logError(ErrorIds.BILLING_WEBHOOK_HANDLER_FAILED, 'Invoice webhook handler failed', error, {
+            eventType: 'invoice.paid',
+          });
+          return new NextResponse('Invoice handler failed', { status: 500 });
+        }
         break;
       }
 
       default:
         break;
     }
-  } catch (error) {
-    console.error('[stripe] webhook handling failed', error);
-    return new NextResponse('Webhook handler failed', { status: 500 });
-  }
 
   return NextResponse.json({ received: true });
 }

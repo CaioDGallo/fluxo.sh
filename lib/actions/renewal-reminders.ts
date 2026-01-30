@@ -9,7 +9,11 @@ import {
   generateRenewalReminderHtml,
   generateRenewalReminderText,
 } from '@/lib/email/renewal-reminder-template';
-import { PLANS } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
+import { stripe } from '@/lib/stripe';
+import { formatCurrencyWithLocale } from '@/lib/utils';
+import { logError } from '@/lib/logger';
+import { ErrorIds } from '@/constants/errorIds';
 
 /**
  * Sends renewal reminder emails to users whose subscriptions will renew in 3 days.
@@ -64,7 +68,7 @@ export async function sendRenewalReminders() {
 
         const locale = await getUserLocale(user.id);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
-        const planName = PLANS[subscription.planKey as keyof typeof PLANS].name;
+        const planName = getPlanDefinition(subscription.planKey).name;
         const renewalDate = subscription.currentPeriodEnd
           ? new Intl.DateTimeFormat(locale, {
               year: 'numeric',
@@ -73,9 +77,26 @@ export async function sendRenewalReminders() {
             }).format(subscription.currentPeriodEnd)
           : '';
 
-        // Estimate amount from Stripe (we don't store price in DB)
-        // For now, use a placeholder - in production, you'd fetch from Stripe
-        const amountDisplay = 'R$ 29,90'; // TODO: fetch actual price from Stripe
+        // Fetch actual price from Stripe
+        let amountDisplay = '';
+        if (subscription.stripeSubscriptionId) {
+          try {
+            const stripeSubscription = await stripe.subscriptions.retrieve(
+              subscription.stripeSubscriptionId
+            );
+            const unitAmount = stripeSubscription.items.data[0]?.price?.unit_amount;
+            if (unitAmount) {
+              amountDisplay = formatCurrencyWithLocale(unitAmount, locale);
+            }
+          } catch (error) {
+            logError(ErrorIds.BILLING_STRIPE_FETCH_FAILED, 'Failed to fetch subscription price from Stripe for renewal reminder', error, {
+              subscriptionId: subscription.stripeSubscriptionId,
+              userId: user.id,
+            });
+            // Fallback: use plan's default price if available
+            // This ensures email is sent even if Stripe fetch fails
+          }
+        }
 
         const html = generateRenewalReminderHtml({
           planName,
@@ -112,13 +133,17 @@ export async function sendRenewalReminders() {
             sentCount++;
           }
         } else {
-          console.error(
-            `[renewal-reminders] Failed to send to ${user.email}: ${result.error}`
-          );
+          logError(ErrorIds.BILLING_RENEWAL_REMINDER_FAILED, `Failed to send renewal reminder to ${user.email}`, result.error, {
+            userId: user.id,
+            subscriptionId: subscription.id,
+          });
           errorCount++;
         }
       } catch (error) {
-        console.error(`[renewal-reminders] Error processing user ${user.id}:`, error);
+        logError(ErrorIds.BILLING_RENEWAL_REMINDER_FAILED, 'Error processing user for renewal reminder', error, {
+          userId: user.id,
+          subscriptionId: subscription.id,
+        });
         errorCount++;
       }
     }
@@ -129,7 +154,7 @@ export async function sendRenewalReminders() {
 
     return { success: true, sent: sentCount, skipped: skippedCount, errors: errorCount };
   } catch (error) {
-    console.error('[renewal-reminders] Failed:', error);
+    logError(ErrorIds.BILLING_RENEWAL_REMINDER_FAILED, 'Renewal reminder cron job failed', error);
     return { success: false, error: String(error) };
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { upsertBudget, upsertMonthlyBudget } from '@/lib/actions/budgets';
@@ -34,15 +34,13 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
   const tErrors = useTranslations('errors');
   const tCommon = useTranslations('common');
 
-  const computedInitialValues = useMemo(
-    () => Object.fromEntries(budgets.map((budget) => [budget.categoryId, budget.budgetAmount ?? 0])),
+  const baseBudgetMap = useMemo(
+    () => new Map(budgets.map((budget) => [budget.categoryId, budget.budgetAmount ?? 0])),
     [budgets]
   );
 
-  const [initialValues, setInitialValues] = useState<Record<number, number>>(computedInitialValues);
-  const [initialTotalBudget, setInitialTotalBudget] = useState<number>(monthlyBudget ?? 0);
-  const [values, setValues] = useState<Record<number, number>>(computedInitialValues);
-  const [totalBudgetCents, setTotalBudgetCents] = useState<number>(monthlyBudget ?? 0);
+  const [edits, setEdits] = useState<Record<number, number>>({});
+  const [totalBudgetEdit, setTotalBudgetEdit] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [totalBudgetError, setTotalBudgetError] = useState<string>('');
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
@@ -51,26 +49,30 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
   const [query, setQuery] = useState('');
   const [hideZero, setHideZero] = useState(false);
 
-  useEffect(() => {
-    setInitialValues(computedInitialValues);
-    setInitialTotalBudget(monthlyBudget ?? 0);
-    setValues(computedInitialValues);
-    setTotalBudgetCents(monthlyBudget ?? 0);
-    setErrors({});
-    setTotalBudgetError('');
-    setSavingIds(new Set());
-    setSavingTotal(false);
-    setSaveFeedback('idle');
-  }, [computedInitialValues, monthlyBudget, yearMonth]);
+  const values = useMemo(
+    () => Object.fromEntries(
+      budgets.map((budget) => [budget.categoryId, edits[budget.categoryId] ?? budget.budgetAmount ?? 0])
+    ),
+    [budgets, edits]
+  );
 
-  useEffect(() => {
-    if (saveFeedback !== 'idle') {
-      setSaveFeedback('idle');
-    }
-  }, [values, totalBudgetCents, saveFeedback]);
+  const totalBudgetCents = totalBudgetEdit ?? (monthlyBudget ?? 0);
 
   function handleChange(categoryId: number, cents: number) {
-    setValues((prev) => ({ ...prev, [categoryId]: cents }));
+    const baseAmount = baseBudgetMap.get(categoryId) ?? 0;
+
+    setEdits((prev) => {
+      if (cents === baseAmount) {
+        if (!(categoryId in prev)) return prev;
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      }
+
+      if (prev[categoryId] === cents) return prev;
+
+      return { ...prev, [categoryId]: cents };
+    });
     if (errors[categoryId]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -78,24 +80,25 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
         return next;
       });
     }
+    if (saveFeedback !== 'idle') {
+      setSaveFeedback('idle');
+    }
   }
 
   function handleTotalBudgetChange(cents: number) {
-    setTotalBudgetCents(cents);
+    const baseTotal = monthlyBudget ?? 0;
+    setTotalBudgetEdit(cents === baseTotal ? null : cents);
     if (totalBudgetError) {
       setTotalBudgetError('');
+    }
+    if (saveFeedback !== 'idle') {
+      setSaveFeedback('idle');
     }
   }
 
   const isSaving = savingTotal || savingIds.size > 0;
-
-  const isDirty = useMemo(() => {
-    if (totalBudgetCents !== initialTotalBudget) return true;
-
-    return budgets.some((budget) =>
-      (values[budget.categoryId] ?? 0) !== (initialValues[budget.categoryId] ?? 0)
-    );
-  }, [budgets, initialValues, initialTotalBudget, totalBudgetCents, values]);
+  const hasEdits = budgets.some((budget) => edits[budget.categoryId] !== undefined);
+  const isDirty = totalBudgetEdit !== null || hasEdits;
 
   const filteredBudgets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -118,10 +121,8 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     setSaveFeedback('idle');
     setTotalBudgetError('');
 
-    const changedBudgets = budgets.filter((budget) =>
-      (values[budget.categoryId] ?? 0) !== (initialValues[budget.categoryId] ?? 0)
-    );
-    const monthlyChanged = totalBudgetCents !== initialTotalBudget;
+    const changedBudgets = budgets.filter((budget) => edits[budget.categoryId] !== undefined);
+    const monthlyChanged = totalBudgetEdit !== null;
     const nextErrors = { ...errors };
     const savingSet = new Set(changedBudgets.map((budget) => budget.categoryId));
     const successfulBudgetIds = new Set<number>();
@@ -136,7 +137,7 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     await Promise.all(
       changedBudgets.map(async (budget) => {
         try {
-          await upsertBudget(budget.categoryId, yearMonth, values[budget.categoryId] ?? 0);
+          await upsertBudget(budget.categoryId, yearMonth, edits[budget.categoryId] ?? 0);
           successfulBudgetIds.add(budget.categoryId);
         } catch (error) {
           nextErrors[budget.categoryId] = tErrors('failedToSave');
@@ -159,11 +160,11 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     }
 
     if (successfulBudgetIds.size > 0) {
-      setInitialValues((prev) => {
+      setEdits((prev) => {
         const next = { ...prev };
 
         successfulBudgetIds.forEach((categoryId) => {
-          next[categoryId] = values[categoryId] ?? 0;
+          delete next[categoryId];
         });
 
         return next;
@@ -171,7 +172,7 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     }
 
     if (monthlySuccess) {
-      setInitialTotalBudget(totalBudgetCents);
+      setTotalBudgetEdit(null);
     }
 
     setErrors(nextErrors);

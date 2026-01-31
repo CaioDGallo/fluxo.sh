@@ -62,8 +62,8 @@ export function BudgetProgress({
   const spentId = `${id}-spent`;
 
   return (
-    <Card data-slot="budget-progress">
-      <CardContent className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 p-3 md:p-4 justify-between">
+    <Card data-slot="budget-progress" className='px-4'>
+      <CardContent className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 py-2 md:py-4 px-0 justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
@@ -107,7 +107,7 @@ export function BudgetProgress({
       </CardContent>
 
       {/* Progress bar - outside CardContent */}
-      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div
           role="progressbar"
           aria-valuenow={Math.round(clampedPercentage)}

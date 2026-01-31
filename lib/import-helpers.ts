@@ -89,9 +89,10 @@ export function computeEntryDates(
  * Works backwards from the earliest installment to determine when the first installment occurred.
  *
  * @param rows - Array of import rows with installment info
+ * @param dateOffset - If true, subtract 1 day from the base date (for credit card async processing)
  * @returns Base purchase date in YYYY-MM-DD format
  */
-export function calculateBasePurchaseDate(rows: ValidatedImportRow[]): string {
+export function calculateBasePurchaseDate(rows: ValidatedImportRow[], dateOffset?: boolean): string {
   // Find earliest installment in import
   const earliest = rows.reduce((min, r) =>
     r.installmentInfo!.current < min.installmentInfo!.current ? r : min,
@@ -104,6 +105,12 @@ export function calculateBasePurchaseDate(rows: ValidatedImportRow[]): string {
   // Work backwards: Parcela 3 date - 2 months = Parcela 1 date
   const baseDate = new Date(importedDate);
   baseDate.setUTCMonth(baseDate.getUTCMonth() - (info.current - 1));
+
+  // Apply date offset only if the earliest imported installment is the first one
+  // This prevents offsetting subsequent installments which are placed on fatura window starts
+  if (dateOffset && info.current === 1) {
+    baseDate.setUTCDate(baseDate.getUTCDate() - 1);
+  }
 
   return baseDate.toISOString().split('T')[0];
 }

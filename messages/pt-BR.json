@@ -411,9 +411,9 @@
     "title": "Fluxo de Caixa",
     "income": "Receitas",
     "expenses": "Despesas",
-    "transfersIn": "Transferências de entrada",
-    "transfersOut": "Transferências de saída",
-    "net": "Fluxo de Caixa Líquido"
+    "transfersIn": "Transf. de entrada",
+    "transfersOut": "Transf. de saída",
+    "net": "Fluxo Líquido"
   },
   "recentExpenses": {
     "title": "Despesas Recentes",
@@ -523,7 +523,9 @@
     "refundCandidate": "Possível estorno",
     "errorMessage": "Falha ao importar. Tente novamente.",
     "errorParsing": "Falha ao processar arquivo CSV. Verifique o formato e tente novamente.",
-    "noDefaultCategories": "Configure as categorias padrão para importação em Configurações > Categorias primeiro"
+    "noDefaultCategories": "Configure as categorias padrão para importação em Configurações > Categorias primeiro",
+    "dateOffsetLabel": "Ajustar data da compra (-1 dia)",
+    "dateOffsetDescription": "Compensa o atraso de processamento do cartão. Não afeta parcelas subsequentes."
   },
   "copyBudgets": {
     "copying": "Copiando…",

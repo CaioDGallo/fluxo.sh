@@ -516,7 +516,9 @@
     "alreadyImported": "Already imported",
     "errorMessage": "Failed to import. Please try again.",
     "errorParsing": "Failed to parse CSV file. Please check the file format and try again.",
-    "noDefaultCategories": "Configure default import categories in Settings > Categories first"
+    "noDefaultCategories": "Configure default import categories in Settings > Categories first",
+    "dateOffsetLabel": "Adjust purchase date (-1 day)",
+    "dateOffsetDescription": "Offsets card processing delay. Does not affect subsequent installments."
   },
   "copyBudgets": {
     "copying": "Copying…",

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Upload02Icon } from '@hugeicons/core-free-icons';
 import { parserList, parsers, type ParserKey } from '@/lib/import/parsers';
@@ -37,6 +38,7 @@ export function ImportModal({ accounts, categories }: Props) {
   const [startDate, setStartDate] = useState<string>('');
   const [closingDate, setClosingDate] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
+  const [dateOffset, setDateOffset] = useState<boolean>(false);
 
   const t = useTranslations('import');
   const tCommon = useTranslations('common');
@@ -140,6 +142,7 @@ export function ImportModal({ accounts, categories }: Props) {
           accountId: parseInt(accountId),
           categoryOverrides,
           faturaOverrides: startDate || closingDate || dueDate ? { startDate, closingDate, dueDate } : undefined,
+          dateOffset: isCreditCardAccount ? dateOffset : undefined,
         });
 
         if (result.success) {
@@ -169,6 +172,7 @@ export function ImportModal({ accounts, categories }: Props) {
           rows: rowsToImport,
           accountId: parseInt(accountId),
           categoryId: parseInt(categoryId),
+          dateOffset: isCreditCardAccount ? dateOffset : undefined,
         });
 
         if (result.success) {
@@ -192,6 +196,7 @@ export function ImportModal({ accounts, categories }: Props) {
     setSelectedTemplate(null);
     setParseResult(null);
     setSelectedRows(new Set());
+    setDateOffset(false);
   };
 
   const handleToggleRow = (rowIndex: number) => {
@@ -384,6 +389,22 @@ export function ImportModal({ accounts, categories }: Props) {
                         onChange={(e) => setDueDate(e.target.value)}
                       />
                     </Field>
+                    <div className="flex items-start gap-3 pt-2">
+                      <Checkbox
+                        id="dateOffset"
+                        checked={dateOffset}
+                        onCheckedChange={(checked) => setDateOffset(checked === true)}
+                      />
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="dateOffset"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {t('dateOffsetLabel')}
+                        </label>
+                        <p className="text-xs text-muted-foreground">{t('dateOffsetDescription')}</p>
+                      </div>
+                    </div>
                   </>
                 )}
               </FieldGroup>

@@ -30,7 +30,7 @@ export function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
           <div className="text-3xl font-bold">{formatCurrency(netSpent)}</div>
           {replenished > 0 && (
             <div className="text-xs text-gray-500 mt-1">
-              {tBudgets('spent')}: {formatCurrency(spent)} • {tBudgets('replenished')}: -{formatCurrency(replenished)}
+              {tBudgets('replenished')}: -{formatCurrency(replenished)}
             </div>
           )}
         </div>
@@ -47,9 +47,8 @@ export function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
             {noBudget ? t('unbudgeted') : isOverBudget ? t('overBudget') : t('remaining')}
           </div>
           <div
-            className={`text-2xl font-semibold ${
-              noBudget ? 'text-gray-600' : isOverBudget ? 'text-red-600' : 'text-green-600'
-            }`}
+            className={`text-2xl font-semibold ${noBudget ? 'text-gray-600' : isOverBudget ? 'text-red-600' : 'text-green-600'
+              }`}
           >
             {formatCurrency(Math.abs(remaining))}
           </div>
@@ -58,13 +57,12 @@ export function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
         <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
           <div
             data-slot="progress-bar"
-            className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${
-              isOverBudget
-                ? 'bg-red-500'
-                : percentage >= 80
+            className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${isOverBudget
+              ? 'bg-red-500'
+              : percentage >= 80
                 ? 'bg-yellow-500'
                 : 'bg-green-500'
-            }`}
+              }`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
         </div>

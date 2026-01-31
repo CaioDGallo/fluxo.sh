@@ -190,6 +190,7 @@ type ImportExpenseData = {
   rows: ValidatedImportRow[];
   accountId: number;
   categoryId: number;
+  dateOffset?: boolean; // Subtract 1 day from purchase dates (for credit card async processing)
 };
 
 type ImportResult =
@@ -203,7 +204,7 @@ type ImportResult =
   };
 
 export async function importExpenses(data: ImportExpenseData): Promise<ImportResult> {
-  const { rows, accountId, categoryId } = data;
+  const { rows, accountId, categoryId, dateOffset } = data;
 
   if (rows.length === 0) {
     return { success: false, error: await t('errors.noValidRows') };
@@ -277,20 +278,25 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
       }> = [];
 
       for (const row of rows) {
+        // Apply date offset if enabled (for credit card async processing)
+        const purchaseDateStr = dateOffset
+          ? new Date(new Date(row.date + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          : row.date;
+
         // Calculate fatura month and due date based on account type
         let faturaMonth: string;
         let dueDate: string;
 
         if (hasBillingConfig) {
           // Credit card with billing config: compute fatura month and due date
-          const purchaseDate = new Date(row.date + 'T00:00:00Z');
+          const purchaseDate = new Date(purchaseDateStr + 'T00:00:00Z');
           faturaMonth = getFaturaMonth(purchaseDate, account[0].closingDay!);
           dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
           affectedFaturas.add(faturaMonth);
         } else {
           // Non-credit card or card without config: fatura = purchase month
-          faturaMonth = row.date.slice(0, 7);
-          dueDate = row.date;
+          faturaMonth = purchaseDateStr.slice(0, 7);
+          dueDate = purchaseDateStr;
         }
 
         transactionValues.push({
@@ -303,7 +309,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
 
         entryMetadata.push({
           amountCents: row.amountCents,
-          purchaseDate: row.date,
+          purchaseDate: purchaseDateStr,
           faturaMonth,
           dueDate,
         });
@@ -419,6 +425,7 @@ type ImportMixedData = {
   accountId: number;
   categoryOverrides?: Record<number, number>;
   faturaOverrides?: { startDate?: string; closingDate?: string; dueDate?: string };
+  dateOffset?: boolean; // Subtract 1 day from purchase dates (for credit card async processing)
 };
 
 type ImportMixedResult =
@@ -527,7 +534,8 @@ async function processInstallmentGroup(
   expenseCategoryId: number,
   affectedFaturas: Set<string>,
   newlyCreatedTransactionIds: Set<number>,
-  ofxClosingDate?: string
+  ofxClosingDate?: string,
+  dateOffset?: boolean
 ) {
   // All rows in group have same baseDescription and total
   const firstRow = rows[0];
@@ -615,7 +623,7 @@ async function processInstallmentGroup(
   }
 
   // Create entries for each installment
-  const baseDate = calculateBasePurchaseDate(rows);
+  const baseDate = calculateBasePurchaseDate(rows, dateOffset);
 
   // Calculate base fatura month for installments
   // For OFX imports with historic installments, work backwards from OFX fatura month
@@ -697,7 +705,7 @@ async function processInstallmentGroup(
 }
 
 export async function importMixed(data: ImportMixedData): Promise<ImportMixedResult> {
-  const { rows, accountId, categoryOverrides = {}, faturaOverrides } = data;
+  const { rows, accountId, categoryOverrides = {}, faturaOverrides, dateOffset } = data;
 
   if (rows.length === 0) {
     return { success: false, error: await t('errors.noValidRows') };
@@ -893,7 +901,8 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
           expenseCategoryId,
           affectedFaturas,
           newlyCreatedTransactionIds,
-          faturaOverrides?.closingDate
+          faturaOverrides?.closingDate,
+          dateOffset
         );
       }
 
@@ -917,11 +926,16 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
         for (const row of regularExpenses) {
           const categoryId = categoryOverrides[row.rowIndex] ?? expenseCategoryId;
 
+          // Apply date offset if enabled (for credit card async processing)
+          const purchaseDateStr = dateOffset
+            ? new Date(new Date(row.date + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            : row.date;
+
           let faturaMonth: string;
           let dueDate: string;
 
           if (hasBillingConfig) {
-            const purchaseDate = new Date(row.date + 'T00:00:00Z');
+            const purchaseDate = new Date(purchaseDateStr + 'T00:00:00Z');
 
             // Use OFX closing date if provided, otherwise use account's closing day
             if (faturaOverrides?.closingDate) {
@@ -934,8 +948,8 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
             dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
             affectedFaturas.add(faturaMonth);
           } else {
-            faturaMonth = row.date.slice(0, 7);
-            dueDate = row.date;
+            faturaMonth = purchaseDateStr.slice(0, 7);
+            dueDate = purchaseDateStr;
           }
 
           transactionValues.push({
@@ -949,7 +963,7 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
 
           entryMetadata.push({
             amountCents: row.amountCents,
-            purchaseDate: row.date,
+            purchaseDate: purchaseDateStr,
             faturaMonth,
             dueDate,
           });

@@ -37,7 +37,7 @@ export const getBudgetsForMonth = cache(async (yearMonth: string) => {
               eq(budgets.userId, userId)
             )
           )
-          .where(eq(categories.userId, userId))
+          .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')))
           .orderBy(categories.name);
 
         return result;
@@ -69,6 +69,19 @@ export async function upsertBudget(
 
   try {
     const userId = await getCurrentUserId();
+    const category = await db
+      .select({ type: categories.type })
+      .from(categories)
+      .where(and(eq(categories.userId, userId), eq(categories.id, categoryId)))
+      .limit(1);
+
+    if (category.length === 0) {
+      throw new Error('errors.categoryNotFound');
+    }
+
+    if (category[0].type !== 'expense') {
+      throw new Error('errors.invalidCategoryId');
+    }
     const existing = await db
       .select()
       .from(budgets)
@@ -306,7 +319,12 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       })
       .from(budgets)
       .innerJoin(categories, eq(budgets.categoryId, categories.id))
-      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, yearMonth)))
+      .where(and(
+        eq(budgets.userId, userId),
+        eq(budgets.yearMonth, yearMonth),
+        eq(categories.userId, userId),
+        eq(categories.type, 'expense')
+      ))
       .orderBy(categories.name);
 
     // 2. Get spending by category for the month (using purchaseDate for budget impact)
@@ -434,7 +452,13 @@ export async function copyBudgetsFromMonth(
         amount: budgets.amount,
       })
       .from(budgets)
-      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, sourceMonth)));
+      .innerJoin(categories, eq(budgets.categoryId, categories.id))
+      .where(and(
+        eq(budgets.userId, userId),
+        eq(budgets.yearMonth, sourceMonth),
+        eq(categories.userId, userId),
+        eq(categories.type, 'expense')
+      ));
 
     if (sourceBudgets.length === 0) {
       return { copied: 0, skipped: 0, total: 0, monthlyBudgetCopied: false };
@@ -444,7 +468,13 @@ export async function copyBudgetsFromMonth(
     const existingBudgets = await db
       .select({ categoryId: budgets.categoryId })
       .from(budgets)
-      .where(and(eq(budgets.userId, userId), eq(budgets.yearMonth, targetMonth)));
+      .innerJoin(categories, eq(budgets.categoryId, categories.id))
+      .where(and(
+        eq(budgets.userId, userId),
+        eq(budgets.yearMonth, targetMonth),
+        eq(categories.userId, userId),
+        eq(categories.type, 'expense')
+      ));
 
     const existingCategoryIds = new Set(existingBudgets.map((b) => b.categoryId));
 

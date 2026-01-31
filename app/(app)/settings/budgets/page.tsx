@@ -28,7 +28,7 @@ export default async function BudgetsPage({
       </OnboardingTooltip>
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 items-center justify-between">
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <h1 className="text-2xl font-bold text-balance">{t('title')}</h1>
           <MonthPicker currentMonth={yearMonth} />
         </div>
         <CopyBudgetsButton currentMonth={yearMonth} />

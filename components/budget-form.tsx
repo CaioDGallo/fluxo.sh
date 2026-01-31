@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { upsertBudget, upsertMonthlyBudget } from '@/lib/actions/budgets';
 import { centsToDisplay } from '@/lib/utils';
@@ -9,6 +10,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CategoryIcon } from '@/components/icon-picker';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Loading03Icon } from '@hugeicons/core-free-icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 type BudgetRow = {
   categoryId: number;
@@ -27,42 +32,42 @@ type BudgetFormProps = {
 export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProps) {
   const t = useTranslations('budgets');
   const tErrors = useTranslations('errors');
-  const [values, setValues] = useState<Record<number, number>>(
-    Object.fromEntries(
-      budgets.map((b) => [
-        b.categoryId,
-        b.budgetAmount ?? 0,
-      ])
-    )
+  const tCommon = useTranslations('common');
+
+  const computedInitialValues = useMemo(
+    () => Object.fromEntries(budgets.map((budget) => [budget.categoryId, budget.budgetAmount ?? 0])),
+    [budgets]
   );
-  const [totalBudgetCents, setTotalBudgetCents] = useState<number>(
-    monthlyBudget ?? 0
-  );
+
+  const [initialValues, setInitialValues] = useState<Record<number, number>>(computedInitialValues);
+  const [initialTotalBudget, setInitialTotalBudget] = useState<number>(monthlyBudget ?? 0);
+  const [values, setValues] = useState<Record<number, number>>(computedInitialValues);
+  const [totalBudgetCents, setTotalBudgetCents] = useState<number>(monthlyBudget ?? 0);
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [totalBudgetError, setTotalBudgetError] = useState<string>('');
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [savingTotal, setSavingTotal] = useState<boolean>(false);
+  const [saveFeedback, setSaveFeedback] = useState<'idle' | 'saved'>('idle');
+  const [query, setQuery] = useState('');
+  const [hideZero, setHideZero] = useState(false);
 
-  async function handleBlur(categoryId: number, cents: number) {
-    setSavingIds((prev) => new Set(prev).add(categoryId));
-    try {
-      await upsertBudget(categoryId, yearMonth, cents);
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[categoryId];
-        return next;
-      });
-    } catch (error) {
-      setErrors((prev) => ({ ...prev, [categoryId]: tErrors('failedToSave') }));
-      console.error('Budget save error:', error);
-    } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(categoryId);
-        return next;
-      });
+  useEffect(() => {
+    setInitialValues(computedInitialValues);
+    setInitialTotalBudget(monthlyBudget ?? 0);
+    setValues(computedInitialValues);
+    setTotalBudgetCents(monthlyBudget ?? 0);
+    setErrors({});
+    setTotalBudgetError('');
+    setSavingIds(new Set());
+    setSavingTotal(false);
+    setSaveFeedback('idle');
+  }, [computedInitialValues, monthlyBudget, yearMonth]);
+
+  useEffect(() => {
+    if (saveFeedback !== 'idle') {
+      setSaveFeedback('idle');
     }
-  }
+  }, [values, totalBudgetCents, saveFeedback]);
 
   function handleChange(categoryId: number, cents: number) {
     setValues((prev) => ({ ...prev, [categoryId]: cents }));
@@ -75,23 +80,108 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     }
   }
 
-  async function handleTotalBudgetBlur(cents: number) {
-    setSavingTotal(true);
-    try {
-      await upsertMonthlyBudget(yearMonth, cents);
-      setTotalBudgetError('');
-    } catch (error) {
-      setTotalBudgetError(tErrors('failedToSave'));
-      console.error('Monthly budget save error:', error);
-    } finally {
-      setSavingTotal(false);
-    }
-  }
-
   function handleTotalBudgetChange(cents: number) {
     setTotalBudgetCents(cents);
     if (totalBudgetError) {
       setTotalBudgetError('');
+    }
+  }
+
+  const isSaving = savingTotal || savingIds.size > 0;
+
+  const isDirty = useMemo(() => {
+    if (totalBudgetCents !== initialTotalBudget) return true;
+
+    return budgets.some((budget) =>
+      (values[budget.categoryId] ?? 0) !== (initialValues[budget.categoryId] ?? 0)
+    );
+  }, [budgets, initialValues, initialTotalBudget, totalBudgetCents, values]);
+
+  const filteredBudgets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return budgets.filter((budget) => {
+      const amount = values[budget.categoryId] ?? 0;
+
+      if (hideZero && amount === 0) return false;
+      if (normalizedQuery && !budget.categoryName.toLowerCase().includes(normalizedQuery)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [budgets, hideZero, query, values]);
+
+  async function handleSave() {
+    if (isSaving || !isDirty) return;
+
+    setSaveFeedback('idle');
+    setTotalBudgetError('');
+
+    const changedBudgets = budgets.filter((budget) =>
+      (values[budget.categoryId] ?? 0) !== (initialValues[budget.categoryId] ?? 0)
+    );
+    const monthlyChanged = totalBudgetCents !== initialTotalBudget;
+    const nextErrors = { ...errors };
+    const savingSet = new Set(changedBudgets.map((budget) => budget.categoryId));
+    const successfulBudgetIds = new Set<number>();
+
+    changedBudgets.forEach((budget) => {
+      delete nextErrors[budget.categoryId];
+    });
+
+    setSavingIds(savingSet);
+    setSavingTotal(monthlyChanged);
+
+    await Promise.all(
+      changedBudgets.map(async (budget) => {
+        try {
+          await upsertBudget(budget.categoryId, yearMonth, values[budget.categoryId] ?? 0);
+          successfulBudgetIds.add(budget.categoryId);
+        } catch (error) {
+          nextErrors[budget.categoryId] = tErrors('failedToSave');
+          console.error('Budget save error:', error);
+        }
+      })
+    );
+
+    let nextTotalError = '';
+    let monthlySuccess = false;
+
+    if (monthlyChanged) {
+      try {
+        await upsertMonthlyBudget(yearMonth, totalBudgetCents);
+        monthlySuccess = true;
+      } catch (error) {
+        nextTotalError = tErrors('failedToSave');
+        console.error('Monthly budget save error:', error);
+      }
+    }
+
+    if (successfulBudgetIds.size > 0) {
+      setInitialValues((prev) => {
+        const next = { ...prev };
+
+        successfulBudgetIds.forEach((categoryId) => {
+          next[categoryId] = values[categoryId] ?? 0;
+        });
+
+        return next;
+      });
+    }
+
+    if (monthlySuccess) {
+      setInitialTotalBudget(totalBudgetCents);
+    }
+
+    setErrors(nextErrors);
+    setTotalBudgetError(nextTotalError);
+    setSavingIds(new Set());
+    setSavingTotal(false);
+
+    const hasErrors = Object.keys(nextErrors).length > 0 || nextTotalError;
+    if (!hasErrors) {
+      setSaveFeedback('saved');
     }
   }
 
@@ -115,125 +205,197 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
     return 'text-green-700';
   };
 
+  const statusMessage = isSaving
+    ? tCommon('saving')
+    : isDirty
+      ? t('unsavedChanges')
+      : saveFeedback === 'saved'
+        ? t('saved')
+        : '';
+
+  const statusTone = isSaving
+    ? 'text-muted-foreground'
+    : isDirty
+      ? 'text-yellow-700'
+      : saveFeedback === 'saved'
+        ? 'text-green-700'
+        : 'text-muted-foreground';
+
   return (
     <div className="space-y-4">
-      {/* Total Monthly Budget Input */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold">{t('totalMonthlyBudget')}</span>
-          <div className="flex flex-col items-end gap-1">
-            <div className="relative">
-              <CurrencyInput
-                aria-label={t('totalMonthlyBudget')}
-                value={totalBudgetCents}
-                onChange={handleTotalBudgetChange}
-                onBlur={() => handleTotalBudgetBlur(totalBudgetCents)}
-                placeholder="R$ 0,00"
-                className="w-32 sm:w-40 text-right"
-                disabled={savingTotal}
-              />
-              {savingTotal && (
-                <span className="absolute right-10 top-1/2 -translate-y-1/2">
-                  <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin" aria-hidden="true" />
+      {/* Monthly Budget Summary */}
+      <Card className="py-0">
+        <CardContent className="space-y-3 px-4 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1 md:space-y-0 flex flex-col md:flex-row">
+              <span className="text-sm font-semibold">{t('totalMonthlyBudget')}</span>
+              {statusMessage && (
+                <span className={`ml-0 md:ml-4 text-xs content-center ${statusTone}`} role="status" aria-live="polite">
+                  {statusMessage}
                 </span>
               )}
             </div>
-            {totalBudgetError && (
-              <span className="text-xs text-red-600">{totalBudgetError}</span>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Allocation Progress Bar */}
-      {totalBudgetCents > 0 && (
-        <Card className="p-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className={getTextColor()}>
-                {remainingBudget >= 0
-                  ? t('leftFromBudget', {
-                      remaining: centsToDisplay(remainingBudget),
-                      total: centsToDisplay(totalBudgetCents),
-                    })
-                  : t('overBudget', {
-                      over: centsToDisplay(Math.abs(remainingBudget)),
-                      total: centsToDisplay(totalBudgetCents),
-                    })}
-              </span>
-              <span className={getTextColor()}>
-                {t('percentAllocated', { percent: allocationPercentage.toFixed(1) })}
-              </span>
-            </div>
-            <div
-              role="progressbar"
-              aria-valuenow={Math.round(allocationPercentage)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={
-                remainingBudget >= 0
-                  ? t('leftFromBudget', {
-                      remaining: centsToDisplay(remainingBudget),
-                      total: centsToDisplay(totalBudgetCents),
-                    })
-                  : t('overBudget', {
-                      over: centsToDisplay(Math.abs(remainingBudget)),
-                      total: centsToDisplay(totalBudgetCents),
-                    })
-              }
-              className="h-2 w-full overflow-hidden rounded-full bg-muted"
-            >
-              <div
-                className={`h-full transition-all ${getBarColor()}`}
-                style={{ width: `${Math.min(allocationPercentage, 100)}%` }}
-              />
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Category Budgets */}
-      {budgets.map((budget) => (
-        <Card key={budget.categoryId} className="py-0">
-          <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
-            {/* Category icon */}
-            <div
-              className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
-              style={{ backgroundColor: budget.categoryColor }}
-            >
-              <CategoryIcon icon={budget.categoryIcon} />
-            </div>
-
-            {/* Category name */}
-            <div className="flex-1 min-w-0">
-              <span className="font-medium text-sm truncate block">{budget.categoryName}</span>
-            </div>
-
-            {/* Budget input */}
-            <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
                 <CurrencyInput
-                  aria-label={budget.categoryName}
-                  value={values[budget.categoryId] || 0}
-                  onChange={(cents) => handleChange(budget.categoryId, cents)}
-                  onBlur={() => handleBlur(budget.categoryId, values[budget.categoryId] || 0)}
-                  placeholder="R$ 0,00"
-                  className="w-32 sm:w-40 text-right"
-                  disabled={savingIds.has(budget.categoryId)}
+                  aria-label={t('totalMonthlyBudget')}
+                  name="monthly-budget"
+                  value={totalBudgetCents}
+                  onChange={handleTotalBudgetChange}
+                  className="w-32 sm:w-40 text-right tabular-nums"
+                  disabled={isSaving}
                 />
-                {savingIds.has(budget.categoryId) && (
+                {savingTotal && (
                   <span className="absolute right-10 top-1/2 -translate-y-1/2">
                     <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin" aria-hidden="true" />
                   </span>
                 )}
               </div>
-              {errors[budget.categoryId] && (
-                <span className="text-xs text-red-600">{errors[budget.categoryId]}</span>
-              )}
+              <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+                {isSaving ? tCommon('saving') : t('saveChanges')}
+              </Button>
             </div>
+          </div>
+          {totalBudgetError && (
+            <span className="text-xs text-red-600">{totalBudgetError}</span>
+          )}
+          {totalBudgetCents > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className={getTextColor()}>
+                  {remainingBudget >= 0
+                    ? t('leftFromBudget', {
+                      remaining: centsToDisplay(remainingBudget),
+                      total: centsToDisplay(totalBudgetCents),
+                    })
+                    : t('overBudget', {
+                      over: centsToDisplay(Math.abs(remainingBudget)),
+                      total: centsToDisplay(totalBudgetCents),
+                    })}
+                </span>
+                <span className={`${getTextColor()} tabular-nums`}>
+                  {t('percentAllocated', { percent: allocationPercentage.toFixed(1) })}
+                </span>
+              </div>
+              <div
+                role="progressbar"
+                aria-valuenow={Math.min(Math.round(allocationPercentage), 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={
+                  remainingBudget >= 0
+                    ? t('leftFromBudget', {
+                      remaining: centsToDisplay(remainingBudget),
+                      total: centsToDisplay(totalBudgetCents),
+                    })
+                    : t('overBudget', {
+                      over: centsToDisplay(Math.abs(remainingBudget)),
+                      total: centsToDisplay(totalBudgetCents),
+                    })
+                }
+                className="h-2 w-full overflow-hidden rounded-full bg-muted"
+              >
+                <div
+                  className={`h-full transition-[width] duration-300 ease-out ${getBarColor()}`}
+                  style={{ width: `${Math.min(allocationPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {budgets.length === 0 ? (
+        <Card className="py-0">
+          <CardContent className="space-y-3 px-4 py-4">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-balance">{t('noExpenseCategories')}</h2>
+              <p className="text-xs text-muted-foreground">
+                {t('noExpenseCategoriesDescription')}
+              </p>
+            </div>
+            <Button asChild variant="hollow">
+              <Link href="/settings/categories">{t('addExpenseCategory')}</Link>
+            </Button>
           </CardContent>
         </Card>
-      ))}
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full sm:max-w-xs">
+              <Label htmlFor="budget-search" className="sr-only">
+                {t('searchPlaceholder')}
+              </Label>
+              <Input
+                id="budget-search"
+                name="budget-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t('searchPlaceholder')}
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hide-zero"
+                checked={hideZero}
+                onCheckedChange={(checked) => setHideZero(checked === true)}
+              />
+              <Label htmlFor="hide-zero">{t('hideZeroBudgets')}</Label>
+            </div>
+          </div>
+
+          {/* Category Budgets */}
+          {filteredBudgets.length === 0 ? (
+            <div className="rounded-none border border-dashed p-6 text-center text-xs text-muted-foreground">
+              {t('noResults')}
+            </div>
+          ) : (
+            filteredBudgets.map((budget) => (
+              <Card key={budget.categoryId} className="py-0">
+                <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
+                  {/* Category icon */}
+                  <div
+                    className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
+                    style={{ backgroundColor: budget.categoryColor }}
+                  >
+                    <CategoryIcon icon={budget.categoryIcon} />
+                  </div>
+
+                  {/* Category name */}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm truncate block">{budget.categoryName}</span>
+                  </div>
+
+                  {/* Budget input */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="relative">
+                      <CurrencyInput
+                        aria-label={budget.categoryName}
+                        name={`budget-${budget.categoryId}`}
+                        value={values[budget.categoryId] ?? 0}
+                        onChange={(cents) => handleChange(budget.categoryId, cents)}
+                        className="w-32 sm:w-40 text-right tabular-nums"
+                        disabled={isSaving}
+                      />
+                      {savingIds.has(budget.categoryId) && (
+                        <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                          <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin" aria-hidden="true" />
+                        </span>
+                      )}
+                    </div>
+                    {errors[budget.categoryId] && (
+                      <span className="text-xs text-red-600">{errors[budget.categoryId]}</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -30,7 +30,7 @@ export default async function DashboardPage({
   const hasNoBudgets = data.categoryBreakdown.length === 0;
 
   return (
-    <div>
+    <div className="min-w-0">
       <PWARedirectHandler />
 
         <OnboardingTooltip hintKey="dashboard" className="mb-4">
@@ -60,7 +60,7 @@ export default async function DashboardPage({
         ) : (
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Left column - Summary */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               <BalanceSummary
                 income={data.totalIncome}
                 expenses={data.totalSpent}
@@ -84,7 +84,7 @@ export default async function DashboardPage({
             </div>
 
             {/* Right column - Category breakdown */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 min-w-0">
               <h2 className="mb-4 text-lg font-semibold text-balance">{t('budgetByCategory')}</h2>
               <div className="space-y-4">
                 {data.categoryBreakdown.map((category) => (

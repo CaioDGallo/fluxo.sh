@@ -300,7 +300,10 @@
     "addBudget": "Definir orçamento",
     "spent": "Gasto",
     "replenished": "Reposto",
-    "netSpent": "Gasto Líquido"
+    "netSpent": "Gasto Líquido",
+    "remaining": "Restante",
+    "nearLimit": "No limite",
+    "overBudgetLabel": "Acima do orçamento"
   },
   "form": {
     "amount": "Valor",

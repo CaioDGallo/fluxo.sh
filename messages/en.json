@@ -291,7 +291,13 @@
     "copiedBudgetsPartial": "Copied {copied} budgets ({skipped} already existed)",
     "failedToCopy": "Failed to copy budgets. Please try again.",
     "expensesWithoutBudget": "Expenses without budget",
-    "addBudget": "Add budget"
+    "addBudget": "Add budget",
+    "spent": "Spent",
+    "replenished": "Replenished",
+    "netSpent": "Net Spent",
+    "remaining": "Remaining",
+    "nearLimit": "Near limit",
+    "overBudgetLabel": "Over budget"
   },
   "form": {
     "amount": "Amount",

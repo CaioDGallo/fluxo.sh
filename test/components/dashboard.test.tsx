@@ -42,6 +42,14 @@ vi.mock('next-intl', () => ({
         noExpenses: 'No expenses this month yet',
         viewAll: 'View all',
       },
+      budgets: {
+        spent: 'Spent',
+        replenished: 'Replenished',
+        netSpent: 'Net Spent',
+        remaining: 'Remaining',
+        nearLimit: 'Near limit',
+        overBudgetLabel: 'Over budget',
+      },
       common: {
         previousMonth: 'Previous month',
         nextMonth: 'Next month',
@@ -336,7 +344,7 @@ describe('Dashboard Components', () => {
 
   describe('BudgetProgress Component', () => {
     describe('Display Tests', () => {
-      it('shows category name, icon, spent, budget, and percentage', () => {
+      it('shows category name, remaining, and spent/budget', () => {
         render(
           <BudgetProgress replenished={0}
             categoryName="Food"
@@ -348,8 +356,8 @@ describe('Dashboard Components', () => {
         );
 
         expect(screen.getByText('Food')).toBeInTheDocument();
-        expect(screen.getByText(/R\$\s*300,00\s*\/\s*R\$\s*500,00/)).toBeInTheDocument();
-        expect(screen.getByText('60%')).toBeInTheDocument();
+        expect(screen.getByText(/Remaining:\s*R\$\s*200,00/)).toBeInTheDocument();
+        expect(screen.getByText(/Spent:\s*R\$\s*300,00\s*\/\s*R\$\s*500,00/)).toBeInTheDocument();
       });
 
       it('applies category color to icon background', () => {
@@ -425,15 +433,14 @@ describe('Dashboard Components', () => {
           />
         );
 
-        // With budget=0, percentage should be 0
-        expect(screen.getByText('0%')).toBeInTheDocument();
-
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '0%');
+
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
       it('handles spent=0 with budget>0', () => {
-        render(
+        const { container } = render(
           <BudgetProgress replenished={0}
             categoryName="Food"
             categoryColor="#ef4444"
@@ -443,11 +450,12 @@ describe('Dashboard Components', () => {
           />
         );
 
-        expect(screen.getByText('0%')).toBeInTheDocument();
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '0%');
       });
 
       it('handles spent=budget (100%)', () => {
-        render(
+        const { container } = render(
           <BudgetProgress replenished={0}
             categoryName="Food"
             categoryColor="#ef4444"
@@ -457,7 +465,8 @@ describe('Dashboard Components', () => {
           />
         );
 
-        expect(screen.getByText('100%')).toBeInTheDocument();
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '100%');
       });
 
       it('handles spent>budget (over 100%)', () => {
@@ -471,10 +480,8 @@ describe('Dashboard Components', () => {
           />
         );
 
-        expect(screen.getByText('150%')).toBeInTheDocument();
-
-        // Progress bar should be capped at 100%
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '150%');
         expect(progressBar).toHaveStyle({ width: '100%' });
       });
 
@@ -493,7 +500,7 @@ describe('Dashboard Components', () => {
       });
 
       it('rounds percentage correctly (49.5%)', () => {
-        render(
+        const { container } = render(
           <BudgetProgress replenished={0}
             categoryName="Food"
             categoryColor="#ef4444"
@@ -503,12 +510,12 @@ describe('Dashboard Components', () => {
           />
         );
 
-        // 49.5% should round to 50%
-        expect(screen.getByText('50%')).toBeInTheDocument();
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '50%');
       });
 
       it('rounds percentage correctly (49.4%)', () => {
-        render(
+        const { container } = render(
           <BudgetProgress replenished={0}
             categoryName="Food"
             categoryColor="#ef4444"
@@ -518,8 +525,8 @@ describe('Dashboard Components', () => {
           />
         );
 
-        // 49.4% should round to 49%
-        expect(screen.getByText('49%')).toBeInTheDocument();
+        const progressBar = container.querySelector('[data-slot="progress-bar"]');
+        expect(progressBar).toHaveAttribute('aria-valuetext', '49%');
       });
     });
   });

@@ -35,7 +35,7 @@ export function CategoryBucketGroup({
         >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Bucket icon */}
-            <div className={`p-2 rounded-none ${config.bgColor} shrink-0`}>
+            <div className={`p-2 rounded-none shrink-0`}>
               <HugeiconsIcon icon={Icon} className={config.color} size={18} />
             </div>
 

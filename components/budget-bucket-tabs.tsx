@@ -39,7 +39,7 @@ export function BudgetBucketTabs() {
             onClick={() => setBucket(value)}
             className={cn(
               'flex items-center justify-center gap-2 rounded-none border-2 border-black p-3 text-sm font-bold',
-              'transition-all min-h-[44px]',
+              'transition-all min-h-12',
               'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]',
               'hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none',
               'active:translate-x-0.5 active:translate-y-0.5 active:shadow-none',

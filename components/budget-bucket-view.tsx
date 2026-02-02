@@ -48,7 +48,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
         aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-3">
-          <div className={cn('p-2 rounded-none', config.bgColor)}>
+          <div className={cn('p-2 rounded-none')}>
             <HugeiconsIcon icon={Icon} className={config.color} size={20} />
           </div>
           <div className="text-left">

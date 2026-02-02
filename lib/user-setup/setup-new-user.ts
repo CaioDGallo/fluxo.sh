@@ -4,7 +4,7 @@ import { sendEmail } from '@/lib/email/send';
 import { generateWelcomeHtml, generateWelcomeText } from '@/lib/email/welcome-template';
 import { type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
-import { accounts, categories, userSettings } from '@/lib/schema';
+import { accounts, categories, userSettings, budgetConfig } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_ACCOUNTS } from './default-accounts';
 import { DEFAULT_CATEGORIES } from './default-categories';
@@ -13,6 +13,7 @@ export interface SetupNewUserResult {
   success: boolean;
   categoriesCreated: number;
   accountsCreated: number;
+  budgetConfigCreated: boolean;
   emailSent: boolean;
   error?: string;
 }
@@ -38,6 +39,7 @@ export async function setupNewUser(
         success: false,
         categoriesCreated: 0,
         accountsCreated: 0,
+        budgetConfigCreated: false,
         emailSent: false,
         error: 'User not found',
       };
@@ -57,6 +59,7 @@ export async function setupNewUser(
         success: false,
         categoriesCreated: 0,
         accountsCreated: 0,
+        budgetConfigCreated: false,
         emailSent: false,
         error: 'Failed to create default categories',
       };
@@ -76,12 +79,29 @@ export async function setupNewUser(
         success: false,
         categoriesCreated: categoryRecords.length,
         accountsCreated: 0,
+        budgetConfigCreated: false,
         emailSent: false,
         error: 'Failed to create default accounts',
       };
     }
 
-    // 4. Create user settings (timezone: America/Sao_Paulo, locale: pt-BR)
+    // 4. Create default budget config (50/30/20 "na risca" preset)
+    let budgetConfigCreated = false;
+    try {
+      await db.insert(budgetConfig).values({
+        userId,
+        preset: 'na_risca', // 50% necessities, 30% wants, 20% savings
+        customNecessities: null,
+        customWants: null,
+        customSavings: null,
+      });
+      budgetConfigCreated = true;
+    } catch (error) {
+      console.error('[setup-new-user] Budget config creation failed (non-critical):', error);
+      // Non-critical - continue
+    }
+
+    // 5. Create user settings (timezone: America/Sao_Paulo, locale: pt-BR)
     try {
       await db.insert(userSettings).values({
         userId,
@@ -97,7 +117,7 @@ export async function setupNewUser(
       // Non-critical - continue
     }
 
-    // 5. Send welcome email (non-blocking, log failures)
+    // 6. Send welcome email (non-blocking, log failures)
     let emailSent = false;
 
     if (!options?.skipEmail) {
@@ -136,6 +156,7 @@ export async function setupNewUser(
       success: true,
       categoriesCreated: categoryRecords.length,
       accountsCreated: accountRecords.length,
+      budgetConfigCreated,
       emailSent,
     };
   } catch (error) {
@@ -144,6 +165,7 @@ export async function setupNewUser(
       success: false,
       categoriesCreated: 0,
       accountsCreated: 0,
+      budgetConfigCreated: false,
       emailSent: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };

@@ -66,7 +66,7 @@ export function FABSpeedDial() {
           <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
             {/* Income Button */}
             <div className="flex items-center gap-3 group">
-              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-full px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-none px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                 {t('income')}
               </span>
               <Button
@@ -77,7 +77,7 @@ export function FABSpeedDial() {
                 disabled={isLoading}
                 aria-label={t('income')}
                 className={cn(
-                  'rounded-full bg-green-500 text-white hover:bg-green-600 border-2 border-black',
+                  'rounded-none bg-green-500 text-white hover:bg-green-600 border-2 border-black',
                   isLoading && 'opacity-50 pointer-events-none'
                 )}
               >
@@ -87,7 +87,7 @@ export function FABSpeedDial() {
 
             {/* Expense Button */}
             <div className="flex items-center gap-3 group">
-              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-full px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-none px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                 {t('expense')}
               </span>
               <Button
@@ -98,7 +98,7 @@ export function FABSpeedDial() {
                 disabled={isLoading}
                 aria-label={t('expense')}
                 className={cn(
-                  'rounded-full bg-red-500 text-white hover:bg-red-600 border-2 border-black',
+                  'rounded-none bg-red-500 text-white hover:bg-red-600 border-2 border-black',
                   isLoading && 'opacity-50 pointer-events-none'
                 )}
               >
@@ -117,7 +117,7 @@ export function FABSpeedDial() {
           aria-expanded={isExpanded}
           aria-label={isExpanded ? t('close') : t('addTransaction')}
           className={cn(
-            'rounded-full size-14 transition-transform duration-200',
+            'rounded-none size-14 transition-transform duration-200',
             isExpanded && 'rotate-45'
           )}
         >

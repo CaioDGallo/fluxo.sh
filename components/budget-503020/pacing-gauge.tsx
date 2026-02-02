@@ -29,7 +29,7 @@ const ZONES = [
     endPercent: 90,
     startAngle: 225,      // Bottom-left (7 o'clock)
     endAngle: 346.5,      // Approaching top from left (wraps to -13.5°)
-    lightColor: '#3b82f6', // blue-500
+    lightColor: '#60a5fa', // blue-400
     darkColor: '#60a5fa',  // blue-400
     label: 'Economizando',
   },
@@ -39,7 +39,7 @@ const ZONES = [
     endPercent: 110,
     startAngle: 346.5,    // Approaching top
     endAngle: 373.5,      // Just past top (wraps to 13.5°)
-    lightColor: '#22c55e', // green-500
+    lightColor: '#4ade80', // green-400
     darkColor: '#4ade80',  // green-400
     label: 'No ritmo',
   },
@@ -49,7 +49,7 @@ const ZONES = [
     endPercent: 130,
     startAngle: 373.5,    // Past top (wraps to 13.5°)
     endAngle: 400.5,      // Upper right (wraps to 40.5°)
-    lightColor: '#f97316', // orange-500
+    lightColor: '#fb923c', // orange-400
     darkColor: '#fb923c',  // orange-400
     label: 'Atenção',
   },
@@ -59,7 +59,7 @@ const ZONES = [
     endPercent: 200,
     startAngle: 400.5,    // Upper right (wraps to 40.5°)
     endAngle: 495,        // Bottom-right (5 o'clock, wraps to 135°)
-    lightColor: '#ef4444', // red-500
+    lightColor: '#f87171', // red-400
     darkColor: '#f87171',  // red-400
     label: 'Acima',
   },
@@ -182,7 +182,7 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                     fill="var(--zone-color)"
                     className="dark:hidden"
                     style={{ '--zone-color': zone.lightColor } as React.CSSProperties}
-                    opacity={0.2}
+                    opacity={0.8}
                   />
                 ))}
                 {ZONES.map((zone) => (
@@ -192,7 +192,7 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                     fill="var(--zone-color)"
                     className="hidden dark:block"
                     style={{ '--zone-color': zone.darkColor } as React.CSSProperties}
-                    opacity={0.2}
+                    opacity={0.8}
                   />
                 ))}
               </g>

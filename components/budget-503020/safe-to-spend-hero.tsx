@@ -1,31 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { centsToDisplay } from '@/lib/utils';
 import type { SafeToSpendData } from '@/lib/actions/budget-503020';
+import { PACING_CONFIG } from '@/lib/budget-503020-config';
 
 interface SafeToSpendHeroProps {
   data: SafeToSpendData;
 }
-
-const PACING_CONFIG = {
-  on_track: {
-    label: 'No ritmo',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    barColor: 'bg-green-500',
-  },
-  over_pace: {
-    label: 'Gastando rápido',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
-    barColor: 'bg-orange-500',
-  },
-  under_pace: {
-    label: 'Economizando',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    barColor: 'bg-blue-500',
-  },
-} as const;
 
 export function SafeToSpendHero({ data }: SafeToSpendHeroProps) {
   const wantsBucket = data.buckets.find((b) => b.bucket === 'wants');

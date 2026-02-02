@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -39,6 +40,7 @@ const PRESETS = [
 ] as const;
 
 export function PresetSelector({ currentPreset }: PresetSelectorProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<PresetType>(currentPreset);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +62,7 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
 
       toast.success('Configuração atualizada com sucesso');
       setOpen(false);
-      window.location.reload(); // Reload to fetch new data
+      router.refresh(); // Refresh to fetch new data
     } catch (error) {
       console.error('[PresetSelector] Error:', error);
       toast.error('Erro ao atualizar configuração');

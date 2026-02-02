@@ -1,36 +1,12 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { centsToDisplay } from '@/lib/utils';
-import { Home01Icon, GameController01Icon, PiggyBankIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { BucketData } from '@/lib/actions/budget-503020';
+import { BUCKET_CONFIG } from '@/lib/budget-503020-config';
 
 interface BucketCardProps {
   bucket: BucketData;
 }
-
-const BUCKET_CONFIG = {
-  necessities: {
-    label: 'Necessidades',
-    icon: Home01Icon,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    progressColor: 'bg-blue-500',
-  },
-  wants: {
-    label: 'Desejos',
-    icon: GameController01Icon,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    progressColor: 'bg-purple-500',
-  },
-  savings: {
-    label: 'Poupança',
-    icon: PiggyBankIcon,
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    progressColor: 'bg-green-500',
-  },
-} as const;
 
 export function BucketCard({ bucket }: BucketCardProps) {
   const config = BUCKET_CONFIG[bucket.bucket];

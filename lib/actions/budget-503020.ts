@@ -13,6 +13,9 @@ import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { parseYearMonth } from '@/lib/utils';
+import { logError } from '@/lib/logger';
+import { handleDbError } from '@/lib/db-errors';
+import { guardCrudOperation } from '@/lib/rate-limit-guard';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -53,134 +56,160 @@ export interface SafeToSpendData {
  * Get 50/30/20 budget data for a specific month
  */
 export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeToSpendData> => {
-  const userId = await getCurrentUserId();
+  try {
+    const userId = await getCurrentUserId();
 
-  // Get user's budget config (or use default preset)
-  const [config] = await db
-    .select()
-    .from(budgetConfig)
-    .where(eq(budgetConfig.userId, userId))
-    .limit(1);
+    // Get user's budget config (or use default preset)
+    const [config] = await db
+      .select()
+      .from(budgetConfig)
+      .where(eq(budgetConfig.userId, userId))
+      .limit(1);
 
-  const preset = config?.preset ?? 'na_risca';
-  let percentages: { necessities: number; wants: number; savings: number };
+    const preset = config?.preset ?? 'na_risca';
+    let percentages: { necessities: number; wants: number; savings: number };
 
-  if (preset === 'custom' && config) {
-    percentages = {
-      necessities: config.customNecessities ?? 50,
-      wants: config.customWants ?? 30,
-      savings: config.customSavings ?? 20,
+    if (preset === 'custom' && config) {
+      percentages = {
+        necessities: config.customNecessities ?? 50,
+        wants: config.customWants ?? 30,
+        savings: config.customSavings ?? 20,
+      };
+    } else {
+      percentages = PRESETS[preset as keyof typeof PRESETS];
+    }
+
+    // Get total monthly budget
+    const budgetRows = await db
+      .select({
+        categoryId: budgets.categoryId,
+        amount: budgets.amount,
+        bucket: categories.bucket,
+      })
+      .from(budgets)
+      .innerJoin(categories, eq(budgets.categoryId, categories.id))
+      .where(and(
+        eq(budgets.userId, userId),
+        eq(budgets.yearMonth, yearMonth)
+      ));
+
+    const totalBudget = budgetRows.reduce((sum, row) => sum + row.amount, 0);
+
+    // Get spending by bucket for this month
+    const spendingRows = await db
+      .select({
+        bucket: categories.bucket,
+        totalSpent: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as('total_spent'),
+      })
+      .from(entries)
+      .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(
+        eq(entries.userId, userId),
+        sql`TO_CHAR(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`,
+        eq(transactions.ignored, false)
+      ))
+      .groupBy(categories.bucket);
+
+    // Calculate bucket targets and spent
+    const bucketMap = new Map<BucketType | null, number>();
+    for (const row of spendingRows) {
+      bucketMap.set(row.bucket as BucketType | null, Number(row.totalSpent));
+    }
+
+    // Treat unassigned categories as "wants" (conservative fallback)
+    const unassignedSpent = bucketMap.get(null) ?? 0;
+    const necessitiesSpent = (bucketMap.get('necessities') ?? 0);
+    const wantsSpent = (bucketMap.get('wants') ?? 0) + unassignedSpent;
+    const savingsSpent = bucketMap.get('savings') ?? 0;
+
+    const necessitiesTarget = Math.round(totalBudget * percentages.necessities / 100);
+    const wantsTarget = Math.round(totalBudget * percentages.wants / 100);
+    const savingsTarget = Math.round(totalBudget * percentages.savings / 100);
+
+    const totalSpent = necessitiesSpent + wantsSpent + savingsSpent;
+
+    // Calculate pacing for wants bucket
+    const monthStart = parseYearMonth(yearMonth);
+    const now = new Date();
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+
+    const totalDays = monthEnd.getDate();
+    const currentDay = now.getMonth() === monthStart.getMonth() &&
+                       now.getFullYear() === monthStart.getFullYear()
+                       ? now.getDate()
+                       : monthStart > now
+                         ? 0          // Future month: no days passed
+                         : totalDays; // Past month: all days passed
+    const daysRemaining = Math.max(0, totalDays - currentDay);
+    const daysPassed = currentDay;
+
+    const expectedWantsSpent = daysPassed > 0 ? (wantsTarget * daysPassed) / totalDays : 0;
+    const pacingPercent = expectedWantsSpent > 0 ? (wantsSpent / expectedWantsSpent) * 100 : 0;
+
+    let pacingStatus: 'on_track' | 'over_pace' | 'under_pace' = 'on_track';
+    if (pacingPercent > 110) pacingStatus = 'over_pace';
+    else if (pacingPercent < 90) pacingStatus = 'under_pace';
+
+    const wantsSafeToSpend = Math.max(0, wantsTarget - wantsSpent);
+    const wantsSafeToSpendDaily = daysRemaining > 0 ? Math.round(wantsSafeToSpend / daysRemaining) : 0;
+
+    const buckets: BucketData[] = [
+      {
+        bucket: 'necessities',
+        spent: necessitiesSpent,
+        target: necessitiesTarget,
+        percentage: necessitiesTarget > 0 ? Math.round((necessitiesSpent / necessitiesTarget) * 100) : 0,
+      },
+      {
+        bucket: 'wants',
+        spent: wantsSpent,
+        target: wantsTarget,
+        percentage: wantsTarget > 0 ? Math.round((wantsSpent / wantsTarget) * 100) : 0,
+      },
+      {
+        bucket: 'savings',
+        spent: savingsSpent,
+        target: savingsTarget,
+        percentage: savingsTarget > 0 ? Math.round((savingsSpent / savingsTarget) * 100) : 0,
+      },
+    ];
+
+    return {
+      buckets,
+      wantsSafeToSpend,
+      wantsSafeToSpendDaily,
+      daysRemaining,
+      pacing: {
+        status: pacingStatus,
+        percentageOfExpected: Math.round(pacingPercent),
+      },
+      totalBudget,
+      totalSpent,
     };
-  } else {
-    percentages = PRESETS[preset as keyof typeof PRESETS];
+  } catch (error) {
+    logError(
+      'SAFE_TO_SPEND_CALCULATION_FAILED',
+      'Failed to calculate safe-to-spend data',
+      error,
+      { yearMonth }
+    );
+
+    // Return safe fallback data so dashboard doesn't crash
+    return {
+      buckets: [
+        { bucket: 'necessities', spent: 0, target: 0, percentage: 0 },
+        { bucket: 'wants', spent: 0, target: 0, percentage: 0 },
+        { bucket: 'savings', spent: 0, target: 0, percentage: 0 },
+      ],
+      wantsSafeToSpend: 0,
+      wantsSafeToSpendDaily: 0,
+      daysRemaining: 0,
+      pacing: { status: 'on_track', percentageOfExpected: 0 },
+      totalBudget: 0,
+      totalSpent: 0,
+    };
   }
-
-  // Get total monthly budget
-  const budgetRows = await db
-    .select({
-      categoryId: budgets.categoryId,
-      amount: budgets.amount,
-      bucket: categories.bucket,
-    })
-    .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id))
-    .where(and(
-      eq(budgets.userId, userId),
-      eq(budgets.yearMonth, yearMonth)
-    ));
-
-  const totalBudget = budgetRows.reduce((sum, row) => sum + row.amount, 0);
-
-  // Get spending by bucket for this month
-  const spendingRows = await db
-    .select({
-      bucket: categories.bucket,
-      totalSpent: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as('total_spent'),
-    })
-    .from(entries)
-    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(
-      eq(entries.userId, userId),
-      sql`TO_CHAR(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`,
-      eq(transactions.ignored, false)
-    ))
-    .groupBy(categories.bucket);
-
-  // Calculate bucket targets and spent
-  const bucketMap = new Map<BucketType | null, number>();
-  for (const row of spendingRows) {
-    bucketMap.set(row.bucket as BucketType | null, Number(row.totalSpent));
-  }
-
-  // Treat unassigned categories as "wants" (conservative fallback)
-  const unassignedSpent = bucketMap.get(null) ?? 0;
-  const necessitiesSpent = (bucketMap.get('necessities') ?? 0);
-  const wantsSpent = (bucketMap.get('wants') ?? 0) + unassignedSpent;
-  const savingsSpent = bucketMap.get('savings') ?? 0;
-
-  const necessitiesTarget = Math.round(totalBudget * percentages.necessities / 100);
-  const wantsTarget = Math.round(totalBudget * percentages.wants / 100);
-  const savingsTarget = Math.round(totalBudget * percentages.savings / 100);
-
-  const totalSpent = necessitiesSpent + wantsSpent + savingsSpent;
-
-  // Calculate pacing for wants bucket
-  const monthStart = parseYearMonth(yearMonth);
-  const now = new Date();
-  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-
-  const totalDays = monthEnd.getDate();
-  const currentDay = now.getMonth() === monthStart.getMonth() &&
-                     now.getFullYear() === monthStart.getFullYear()
-                     ? now.getDate()
-                     : totalDays;
-  const daysRemaining = Math.max(0, totalDays - currentDay);
-  const daysPassed = currentDay;
-
-  const expectedWantsSpent = daysPassed > 0 ? (wantsTarget * daysPassed) / totalDays : 0;
-  const pacingPercent = expectedWantsSpent > 0 ? (wantsSpent / expectedWantsSpent) * 100 : 0;
-
-  let pacingStatus: 'on_track' | 'over_pace' | 'under_pace' = 'on_track';
-  if (pacingPercent > 110) pacingStatus = 'over_pace';
-  else if (pacingPercent < 90) pacingStatus = 'under_pace';
-
-  const wantsSafeToSpend = Math.max(0, wantsTarget - wantsSpent);
-  const wantsSafeToSpendDaily = daysRemaining > 0 ? Math.round(wantsSafeToSpend / daysRemaining) : 0;
-
-  const buckets: BucketData[] = [
-    {
-      bucket: 'necessities',
-      spent: necessitiesSpent,
-      target: necessitiesTarget,
-      percentage: necessitiesTarget > 0 ? Math.round((necessitiesSpent / necessitiesTarget) * 100) : 0,
-    },
-    {
-      bucket: 'wants',
-      spent: wantsSpent,
-      target: wantsTarget,
-      percentage: wantsTarget > 0 ? Math.round((wantsSpent / wantsTarget) * 100) : 0,
-    },
-    {
-      bucket: 'savings',
-      spent: savingsSpent,
-      target: savingsTarget,
-      percentage: savingsTarget > 0 ? Math.round((savingsSpent / savingsTarget) * 100) : 0,
-    },
-  ];
-
-  return {
-    buckets,
-    wantsSafeToSpend,
-    wantsSafeToSpendDaily,
-    daysRemaining,
-    pacing: {
-      status: pacingStatus,
-      percentageOfExpected: Math.round(pacingPercent),
-    },
-    totalBudget,
-    totalSpent,
-  };
 });
 
 /**
@@ -191,6 +220,7 @@ export async function updateCategoryBucket(
   bucket: BucketType | null
 ): Promise<ActionResult> {
   try {
+    await guardCrudOperation();
     const userId = await getCurrentUserId();
 
     // Verify category ownership
@@ -218,8 +248,16 @@ export async function updateCategoryBucket(
 
     return { success: true };
   } catch (error) {
-    console.error('[updateCategoryBucket] Error:', error);
-    return { success: false, error: 'Failed to update category bucket' };
+    logError(
+      'BUCKET_UPDATE_FAILED',
+      'Failed to update category bucket assignment',
+      error,
+      { categoryId, bucket }
+    );
+    return {
+      success: false,
+      error: await handleDbError(error, 'errors.failedToUpdateCategoryBucket'),
+    };
   }
 }
 
@@ -246,6 +284,7 @@ export async function updateBudgetConfig(
   customPercentages?: { necessities: number; wants: number; savings: number }
 ): Promise<ActionResult> {
   try {
+    await guardCrudOperation();
     const userId = await getCurrentUserId();
 
     // Validate custom percentages if custom preset
@@ -292,7 +331,15 @@ export async function updateBudgetConfig(
 
     return { success: true };
   } catch (error) {
-    console.error('[updateBudgetConfig] Error:', error);
-    return { success: false, error: 'Failed to update budget config' };
+    logError(
+      'BUDGET_CONFIG_UPDATE_FAILED',
+      'Failed to update budget configuration',
+      error,
+      { preset, hasCustomPercentages: !!customPercentages }
+    );
+    return {
+      success: false,
+      error: await handleDbError(error, 'errors.failedToUpdateBudgetConfig'),
+    };
   }
 }

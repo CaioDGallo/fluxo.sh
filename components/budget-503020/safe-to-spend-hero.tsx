@@ -2,12 +2,14 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { centsToDisplay } from '@/lib/utils';
-import type { SafeToSpendData } from '@/lib/actions/budget-503020';
+import type { SafeToSpendData, PresetType } from '@/lib/actions/budget-503020';
 import { PACING_CONFIG } from '@/lib/budget-503020-config';
 import { useTranslations } from 'next-intl';
+import { PresetSelector } from './preset-selector';
 
 interface SafeToSpendHeroProps {
   data: SafeToSpendData;
+  currentPreset: PresetType;
 }
 
 // Map snake_case status values to camelCase translation keys
@@ -17,7 +19,7 @@ const PACING_KEY_MAP = {
   under_pace: 'underPace',
 } as const;
 
-export function SafeToSpendHero({ data }: SafeToSpendHeroProps) {
+export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
   const t = useTranslations('budget503020');
   const tPacing = useTranslations('budget503020.pacing');
   const wantsBucket = data.buckets.find((b) => b.bucket === 'wants');
@@ -30,21 +32,24 @@ export function SafeToSpendHero({ data }: SafeToSpendHeroProps) {
     <Card className="border-2">
       <CardContent className="p-6">
         <div className="space-y-4">
-          {/* Hero number */}
-          <div>
-            <p className="text-sm text-gray-600 mb-1">{t('safeToSpend')}</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-gray-900">
-                R$ {centsToDisplay(data.wantsSafeToSpendDaily)}
-              </span>
-              <span className="text-lg text-gray-600">{t('perDay')}</span>
+          {/* Hero number with preset selector */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground mb-1">{t('safeToSpend')}</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-foreground tabular-nums">
+                  R$&nbsp;{centsToDisplay(data.wantsSafeToSpendDaily)}
+                </span>
+                <span className="text-lg text-muted-foreground">{t('perDay')}</span>
+              </div>
             </div>
+            <PresetSelector currentPreset={currentPreset} />
           </div>
 
           {/* Details */}
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <div>
-              <span className="font-medium">R$ {centsToDisplay(data.wantsSafeToSpend)}</span>
+              <span className="font-medium tabular-nums">R$&nbsp;{centsToDisplay(data.wantsSafeToSpend)}</span>
               {' '}{t('remaining')}
             </div>
             <div>•</div>
@@ -60,13 +65,18 @@ export function SafeToSpendHero({ data }: SafeToSpendHeroProps) {
                 <span className={`text-sm font-medium ${pacingConfig.color}`}>
                   {tPacing(pacingKey)}
                 </span>
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {data.pacing.percentageOfExpected}%
                 </span>
               </div>
-              <div className="h-2 bg-white rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full ${pacingConfig.barColor} transition-all`}
+                  role="progressbar"
+                  aria-valuenow={Math.round(Math.min(data.pacing.percentageOfExpected, 100))}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${tPacing(pacingKey)}: ${data.pacing.percentageOfExpected}%`}
+                  className={`h-full ${pacingConfig.barColor} transition-[width] duration-300 motion-reduce:transition-none`}
                   style={{ width: `${Math.min(data.pacing.percentageOfExpected, 100)}%` }}
                 />
               </div>

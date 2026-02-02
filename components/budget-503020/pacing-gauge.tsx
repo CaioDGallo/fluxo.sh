@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts';
 import type { PacingData } from '@/lib/actions/budget-503020';
@@ -24,11 +25,24 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
   const config = PACING_CONFIG[pacing.status];
   const pacingKey = PACING_KEY_MAP[pacing.status];
 
+  // Detect dark mode using matchMedia
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  const chartColor = isDark ? config.hexColorDark : config.hexColor;
+  const bgColor = isDark ? '#27272a' : '#f3f4f6'; // zinc-800 : gray-100
+
   const data = [
     {
       name: 'pacing',
       value: Math.min(pacing.percentageOfExpected, 150), // Cap at 150% for visual
-      fill: config.hexColor,
+      fill: chartColor,
     },
   ];
 
@@ -51,7 +65,7 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                   endAngle={0}
                 >
                   <RadialBar
-                    background={{ fill: '#f3f4f6' }}
+                    background={{ fill: bgColor }}
                     dataKey="value"
                     cornerRadius={10}
                   />
@@ -60,20 +74,20 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
 
               {/* Center text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold" style={{ color: config.hexColor }}>
+                <span className={`text-3xl font-bold tabular-nums ${config.color}`}>
                   {pacing.percentageOfExpected}%
                 </span>
-                <span className="text-xs text-gray-600 mt-1">{tPacing('ofExpected')}</span>
+                <span className="text-xs text-muted-foreground mt-1">{tPacing('ofExpected')}</span>
               </div>
             </div>
           </div>
 
           <div className="text-center space-y-1">
-            <p className="font-medium" style={{ color: config.hexColor }}>
+            <p className={`font-medium ${config.color}`}>
               {tPacing(pacingKey)}
             </p>
-            <p className="text-sm text-gray-600">{tPacing(`${pacingKey}Description`)}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm text-muted-foreground">{tPacing(`${pacingKey}Description`)}</p>
+            <p className="text-xs text-muted-foreground">
               {t('daysRemaining', { count: daysRemaining })}
             </p>
           </div>

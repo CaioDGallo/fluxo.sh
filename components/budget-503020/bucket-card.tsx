@@ -3,6 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { centsToDisplay } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { Tick02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import type { BucketData } from '@/lib/actions/budget-503020';
 import { BUCKET_CONFIG } from '@/lib/budget-503020-config';
 import { useTranslations } from 'next-intl';
@@ -20,15 +21,18 @@ export function BucketCard({ bucket }: BucketCardProps) {
   const isOverBudget = bucket.percentage > 100;
   const isNearLimit = bucket.percentage >= 90 && bucket.percentage <= 100;
 
-  let statusIcon = '✓';
-  let statusColor = 'text-green-600';
+  let StatusIcon = Tick02Icon;
+  let statusColor = 'text-green-600 dark:text-green-400';
+  let statusLabel = 'No meta';
 
   if (isOverBudget) {
-    statusIcon = '⚠';
-    statusColor = 'text-red-600';
+    StatusIcon = AlertCircleIcon;
+    statusColor = 'text-red-600 dark:text-red-400';
+    statusLabel = 'Acima do orçamento';
   } else if (isNearLimit) {
-    statusIcon = '⚠';
-    statusColor = 'text-orange-600';
+    StatusIcon = AlertCircleIcon;
+    statusColor = 'text-orange-600 dark:text-orange-400';
+    statusLabel = 'Próximo do limite';
   }
 
   return (
@@ -43,22 +47,32 @@ export function BucketCard({ bucket }: BucketCardProps) {
               </div>
               <span className="font-medium text-sm">{t(bucket.bucket)}</span>
             </div>
-            <span className={`text-2xl ${statusColor}`}>{statusIcon}</span>
+            <HugeiconsIcon
+              icon={StatusIcon}
+              className={statusColor}
+              size={24}
+              aria-label={statusLabel}
+            />
           </div>
 
           {/* Progress */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
-              <span className="text-2xl font-bold">
+              <span className="text-2xl font-bold tabular-nums">
                 {bucket.percentage}%
               </span>
-              <span className="text-sm text-gray-600">
-                R$ {centsToDisplay(bucket.spent)} / {centsToDisplay(bucket.target)}
+              <span className="text-sm text-muted-foreground tabular-nums">
+                R$&nbsp;{centsToDisplay(bucket.spent)} / {centsToDisplay(bucket.target)}
               </span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className={`h-full ${config.progressColor} transition-all`}
+                role="progressbar"
+                aria-valuenow={Math.round(Math.min(bucket.percentage, 100))}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${t(bucket.bucket)}: ${bucket.percentage}%`}
+                className={`h-full ${config.progressColor} transition-[width] duration-300 motion-reduce:transition-none`}
                 style={{ width: `${Math.min(bucket.percentage, 100)}%` }}
               />
             </div>

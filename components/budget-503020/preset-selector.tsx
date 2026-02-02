@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { updateBudgetConfig, type PresetType } from '@/lib/actions/budget-503020';
-import { Settings02Icon } from '@hugeicons/core-free-icons';
+import { Settings02Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -101,22 +101,28 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
                 onClick={() => setSelected(preset)}
                 className={cn(
                   'w-full text-left p-4 rounded-lg border-2 transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected === preset
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-border/80'
                 )}
               >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold">{t(key)}</h4>
                     {selected === preset && (
-                      <span className="text-blue-600">✓</span>
+                      <HugeiconsIcon
+                        icon={Tick02Icon}
+                        className="text-primary"
+                        size={20}
+                        aria-label="Selecionado"
+                      />
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-foreground">
                     {t(`${key}Description`)}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {t(`${key}Detail`)}
                   </p>
                 </div>

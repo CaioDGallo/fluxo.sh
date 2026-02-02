@@ -314,7 +314,9 @@
       "entrandoNaLinhaDescription": "60% Necessities, 30% Wants, 10% Savings",
       "entrandoNaLinhaDetail": "Recommended for those beginning to organize their finances",
       "configure": "Configure 50/30/20 Method",
-      "chooseModel": "Choose the distribution model that best fits your financial moment"
+      "chooseModel": "Choose the distribution model that best fits your financial moment",
+      "updateSuccess": "Method updated successfully",
+      "updateError": "Error updating method"
     },
     "viewStatistics": "View Detailed Statistics",
     "moreWidgetsSoon": "More widgets coming soon",

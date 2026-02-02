@@ -186,7 +186,9 @@
       "entrandoNaLinhaDescription": "60% Necessidades, 30% Desejos, 10% Poupança",
       "entrandoNaLinhaDetail": "Recomendado para quem está começando a organizar as finanças",
       "configure": "Configurar Método 50/30/20",
-      "chooseModel": "Escolha o modelo de distribuição que melhor se adapta ao seu momento financeiro"
+      "chooseModel": "Escolha o modelo de distribuição que melhor se adapta ao seu momento financeiro",
+      "updateSuccess": "Método atualizado com sucesso",
+      "updateError": "Erro ao atualizar método"
     },
     "viewStatistics": "Ver Estatísticas Detalhadas",
     "moreWidgetsSoon": "Mais widgets em breve",

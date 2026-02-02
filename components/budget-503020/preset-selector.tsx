@@ -57,7 +57,7 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
         return;
       }
 
-      toast.success(tCommon('success'));
+      toast.success(t('updateSuccess'));
       setOpen(false);
       router.refresh(); // Refresh to fetch new data
     } catch (error) {
@@ -66,7 +66,7 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
         selectedPreset: selected,
         error,
       });
-      toast.error(tCommon('error'));
+      toast.error(t('updateError'));
     } finally {
       setIsSubmitting(false);
     }

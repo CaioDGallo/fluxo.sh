@@ -13,11 +13,11 @@ import { LandingCtaTracker } from '@/components/tracking/landing-cta-tracker';
 import { LandingWaitlistForm } from '@/components/tracking/landing-waitlist-form';
 
 export const metadata: Metadata = {
-  title: 'Fluxo.sh | Método 50/30/20 sem planilha',
-  description: 'Meu Fluxo mostra quanto você pode gastar hoje com o método 50/30/20. Parcelas no mês certo e dados seus.',
+  title: 'Fluxo.sh | Decisões financeiras diárias',
+  description: 'Meu Fluxo mostra quanto você pode gastar hoje, o ritmo do mês e parcelas no mês certo.',
   openGraph: {
-    title: 'Fluxo.sh | Método 50/30/20',
-    description: 'Decisões diárias com 50/30/20: disponível por dia, ritmo de gastos e parcelas no mês certo.',
+    title: 'Fluxo.sh | Decisões diárias',
+    description: 'Disponível por dia, ritmo de gastos e parcelas no mês certo com o Meu Fluxo.',
     type: 'website',
   },
 };

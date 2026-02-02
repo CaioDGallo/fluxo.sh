@@ -10,6 +10,7 @@ import {
   ArrowDownBigIcon,
 } from '@hugeicons/core-free-icons';
 import { TransactionForm } from '@/components/transaction-form';
+import { Button } from '@/components/ui/button';
 import { useFABData } from './fab-data-provider';
 
 export function FABSpeedDial() {
@@ -59,73 +60,73 @@ export function FABSpeedDial() {
       )}
 
       {/* FAB Container */}
-      <div className="relative flex flex-col items-end gap-3">
+      <div className="relative flex flex-col items-end gap-3 z-50">
         {/* Speed Dial Options */}
         {isExpanded && (
           <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
             {/* Income Button */}
-            <button
-              type="button"
-              onClick={() => handleOptionClick('income')}
-              className={cn(
-                'flex items-center gap-3 group',
-                'transition-all duration-200',
-                isLoading && 'opacity-50 pointer-events-none'
-              )}
-              disabled={isLoading}
-              aria-label={t('income')}
-            >
+            <div className="flex items-center gap-3 group">
               <span className="bg-background/95 backdrop-blur-sm border border-border rounded-full px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                 {t('income')}
               </span>
-              <div className="size-12 rounded-full bg-green-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+              <Button
+                type="button"
+                variant="hollow"
+                size="icon-lg"
+                onClick={() => handleOptionClick('income')}
+                disabled={isLoading}
+                aria-label={t('income')}
+                className={cn(
+                  'rounded-full bg-green-500 text-white hover:bg-green-600 border-2 border-black',
+                  isLoading && 'opacity-50 pointer-events-none'
+                )}
+              >
                 <HugeiconsIcon icon={ArrowUpBigIcon} strokeWidth={2.5} className="size-6" />
-              </div>
-            </button>
+              </Button>
+            </div>
 
             {/* Expense Button */}
-            <button
-              type="button"
-              onClick={() => handleOptionClick('expense')}
-              className={cn(
-                'flex items-center gap-3 group',
-                'transition-all duration-200',
-                isLoading && 'opacity-50 pointer-events-none'
-              )}
-              disabled={isLoading}
-              aria-label={t('expense')}
-            >
+            <div className="flex items-center gap-3 group">
               <span className="bg-background/95 backdrop-blur-sm border border-border rounded-full px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                 {t('expense')}
               </span>
-              <div className="size-12 rounded-full bg-red-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+              <Button
+                type="button"
+                variant="hollow"
+                size="icon-lg"
+                onClick={() => handleOptionClick('expense')}
+                disabled={isLoading}
+                aria-label={t('expense')}
+                className={cn(
+                  'rounded-full bg-red-500 text-white hover:bg-red-600 border-2 border-black',
+                  isLoading && 'opacity-50 pointer-events-none'
+                )}
+              >
                 <HugeiconsIcon icon={ArrowDownBigIcon} strokeWidth={2.5} className="size-6" />
-              </div>
-            </button>
+              </Button>
+            </div>
           </div>
         )}
 
         {/* Main FAB Button */}
-        <button
+        <Button
           type="button"
+          variant="popout"
+          size="icon-lg"
           onClick={handleFABClick}
-          className={cn(
-            'size-14 rounded-full bg-primary text-primary-foreground shadow-lg',
-            'flex items-center justify-center',
-            'active:scale-95 transition-all duration-200',
-            'hover:shadow-xl',
-            'relative z-40',
-            isExpanded && 'rotate-45'
-          )}
           aria-expanded={isExpanded}
           aria-label={isExpanded ? t('close') : t('addTransaction')}
+          className={cn(
+            'rounded-full size-14 transition-transform duration-200',
+            isExpanded && 'rotate-45'
+          )}
         >
           <HugeiconsIcon
             icon={Add01Icon}
             strokeWidth={2.5}
             className="size-7"
           />
-        </button>
+        </Button>
       </div>
 
       {/* Transaction Forms */}

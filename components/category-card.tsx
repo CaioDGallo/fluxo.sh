@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { deleteCategory, setImportDefault } from '@/lib/actions/categories';
 import type { Category } from '@/lib/schema';
-import { CategoryForm } from '@/components/category-form';
+import { CategorySheet } from '@/components/category-sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -149,17 +149,11 @@ export function CategoryCard({ category }: CategoryCardProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
-          <AlertDialogContent closeOnBackdropClick>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
-            </AlertDialogHeader>
-            <CategoryForm
-              category={category}
-              onSuccess={() => setEditOpen(false)}
-            />
-          </AlertDialogContent>
-        </AlertDialog>
+        <CategorySheet
+          category={category}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
 
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogContent>

@@ -27,7 +27,7 @@ export function CategoryBucketGroup({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-none border bg-card">
         {/* Header */}
         <CollapsibleTrigger
           className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors touch-action-manipulation min-h-11"
@@ -35,7 +35,7 @@ export function CategoryBucketGroup({
         >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Bucket icon */}
-            <div className={`p-2 rounded-lg ${config.bgColor} shrink-0`}>
+            <div className={`p-2 rounded-none ${config.bgColor} shrink-0`}>
               <HugeiconsIcon icon={Icon} className={config.color} size={18} />
             </div>
 

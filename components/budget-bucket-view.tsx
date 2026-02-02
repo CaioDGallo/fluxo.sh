@@ -35,7 +35,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
   if (budgets.length === 0) return null;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-800 rounded-none overflow-hidden">
       {/* Collapsible Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -48,7 +48,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
         aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-3">
-          <div className={cn('p-2 rounded-lg', config.bgColor)}>
+          <div className={cn('p-2 rounded-none', config.bgColor)}>
             <HugeiconsIcon icon={Icon} className={config.color} size={20} />
           </div>
           <div className="text-left">
@@ -59,7 +59,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex-1 max-w-[120px] hidden sm:block">
+          <div className="flex-1 max-w-30 hidden sm:block">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
                 role="progressbar"
@@ -162,7 +162,7 @@ export function BudgetBucketView({ budgets, bucketFilter }: BudgetBucketViewProp
   return (
     <div>
       {/* Bucket Summary */}
-      <div className={cn('mb-6 p-4 rounded-lg', config.bgColor)}>
+      <div className={cn('mb-6 p-4 rounded-none', config.bgColor)}>
         <div className="flex items-center gap-3 mb-2">
           <HugeiconsIcon icon={config.icon} className={config.color} size={24} />
           <h2 className="text-lg font-semibold">{config.label}</h2>

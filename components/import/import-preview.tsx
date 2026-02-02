@@ -36,7 +36,7 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="rounded-none bg-gray-50 dark:bg-gray-900 p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600 dark:text-gray-400">Valid rows</span>
           <span className="font-medium text-green-600 dark:text-green-400">{rows.length}</span>
@@ -101,7 +101,7 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
                 }}
                 style={{ touchAction: 'manipulation' }}
                 className={cn(
-                  'p-3 rounded-lg border dark:border-gray-800 cursor-pointer transition-all',
+                  'p-3 rounded-none border dark:border-gray-800 cursor-pointer transition-all',
                   'hover:bg-muted/50 active:bg-muted',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   '[-webkit-tap-highlight-color:transparent]',
@@ -206,7 +206,7 @@ export function ImportPreview({ parseResult, rowsWithSuggestions, selectedRows, 
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden">
+        <div className="border border-red-200 dark:border-red-900 rounded-none overflow-hidden">
           <div className="bg-red-50 dark:bg-red-950 px-4 py-2 border-b border-red-200 dark:border-red-900">
             <h3 className="text-sm font-medium text-red-900 dark:text-red-100">Errors</h3>
           </div>

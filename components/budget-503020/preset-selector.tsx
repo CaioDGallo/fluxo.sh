@@ -100,7 +100,7 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
                 type="button"
                 onClick={() => setSelected(preset)}
                 className={cn(
-                  'w-full text-left p-4 rounded-lg border-2 transition-all',
+                  'w-full text-left p-4 rounded-none border-2 transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected === preset
                     ? 'border-primary bg-primary/5'

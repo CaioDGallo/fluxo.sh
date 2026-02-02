@@ -21,7 +21,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
   return (
     <div className={className}>
       {/* Zone bar */}
-      <div className="relative h-8 bg-muted rounded-lg overflow-hidden">
+      <div className="relative h-8 bg-muted rounded-none overflow-hidden">
         {/* Zone backgrounds */}
         <div className="absolute inset-0 flex">
           <div className="w-[45%] bg-blue-100 dark:bg-blue-950/30" aria-label={t('saving')} />
@@ -37,7 +37,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
 
         {/* Current position marker */}
         <div
-          className="absolute inset-y-0 w-1 bg-foreground rounded-full shadow-sm"
+          className="absolute inset-y-0 w-1 bg-foreground rounded-none shadow-sm"
           style={{ left: `${visualPercentage}%`, transform: 'translateX(-50%)' }}
           role="progressbar"
           aria-valuenow={Math.round(percentage)}
@@ -49,16 +49,16 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
             <span className="text-xs font-semibold tabular-nums bg-background px-1.5 py-0.5 rounded shadow-sm border">
               {percentage}%
             </span>
-          </div>
+          </div>]
         </div>
       </div>
 
       {/* Legend */}
       <div className="flex justify-between text-[10px] text-muted-foreground mt-2 px-1">
-        <span className="text-left">{t('saving')}<br/><span className="text-[9px]">{t('savingRange')}</span></span>
-        <span className="text-center">{t('onTrack')}<br/><span className="text-[9px]">{t('onTrackRange')}</span></span>
-        <span className="text-center">{t('careful')}<br/><span className="text-[9px]">{t('carefulRange')}</span></span>
-        <span className="text-right">{t('over')}<br/><span className="text-[9px]">{t('overRange')}</span></span>
+        <span className="text-left">{t('saving')}<br /><span className="text-[9px]">{t('savingRange')}</span></span>
+        <span className="text-center">{t('onTrack')}<br /><span className="text-[9px]">{t('onTrackRange')}</span></span>
+        <span className="text-center">{t('careful')}<br /><span className="text-[9px]">{t('carefulRange')}</span></span>
+        <span className="text-right">{t('over')}<br /><span className="text-[9px]">{t('overRange')}</span></span>
       </div>
     </div>
   );

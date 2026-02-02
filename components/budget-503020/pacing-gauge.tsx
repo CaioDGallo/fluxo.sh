@@ -18,15 +18,17 @@ const PACING_KEY_MAP = {
   under_pace: 'underPace',
 } as const;
 
-// Zone definitions for the velocimeter
-// Each zone represents a spending pace range
+// Zone definitions for the speedometer gauge
+// Speedometer arc: 225° (7 o'clock) → 360°/0° (12 o'clock) → 495°/135° (5 o'clock)
+// Total span: 270° going counter-clockwise (increasing angles)
+// With polarToCartesian's (angle - 90) transform: 0°=UP, 90°=RIGHT, 180°=DOWN, 270°=LEFT
 const ZONES = [
   {
     name: 'saving',
     startPercent: 0,
     endPercent: 90,
-    startAngle: 180,
-    endAngle: 99,
+    startAngle: 225,      // Bottom-left (7 o'clock)
+    endAngle: 346.5,      // Approaching top from left (wraps to -13.5°)
     lightColor: '#3b82f6', // blue-500
     darkColor: '#60a5fa',  // blue-400
     label: 'Economizando',
@@ -35,8 +37,8 @@ const ZONES = [
     name: 'onTrack',
     startPercent: 90,
     endPercent: 110,
-    startAngle: 99,
-    endAngle: 81,
+    startAngle: 346.5,    // Approaching top
+    endAngle: 373.5,      // Just past top (wraps to 13.5°)
     lightColor: '#22c55e', // green-500
     darkColor: '#4ade80',  // green-400
     label: 'No ritmo',
@@ -45,8 +47,8 @@ const ZONES = [
     name: 'careful',
     startPercent: 110,
     endPercent: 130,
-    startAngle: 81,
-    endAngle: 63,
+    startAngle: 373.5,    // Past top (wraps to 13.5°)
+    endAngle: 400.5,      // Upper right (wraps to 40.5°)
     lightColor: '#f97316', // orange-500
     darkColor: '#fb923c',  // orange-400
     label: 'Atenção',
@@ -55,8 +57,8 @@ const ZONES = [
     name: 'over',
     startPercent: 130,
     endPercent: 200,
-    startAngle: 63,
-    endAngle: 0,
+    startAngle: 400.5,    // Upper right (wraps to 40.5°)
+    endAngle: 495,        // Bottom-right (5 o'clock, wraps to 135°)
     lightColor: '#ef4444', // red-500
     darkColor: '#f87171',  // red-400
     label: 'Acima',
@@ -64,12 +66,14 @@ const ZONES = [
 ] as const;
 
 /**
- * Convert percentage (0-200%) to angle (180° to 0°)
- * 0% = 180° (left), 100% = 90°, 200% = 0° (right)
+ * Convert percentage (0-200%) to angle for speedometer
+ * 0% = 225° (7 o'clock), 100% = 360° (12 o'clock), 200% = 495°/135° (5 o'clock)
+ * Spans 270° counter-clockwise (increasing angles) from bottom-left through top to bottom-right
  */
 function percentageToAngle(percentage: number): number {
   const clamped = Math.max(0, Math.min(200, percentage));
-  return 180 - (clamped / 200 * 180);
+  // Each 1% = 270° / 200 = 1.35°, going counter-clockwise (increasing angles)
+  return 225 + (clamped * 1.35);
 }
 
 /**
@@ -89,13 +93,17 @@ function describeRingSegment(
   const innerStart = polarToCartesian(x, y, innerRadius, startAngle);
   const innerEnd = polarToCartesian(x, y, innerRadius, endAngle);
 
-  const largeArcFlag = startAngle - endAngle <= 180 ? '0' : '1';
+  // Calculate angular distance for counter-clockwise (increasing angles)
+  const angularDistance = endAngle - startAngle;
+  const largeArcFlag = angularDistance > 180 ? '1' : '0';
 
   return [
     'M', outerStart.x, outerStart.y,
-    'A', outerRadius, outerRadius, 0, largeArcFlag, 0, outerEnd.x, outerEnd.y,
+    // sweep-flag=1 for counter-clockwise (increasing angles in our system)
+    'A', outerRadius, outerRadius, 0, largeArcFlag, 1, outerEnd.x, outerEnd.y,
     'L', innerEnd.x, innerEnd.y,
-    'A', innerRadius, innerRadius, 0, largeArcFlag, 1, innerStart.x, innerStart.y,
+    // sweep-flag=0 for clockwise return
+    'A', innerRadius, innerRadius, 0, largeArcFlag, 0, innerStart.x, innerStart.y,
     'Z'
   ].join(' ');
 }

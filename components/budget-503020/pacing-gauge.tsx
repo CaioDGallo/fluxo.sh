@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts';
+import { ChartContainer, ChartConfig } from '@/components/ui/chart';
+import { RadialBarChart, RadialBar } from 'recharts';
 import type { PacingData } from '@/lib/actions/budget-503020';
 import { PACING_CONFIG } from '@/lib/budget-503020-config';
 import { useTranslations } from 'next-intl';
@@ -25,24 +25,22 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
   const config = PACING_CONFIG[pacing.status];
   const pacingKey = PACING_KEY_MAP[pacing.status];
 
-  // Detect dark mode using matchMedia
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDark(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
-
-  const chartColor = isDark ? config.hexColorDark : config.hexColor;
-  const bgColor = isDark ? '#27272a' : '#f3f4f6'; // zinc-800 : gray-100
+  // Chart configuration with theme-aware colors
+  const chartConfig = {
+    pacing: {
+      label: tPacing(pacingKey),
+      theme: {
+        light: config.hexColor,
+        dark: config.hexColorDark,
+      },
+    },
+  } satisfies ChartConfig;
 
   const data = [
     {
       name: 'pacing',
       value: Math.min(pacing.percentageOfExpected, 150), // Cap at 150% for visual
-      fill: chartColor,
+      fill: 'var(--color-pacing)',
     },
   ];
 
@@ -54,7 +52,7 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
 
           <div className="flex items-center justify-center">
             <div className="relative w-48 h-48">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={chartConfig} className="w-full h-full">
                 <RadialBarChart
                   cx="50%"
                   cy="50%"
@@ -65,12 +63,11 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                   endAngle={0}
                 >
                   <RadialBar
-                    background={{ fill: bgColor }}
                     dataKey="value"
                     cornerRadius={10}
                   />
                 </RadialBarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
 
               {/* Center text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">

@@ -274,6 +274,55 @@
     "noIncomeCategoriesYet": "No income categories yet",
     "noAccountsYet": "No accounts yet..."
   },
+  "budget503020": {
+    "safeToSpend": "Safe to Spend",
+    "perDay": "per day",
+    "remaining": "remaining in Wants",
+    "daysRemaining": "{count} days remaining",
+    "buckets": {
+      "necessities": "Necessities",
+      "necessitiesDescription": "50% - Food, housing, transportation",
+      "wants": "Wants",
+      "wantsDescription": "30% - Entertainment, shopping, leisure",
+      "savings": "Savings",
+      "savingsDescription": "20% - Investments, reserves"
+    },
+    "pacing": {
+      "onTrack": "On Track",
+      "onTrackDescription": "Your pace is balanced",
+      "overPace": "Spending Fast",
+      "overPaceDescription": "You are above the expected pace",
+      "underPace": "Saving",
+      "underPaceDescription": "You are below the expected pace",
+      "ofExpected": "of expected",
+      "zones": {
+        "saving": "Saving",
+        "savingRange": "0-90%",
+        "onTrack": "On Track",
+        "onTrackRange": "90-110%",
+        "careful": "Careful",
+        "carefulRange": "110-130%",
+        "over": "Over",
+        "overRange": "130%+"
+      }
+    },
+    "presets": {
+      "naRisca": "By the Book",
+      "naRiscaDescription": "50% Necessities, 30% Wants, 20% Savings",
+      "naRiscaDetail": "Ideal for those with established financial control",
+      "entrandoNaLinha": "Getting Started",
+      "entrandoNaLinhaDescription": "60% Necessities, 30% Wants, 10% Savings",
+      "entrandoNaLinhaDetail": "Recommended for those beginning to organize their finances",
+      "configure": "Configure 50/30/20 Method",
+      "chooseModel": "Choose the distribution model that best fits your financial moment"
+    },
+    "viewStatistics": "View Detailed Statistics",
+    "moreWidgetsSoon": "More widgets coming soon",
+    "personalizedInsights": "Personalized insights and recommendations",
+    "spendingPace": "Spending Pace",
+    "bucketCategory": "50/30/20 Budget Category",
+    "removeCategorization": "Remove categorization"
+  },
   "budgets": {
     "title": "Budgets",
     "editBudgets": "Edit Budgets",

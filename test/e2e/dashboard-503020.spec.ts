@@ -57,6 +57,30 @@ test.describe('Dashboard 50/30/20', () => {
     expect(visibleStatuses.some(visible => visible)).toBe(true);
   });
 
+  test('pacing gauge uses shadcn chart component', async ({ page }) => {
+    // Verify ChartContainer is present by checking for data-chart attribute
+    const chartContainer = page.locator('[data-chart]').first();
+    await expect(chartContainer).toBeVisible();
+
+    // Verify the chart has proper slot attribute
+    await expect(chartContainer).toHaveAttribute('data-slot', 'chart');
+  });
+
+  test('safe-to-spend shows pacing zone bar with labels', async ({ page }) => {
+    // Check that zone labels are visible (Portuguese text)
+    await expect(page.getByText('Economizando', { exact: false }).first()).toBeVisible();
+
+    // Check for zone ranges
+    await expect(page.getByText('0-90%')).toBeVisible();
+    await expect(page.getByText('90-110%')).toBeVisible();
+    await expect(page.getByText('110-130%')).toBeVisible();
+    await expect(page.getByText('130%+')).toBeVisible();
+
+    // Verify progressbar role for accessibility
+    const zonebar = page.locator('[role="progressbar"]').last();
+    await expect(zonebar).toBeVisible();
+  });
+
   test('displays preset selector button', async ({ page }) => {
     // Check for settings button (preset selector)
     const presetButton = page.getByRole('button', { name: /Na Risca|Entrando na Linha/ });
@@ -99,9 +123,8 @@ test.describe('Dashboard 50/30/20', () => {
     await expect(page.getByRole('heading', { name: 'Estatísticas' })).toBeVisible();
   });
 
-  test('displays no budgets message when no budgets configured', async ({ page, resetDatabase }) => {
-    // Reset to clean state
-    await resetDatabase();
+  test('displays no budgets message when no budgets configured', async ({ page, resetDb }) => {
+    // Database automatically reset via fixture
     await login(page);
 
     // Should show no budgets message

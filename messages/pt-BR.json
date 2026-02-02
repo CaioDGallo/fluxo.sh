@@ -166,7 +166,17 @@
       "overPaceDescription": "Você está acima do ritmo esperado",
       "underPace": "Economizando",
       "underPaceDescription": "Você está abaixo do ritmo esperado",
-      "ofExpected": "do esperado"
+      "ofExpected": "do esperado",
+      "zones": {
+        "saving": "Economizando",
+        "savingRange": "0-90%",
+        "onTrack": "No Ritmo",
+        "onTrackRange": "90-110%",
+        "careful": "Atenção",
+        "carefulRange": "110-130%",
+        "over": "Acima",
+        "overRange": "130%+"
+      }
     },
     "presets": {
       "naRisca": "Na Risca",

@@ -150,6 +150,14 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
   const innerRadius = 65;
   const needleLength = 75;
 
+  // Tight viewBox to remove empty padding - gauge is centered at (120,120) with radius 90
+  // Speedometer spans from 7 o'clock to 5 o'clock through top
+  // Bounds: left ~30, right ~210, top ~30, bottom ~185
+  const viewBoxX = 25;
+  const viewBoxY = 25;
+  const viewBoxWidth = 190;
+  const viewBoxHeight = 165;
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -157,12 +165,13 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
           <h3 className="text-lg font-semibold">{t('spendingPace')}</h3>
 
           {/* Gauge SVG */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center px-4">
             <svg
-              viewBox={`0 0 ${size} ${size}`}
-              className="w-full h-full max-w-full md:max-w-70"
+              viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
+              className="w-full h-full md:max-h-80 max-w-full md:max-w-80"
               role="img"
               aria-label={`${tPacing(pacingKey)}: ${pacing.percentageOfExpected}% ${tPacing('ofExpected')}`}
+              preserveAspectRatio="xMidYMid meet"
             >
               {/* Background zones */}
               <g className="transition-colors duration-200">

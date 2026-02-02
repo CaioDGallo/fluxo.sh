@@ -61,14 +61,15 @@ export default async function DashboardPage({
           {/* Safe to Spend Hero */}
           <SafeToSpendHero data={safeToSpendData} currentPreset={currentPreset} />
 
+          {/* Bucket Overview */}
+          <BucketOverview buckets={safeToSpendData.buckets} />
+
           {/* Pacing Gauge */}
           <PacingGauge
             pacing={safeToSpendData.pacing}
             daysRemaining={safeToSpendData.daysRemaining}
           />
 
-          {/* Bucket Overview */}
-          <BucketOverview buckets={safeToSpendData.buckets} />
         </div>
       )}
     </div>

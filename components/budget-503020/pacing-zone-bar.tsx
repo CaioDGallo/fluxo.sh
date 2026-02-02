@@ -37,7 +37,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
 
         {/* Current position marker */}
         <div
-          className="absolute inset-y-0 w-2 border border-amber-600 bg-amber-300 rounded-none shadow-sm"
+          className="absolute inset-y-0 w-2 border border-white bg-black dark:bg-white rounded-none shadow-sm"
           style={{ left: `${visualPercentage}%`, transform: 'translateX(-50%)' }}
           role="progressbar"
           aria-valuenow={Math.round(percentage)}

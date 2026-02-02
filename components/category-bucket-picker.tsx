@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Home01Icon, GameController01Icon, PiggyBankIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { BucketType } from '@/lib/actions/budget-503020';
+import { useTranslations } from 'next-intl';
 
 interface CategoryBucketPickerProps {
   value: BucketType | null;
@@ -14,8 +15,6 @@ interface CategoryBucketPickerProps {
 const BUCKETS = [
   {
     value: 'necessities' as const,
-    label: 'Necessidades',
-    description: '50% - Alimentação, moradia, transporte',
     icon: Home01Icon,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
@@ -24,8 +23,6 @@ const BUCKETS = [
   },
   {
     value: 'wants' as const,
-    label: 'Desejos',
-    description: '30% - Entretenimento, compras, lazer',
     icon: GameController01Icon,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
@@ -34,8 +31,6 @@ const BUCKETS = [
   },
   {
     value: 'savings' as const,
-    label: 'Poupança',
-    description: '20% - Investimentos, reservas',
     icon: PiggyBankIcon,
     color: 'text-green-600',
     bgColor: 'bg-green-50',
@@ -45,6 +40,8 @@ const BUCKETS = [
 ] as const;
 
 export function CategoryBucketPicker({ value, onChange, disabled }: CategoryBucketPickerProps) {
+  const t = useTranslations('budget503020');
+  const tBuckets = useTranslations('budget503020.buckets');
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -73,9 +70,9 @@ export function CategoryBucketPicker({ value, onChange, disabled }: CategoryBuck
                 )}
               >
                 <HugeiconsIcon icon={Icon} size={20} />
-                <span className="font-medium">{bucket.label}</span>
+                <span className="font-medium">{tBuckets(bucket.value)}</span>
               </div>
-              <p className="text-xs text-gray-500">{bucket.description}</p>
+              <p className="text-xs text-gray-500">{tBuckets(`${bucket.value}Description`)}</p>
             </button>
           );
         })}
@@ -88,7 +85,7 @@ export function CategoryBucketPicker({ value, onChange, disabled }: CategoryBuck
           disabled={disabled}
           className="text-sm text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Remover categorização
+          {t('removeCategorization')}
         </button>
       )}
     </div>

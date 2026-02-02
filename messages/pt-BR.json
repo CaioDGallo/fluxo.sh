@@ -153,8 +153,11 @@
     "daysRemaining": "{count} dias restantes",
     "buckets": {
       "necessities": "Necessidades",
+      "necessitiesDescription": "50% - Alimentação, moradia, transporte",
       "wants": "Desejos",
-      "savings": "Poupança"
+      "wantsDescription": "30% - Entretenimento, compras, lazer",
+      "savings": "Poupança",
+      "savingsDescription": "20% - Investimentos, reservas"
     },
     "pacing": {
       "onTrack": "No Ritmo",
@@ -434,7 +437,9 @@
     "setAsImportDefault": "Definir como padrão para importação",
     "removeImportDefault": "Remover padrão de importação",
     "setAsImportDefaultSuccess": "Categoria definida como padrão para importação",
-    "removedImportDefault": "Padrão de importação removido"
+    "removedImportDefault": "Padrão de importação removido",
+    "unassignedCategoriesPrompt": "Você tem {count} categorias sem orçamento 50/30/20 atribuído.",
+    "assignBucketsToTrack": "Atribua-as a Necessidades, Desejos ou Poupança para melhor acompanhamento no painel."
   },
   "accountTypes": {
     "checking": "Conta Corrente",

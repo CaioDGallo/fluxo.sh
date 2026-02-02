@@ -52,6 +52,7 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('categoryForm');
   const tCommon = useTranslations('common');
+  const tBudget503020 = useTranslations('budget503020');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,7 +71,14 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
 
       onSuccess?.();
     } catch (err) {
-      console.error('[CategoryForm] Submit failed:', err);
+      const operation = category ? 'update' : 'create';
+      console.error(`[CategoryForm] ${operation} failed:`, {
+        operation,
+        categoryId: category?.id,
+        categoryName: name,
+        type,
+        error: err,
+      });
       setError(tCommon('unexpectedError'));
     } finally {
       setIsSubmitting(false);
@@ -117,7 +125,7 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
 
         {type === 'expense' && (
           <Field>
-            <FieldLabel>Categoria de Orçamento 50/30/20</FieldLabel>
+            <FieldLabel>{tBudget503020('bucketCategory')}</FieldLabel>
             <CategoryBucketPicker
               value={bucket}
               onChange={setBucket}

@@ -1,14 +1,18 @@
+'use client';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { centsToDisplay } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { BucketData } from '@/lib/actions/budget-503020';
 import { BUCKET_CONFIG } from '@/lib/budget-503020-config';
+import { useTranslations } from 'next-intl';
 
 interface BucketCardProps {
   bucket: BucketData;
 }
 
 export function BucketCard({ bucket }: BucketCardProps) {
+  const t = useTranslations('budget503020.buckets');
   const config = BUCKET_CONFIG[bucket.bucket];
   const Icon = config.icon;
 
@@ -37,7 +41,7 @@ export function BucketCard({ bucket }: BucketCardProps) {
               <div className={`p-2 rounded-lg ${config.bgColor}`}>
                 <HugeiconsIcon icon={Icon} className={config.color} size={20} />
               </div>
-              <span className="font-medium text-sm">{config.label}</span>
+              <span className="font-medium text-sm">{t(bucket.bucket)}</span>
             </div>
             <span className={`text-2xl ${statusColor}`}>{statusIcon}</span>
           </div>

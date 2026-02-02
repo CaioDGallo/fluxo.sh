@@ -18,6 +18,7 @@ export default async function DashboardPage({
 }) {
   const t = await getTranslations('dashboard');
   const tOnboarding = await getTranslations('onboarding.hints');
+  const tBudget503020 = await getTranslations('budget503020');
   const { month } = await searchParams;
   const currentMonth = month || getCurrentYearMonth();
 
@@ -46,7 +47,7 @@ export default async function DashboardPage({
             href="/statistics"
             className="text-sm text-gray-600 hover:text-gray-900 underline"
           >
-            Ver Estatísticas Detalhadas
+            {tBudget503020('viewStatistics')}
           </Link>
           <PresetSelector currentPreset={currentPreset} />
           <MonthPicker currentMonth={currentMonth} />
@@ -85,10 +86,10 @@ export default async function DashboardPage({
             <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-12 text-center">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-600">
-                  Mais widgets em breve
+                  {tBudget503020('moreWidgetsSoon')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Insights e recomendações personalizadas
+                  {tBudget503020('personalizedInsights')}
                 </p>
               </div>
             </div>

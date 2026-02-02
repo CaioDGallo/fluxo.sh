@@ -19,27 +19,24 @@ import { Settings02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface PresetSelectorProps {
   currentPreset: PresetType;
 }
 
-const PRESETS = [
-  {
-    value: 'na_risca' as const,
-    label: 'Na Risca',
-    description: '50% Necessidades, 30% Desejos, 20% Poupança',
-    detail: 'Ideal para quem já tem controle financeiro estabelecido',
-  },
-  {
-    value: 'entrando_na_linha' as const,
-    label: 'Entrando na Linha',
-    description: '60% Necessidades, 30% Desejos, 10% Poupança',
-    detail: 'Recomendado para quem está começando a organizar as finanças',
-  },
-] as const;
+const PRESETS = ['na_risca', 'entrando_na_linha'] as const;
+
+// Map snake_case preset values to camelCase translation keys
+const PRESET_KEY_MAP: Record<PresetType, string> = {
+  na_risca: 'naRisca',
+  entrando_na_linha: 'entrandoNaLinha',
+  custom: 'custom',
+};
 
 export function PresetSelector({ currentPreset }: PresetSelectorProps) {
+  const t = useTranslations('budget503020.presets');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<PresetType>(currentPreset);
@@ -60,18 +57,22 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
         return;
       }
 
-      toast.success('Configuração atualizada com sucesso');
+      toast.success(tCommon('success'));
       setOpen(false);
       router.refresh(); // Refresh to fetch new data
     } catch (error) {
-      console.error('[PresetSelector] Error:', error);
-      toast.error('Erro ao atualizar configuração');
+      console.error('[PresetSelector] Update failed:', {
+        currentPreset,
+        selectedPreset: selected,
+        error,
+      });
+      toast.error(tCommon('error'));
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  const currentPresetLabel = PRESETS.find((p) => p.value === currentPreset)?.label ?? 'Na Risca';
+  const currentPresetLabel = t(PRESET_KEY_MAP[currentPreset]);
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -84,47 +85,50 @@ export function PresetSelector({ currentPreset }: PresetSelectorProps) {
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Configurar Método 50/30/20</AlertDialogTitle>
+          <AlertDialogTitle>{t('configure')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Escolha o modelo de distribuição que melhor se adapta ao seu momento financeiro
+            {t('chooseModel')}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-3">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => setSelected(preset.value)}
-              className={cn(
-                'w-full text-left p-4 rounded-lg border-2 transition-all',
-                selected === preset.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              )}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold">{preset.label}</h4>
-                  {selected === preset.value && (
-                    <span className="text-blue-600">✓</span>
-                  )}
+          {PRESETS.map((preset) => {
+            const key = PRESET_KEY_MAP[preset];
+            return (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setSelected(preset)}
+                className={cn(
+                  'w-full text-left p-4 rounded-lg border-2 transition-all',
+                  selected === preset
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">{t(key)}</h4>
+                    {selected === preset && (
+                      <span className="text-blue-600">✓</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">
+                    {t(`${key}Description`)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {t(`${key}Detail`)}
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-gray-700">
-                  {preset.description}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {preset.detail}
-                </p>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isSubmitting}>{tCommon('cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Salvando...' : 'Salvar'}
+            {isSubmitting ? tCommon('saving') : tCommon('save')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

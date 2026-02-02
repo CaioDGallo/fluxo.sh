@@ -53,6 +53,71 @@ export interface SafeToSpendData {
 }
 
 /**
+ * Extract bucket percentages from config
+ */
+function getBucketPercentages(
+  config: { preset: PresetType; customNecessities: number | null; customWants: number | null; customSavings: number | null } | undefined
+): { necessities: number; wants: number; savings: number } {
+  const preset = config?.preset ?? 'na_risca';
+
+  if (preset === 'custom' && config) {
+    return {
+      necessities: config.customNecessities ?? 50,
+      wants: config.customWants ?? 30,
+      savings: config.customSavings ?? 20,
+    };
+  }
+
+  return PRESETS[preset as keyof typeof PRESETS];
+}
+
+/**
+ * Calculate bucket targets from total budget and percentages
+ */
+function calculateBucketTargets(
+  totalBudget: number,
+  percentages: { necessities: number; wants: number; savings: number }
+): { necessitiesTarget: number; wantsTarget: number; savingsTarget: number } {
+  return {
+    necessitiesTarget: Math.round(totalBudget * percentages.necessities / 100),
+    wantsTarget: Math.round(totalBudget * percentages.wants / 100),
+    savingsTarget: Math.round(totalBudget * percentages.savings / 100),
+  };
+}
+
+/**
+ * Calculate pacing status for wants bucket
+ */
+function calculatePacing(
+  wantsSpent: number,
+  wantsTarget: number,
+  yearMonth: string
+): { pacingStatus: 'on_track' | 'over_pace' | 'under_pace'; pacingPercent: number; daysRemaining: number } {
+  const monthStart = parseYearMonth(yearMonth);
+  const now = new Date();
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+
+  const totalDays = monthEnd.getDate();
+  const currentDay = now.getMonth() === monthStart.getMonth() &&
+                     now.getFullYear() === monthStart.getFullYear()
+                     ? now.getDate()
+                     : monthStart > now
+                       ? 0          // Future month: no days passed
+                       : totalDays; // Past month: all days passed
+  const daysRemaining = Math.max(0, totalDays - currentDay);
+  const daysPassed = currentDay;
+
+  const expectedWantsSpent = daysPassed > 0 ? (wantsTarget * daysPassed) / totalDays : 0;
+  const pacingPercent = expectedWantsSpent > 0 ? (wantsSpent / expectedWantsSpent) * 100 : 0;
+
+  let pacingStatus: 'on_track' | 'over_pace' | 'under_pace' = 'on_track';
+  if (pacingPercent > 110) pacingStatus = 'over_pace';
+  else if (pacingPercent < 90) pacingStatus = 'under_pace';
+
+  return { pacingStatus, pacingPercent, daysRemaining };
+}
+
+/**
  * Get 50/30/20 budget data for a specific month
  */
 export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeToSpendData> => {
@@ -66,18 +131,7 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
       .where(eq(budgetConfig.userId, userId))
       .limit(1);
 
-    const preset = config?.preset ?? 'na_risca';
-    let percentages: { necessities: number; wants: number; savings: number };
-
-    if (preset === 'custom' && config) {
-      percentages = {
-        necessities: config.customNecessities ?? 50,
-        wants: config.customWants ?? 30,
-        savings: config.customSavings ?? 20,
-      };
-    } else {
-      percentages = PRESETS[preset as keyof typeof PRESETS];
-    }
+    const percentages = getBucketPercentages(config);
 
     // Get total monthly budget
     const budgetRows = await db
@@ -123,33 +177,11 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
     const wantsSpent = (bucketMap.get('wants') ?? 0) + unassignedSpent;
     const savingsSpent = bucketMap.get('savings') ?? 0;
 
-    const necessitiesTarget = Math.round(totalBudget * percentages.necessities / 100);
-    const wantsTarget = Math.round(totalBudget * percentages.wants / 100);
-    const savingsTarget = Math.round(totalBudget * percentages.savings / 100);
-
+    const { necessitiesTarget, wantsTarget, savingsTarget } = calculateBucketTargets(totalBudget, percentages);
     const totalSpent = necessitiesSpent + wantsSpent + savingsSpent;
 
     // Calculate pacing for wants bucket
-    const monthStart = parseYearMonth(yearMonth);
-    const now = new Date();
-    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-
-    const totalDays = monthEnd.getDate();
-    const currentDay = now.getMonth() === monthStart.getMonth() &&
-                       now.getFullYear() === monthStart.getFullYear()
-                       ? now.getDate()
-                       : monthStart > now
-                         ? 0          // Future month: no days passed
-                         : totalDays; // Past month: all days passed
-    const daysRemaining = Math.max(0, totalDays - currentDay);
-    const daysPassed = currentDay;
-
-    const expectedWantsSpent = daysPassed > 0 ? (wantsTarget * daysPassed) / totalDays : 0;
-    const pacingPercent = expectedWantsSpent > 0 ? (wantsSpent / expectedWantsSpent) * 100 : 0;
-
-    let pacingStatus: 'on_track' | 'over_pace' | 'under_pace' = 'on_track';
-    if (pacingPercent > 110) pacingStatus = 'over_pace';
-    else if (pacingPercent < 90) pacingStatus = 'under_pace';
+    const { pacingStatus, pacingPercent, daysRemaining } = calculatePacing(wantsSpent, wantsTarget, yearMonth);
 
     const wantsSafeToSpend = Math.max(0, wantsTarget - wantsSpent);
     const wantsSafeToSpendDaily = daysRemaining > 0 ? Math.round(wantsSafeToSpend / daysRemaining) : 0;

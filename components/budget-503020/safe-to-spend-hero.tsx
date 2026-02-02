@@ -1,10 +1,10 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { centsToDisplay } from '@/lib/utils';
+import { formatCurrencyWithLocale } from '@/lib/utils';
 import type { SafeToSpendData, PresetType } from '@/lib/actions/budget-503020';
 import { PACING_CONFIG } from '@/lib/budget-503020-config';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { PresetSelector } from './preset-selector';
 import { PacingZoneBar } from './pacing-zone-bar';
 
@@ -23,6 +23,7 @@ const PACING_KEY_MAP = {
 export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
   const t = useTranslations('budget503020');
   const tPacing = useTranslations('budget503020.pacing');
+  const locale = useLocale();
   const wantsBucket = data.buckets.find((b) => b.bucket === 'wants');
   const pacingConfig = PACING_CONFIG[data.pacing.status];
   const pacingKey = PACING_KEY_MAP[data.pacing.status];
@@ -39,7 +40,7 @@ export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
               <p className="text-sm text-muted-foreground mb-1">{t('safeToSpend')}</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold text-foreground tabular-nums">
-                  R$&nbsp;{centsToDisplay(data.wantsSafeToSpendDaily)}
+                  {formatCurrencyWithLocale(data.wantsSafeToSpendDaily, locale)}
                 </span>
                 <span className="text-lg text-muted-foreground">{t('perDay')}</span>
               </div>
@@ -48,12 +49,12 @@ export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
           </div>
 
           {/* Details */}
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <div>
-              <span className="font-medium tabular-nums">R$&nbsp;{centsToDisplay(data.wantsSafeToSpend)}</span>
+              <span className="font-medium tabular-nums">{formatCurrencyWithLocale(data.wantsSafeToSpend, locale)}</span>
               {' '}{t('remaining')}
             </div>
-            <div>•</div>
+            <div className="hidden sm:block">•</div>
             <div>
               {t('daysRemaining', { count: data.daysRemaining })}
             </div>
@@ -61,7 +62,7 @@ export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
 
           {/* Pacing indicator with zone visualization */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
               <span className={`text-sm font-medium ${pacingConfig.color}`}>
                 {tPacing(pacingKey)}
               </span>

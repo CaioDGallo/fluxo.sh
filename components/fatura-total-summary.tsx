@@ -37,20 +37,23 @@ export function FaturaTotalSummary({
           <span className="font-bold">{formatCurrency(totalAmount)}</span>
         </div>
 
-        {/* Status breakdown rows */}
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">{t('paidFaturas')} ({paidCount})</span>
-          <span className="font-semibold text-green-600">{formatCurrency(paidAmount)}</span>
-        </div>
+        <div className='bg-muted p-2'>
+          {/* Status breakdown rows */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">{t('paidFaturas')} ({paidCount})</span>
+            <span className="font-semibold text-green-600">{formatCurrency(paidAmount)}</span>
+          </div>
 
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">{t('pendingFaturas')} ({pendingCount})</span>
-          <span className="font-semibold text-gray-500">{formatCurrency(pendingAmount)}</span>
-        </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">{t('pendingFaturas')} ({pendingCount})</span>
+            <span className="font-semibold text-gray-500">{formatCurrency(pendingAmount)}</span>
+          </div>
 
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">{t('overdueFaturas')} ({overdueCount})</span>
-          <span className="font-semibold text-red-600">{formatCurrency(overdueAmount)}</span>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">{t('overdueFaturas')} ({overdueCount})</span>
+            <span className="font-semibold text-red-600">{formatCurrency(overdueAmount)}</span>
+          </div>
+
         </div>
       </CardContent>
     </Card>

@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AlertDialogCancel, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { IconPicker, isValidIconName, type IconName } from '@/components/icon-picker';
+import { CategoryBucketPicker } from '@/components/category-bucket-picker';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
+import type { BucketType } from '@/lib/actions/budget-503020';
 
 const COLORS = [
   '#ef4444', // red
@@ -43,6 +45,9 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
     const iconValue = category?.icon ?? null;
     return isValidIconName(iconValue) ? iconValue : null;
   });
+  const [bucket, setBucket] = useState<BucketType | null>(
+    (category?.bucket as BucketType | null) ?? null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('categoryForm');
@@ -55,8 +60,8 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
 
     try {
       const result = category
-        ? await updateCategory(category.id, { name, color, icon })
-        : await createCategory({ name, color, icon, type });
+        ? await updateCategory(category.id, { name, color, icon, bucket })
+        : await createCategory({ name, color, icon, bucket, type });
 
       if (!result.success) {
         setError(result.error);
@@ -109,6 +114,17 @@ export function CategoryForm({ category, type = 'expense', onSuccess }: Category
           <FieldLabel>{t('icon')}</FieldLabel>
           <IconPicker value={icon} onChange={setIcon} />
         </Field>
+
+        {type === 'expense' && (
+          <Field>
+            <FieldLabel>Categoria de Orçamento 50/30/20</FieldLabel>
+            <CategoryBucketPicker
+              value={bucket}
+              onChange={setBucket}
+              disabled={isSubmitting}
+            />
+          </Field>
+        )}
 
         {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">

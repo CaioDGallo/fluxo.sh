@@ -103,6 +103,7 @@
     "navigation": "Navegação",
     "home": "fluxo.sh",
     "dashboard": "Meu Fluxo",
+    "statistics": "Estatísticas",
     "budgets": "Orçamentos",
     "expenses": "Despesas",
     "transfers": "Transferências",
@@ -131,12 +132,55 @@
     "income": "Receita"
   },
   "dashboard": {
-    "title": "Visão Geral",
+    "title": "Meu Fluxo",
+    "loading": "Carregando…",
+    "noBudgets": "Nenhum orçamento definido para este mês",
+    "noBudgetsDescription": "Configure seus orçamentos mensais para começar a acompanhar seus gastos.",
+    "setBudgets": "Definir Orçamentos"
+  },
+  "statistics": {
+    "title": "Estatísticas",
     "loading": "Carregando…",
     "noBudgets": "Nenhum orçamento definido para este mês",
     "noBudgetsDescription": "Configure seus orçamentos mensais para começar a acompanhar seus gastos.",
     "setBudgets": "Definir Orçamentos",
     "budgetByCategory": "Orçamento por Categoria"
+  },
+  "budget503020": {
+    "safeToSpend": "Disponível para Gastar",
+    "perDay": "por dia",
+    "remaining": "restante em Desejos",
+    "daysRemaining": "{count} dias restantes",
+    "buckets": {
+      "necessities": "Necessidades",
+      "wants": "Desejos",
+      "savings": "Poupança"
+    },
+    "pacing": {
+      "onTrack": "No Ritmo",
+      "onTrackDescription": "Seu ritmo está equilibrado",
+      "overPace": "Gastando Rápido",
+      "overPaceDescription": "Você está acima do ritmo esperado",
+      "underPace": "Economizando",
+      "underPaceDescription": "Você está abaixo do ritmo esperado",
+      "ofExpected": "do esperado"
+    },
+    "presets": {
+      "naRisca": "Na Risca",
+      "naRiscaDescription": "50% Necessidades, 30% Desejos, 20% Poupança",
+      "naRiscaDetail": "Ideal para quem já tem controle financeiro estabelecido",
+      "entrandoNaLinha": "Entrando na Linha",
+      "entrandoNaLinhaDescription": "60% Necessidades, 30% Desejos, 10% Poupança",
+      "entrandoNaLinhaDetail": "Recomendado para quem está começando a organizar as finanças",
+      "configure": "Configurar Método 50/30/20",
+      "chooseModel": "Escolha o modelo de distribuição que melhor se adapta ao seu momento financeiro"
+    },
+    "viewStatistics": "Ver Estatísticas Detalhadas",
+    "moreWidgetsSoon": "Mais widgets em breve",
+    "personalizedInsights": "Insights e recomendações personalizadas",
+    "spendingPace": "Ritmo de Gastos",
+    "bucketCategory": "Categoria de Orçamento 50/30/20",
+    "removeCategorization": "Remover categorização"
   },
   "expenses": {
     "title": "Despesas",

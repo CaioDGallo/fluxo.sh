@@ -33,6 +33,10 @@ export const billingSubscriptionStatusEnum = pgEnum('billing_subscription_status
   'paused',
 ]);
 
+// Enums for 50/30/20 budget methodology
+export const budgetBucketEnum = pgEnum('budget_bucket', ['necessities', 'wants', 'savings']);
+export const budgetPresetEnum = pgEnum('budget_preset', ['na_risca', 'entrando_na_linha', 'custom']);
+
 // Accounts table
 export const accounts = pgTable('accounts', {
   id: serial('id').primaryKey(),
@@ -58,6 +62,7 @@ export const categories = pgTable('categories', {
   color: text('color').notNull().default('#6b7280'),
   icon: text('icon'),
   type: categoryTypeEnum('type').notNull().default('expense'),
+  bucket: budgetBucketEnum('bucket'), // nullable, for 50/30/20 bucketing
   isImportDefault: boolean('is_import_default').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -111,6 +116,23 @@ export const monthlyBudgets = pgTable(
   },
   (table) => ({
     uniqueUserMonth: unique().on(table.userId, table.yearMonth),
+  })
+);
+
+// Budget Config table (50/30/20 preset configuration)
+export const budgetConfig = pgTable(
+  'budget_config',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    preset: budgetPresetEnum('preset').notNull().default('na_risca'),
+    customNecessities: integer('custom_necessities'), // nullable, only used when preset='custom'
+    customWants: integer('custom_wants'), // nullable, only used when preset='custom'
+    customSavings: integer('custom_savings'), // nullable, only used when preset='custom'
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUser: unique().on(table.userId),
   })
 );
 
@@ -489,6 +511,9 @@ export type NewBudgetAlert = typeof budgetAlerts.$inferInsert;
 
 export type MonthlyBudget = typeof monthlyBudgets.$inferSelect;
 export type NewMonthlyBudget = typeof monthlyBudgets.$inferInsert;
+
+export type BudgetConfig = typeof budgetConfig.$inferSelect;
+export type NewBudgetConfig = typeof budgetConfig.$inferInsert;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;

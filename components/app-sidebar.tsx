@@ -22,6 +22,7 @@ import {
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import {
+  Analytics01Icon,
   ArrowLeftRightIcon,
   ArrowRight01Icon,
   CalendarIcon,
@@ -43,6 +44,7 @@ import { usePathname } from 'next/navigation';
 
 const navItems = [
   { key: 'dashboard', href: '/dashboard', icon: MoneyReceiveFlow02Icon },
+  { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
   { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
   { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },

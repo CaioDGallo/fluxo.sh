@@ -1,23 +1,26 @@
 import { getTranslations } from 'next-intl/server';
 import { MonthPicker } from '@/components/month-picker';
 import { SummaryCard } from '@/components/summary-card';
-import { BudgetProgress } from '@/components/budget-progress';
 import { UnbudgetedSpending } from '@/components/unbudgeted-spending';
 import { CopyBudgetsButton } from '@/components/copy-budgets-button';
 import { getBudgetsWithSpending } from '@/lib/actions/budgets';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
+import { BudgetBucketTabs } from '@/components/budget-bucket-tabs';
+import { BudgetBucketView } from '@/components/budget-bucket-view';
 import Link from 'next/link';
+import type { BucketFilter } from '@/lib/hooks/use-bucket-filter';
 
 export default async function BudgetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; bucket?: string }>
 }) {
   const t = await getTranslations('budgets');
   const tOnboarding = await getTranslations('onboarding.hints');
-  const { month } = await searchParams;
-  const yearMonth = month || getCurrentYearMonth();
+  const params = await searchParams;
+  const yearMonth = params.month || getCurrentYearMonth();
+  const bucketFilter = (params.bucket || 'all') as BucketFilter;
   const data = await getBudgetsWithSpending(yearMonth);
 
   const hasNoBudgets = data.budgets.length === 0;
@@ -32,6 +35,9 @@ export default async function BudgetsPage({
           <h1 className="text-2xl font-bold hidden md:flex text-balance">{t('title')}</h1>
           <MonthPicker currentMonth={yearMonth} />
         </div>
+
+        {/* Bucket Tabs */}
+        <BudgetBucketTabs />
 
         {/* Actions row */}
         <div className="mb-6 flex items-center justify-between">
@@ -61,29 +67,16 @@ export default async function BudgetsPage({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Summary Card */}
-            <SummaryCard spent={data.totalSpent} replenished={data.totalReplenished} budget={data.totalBudget} />
+            {/* Summary Card - only show for "all" view */}
+            {bucketFilter === 'all' && (
+              <SummaryCard spent={data.totalSpent} replenished={data.totalReplenished} budget={data.totalBudget} />
+            )}
 
-            {/* Budget Progress List */}
-            <div>
-              <h2 className="mb-4 text-lg font-semibold text-balance">{t('budgetByCategory')}</h2>
-              <div className="space-y-4">
-                {data.budgets.map((budget) => (
-                  <BudgetProgress
-                    key={budget.categoryId}
-                    categoryName={budget.categoryName}
-                    categoryColor={budget.categoryColor}
-                    categoryIcon={budget.categoryIcon}
-                    spent={budget.spent}
-                    replenished={budget.replenished}
-                    budget={budget.budget}
-                  />
-                ))}
-              </div>
-            </div>
+            {/* Bucket-filtered Budget View */}
+            <BudgetBucketView budgets={data.budgets} bucketFilter={bucketFilter} />
 
-            {/* Unbudgeted Spending Section */}
-            {data.unbudgeted.length > 0 && (
+            {/* Unbudgeted Spending Section - only show for "all" view */}
+            {bucketFilter === 'all' && data.unbudgeted.length > 0 && (
               <div>
                 <h2 className="mb-4 text-lg font-semibold text-gray-600 text-balance">
                   {t('expensesWithoutBudget')}

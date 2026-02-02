@@ -263,6 +263,7 @@ export type BudgetWithSpending = {
   categoryName: string;
   categoryColor: string;
   categoryIcon: string | null;
+  categoryBucket: 'necessities' | 'wants' | 'savings' | null;
   spent: number;
   replenished: number;
   netSpent: number;
@@ -274,6 +275,7 @@ export type UnbudgetedSpending = {
   categoryName: string;
   categoryColor: string;
   categoryIcon: string | null;
+  categoryBucket: 'necessities' | 'wants' | 'savings' | null;
   spent: number;
 };
 
@@ -316,6 +318,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
         categoryName: categories.name,
         categoryColor: categories.color,
         categoryIcon: categories.icon,
+        categoryBucket: categories.bucket,
         budget: budgets.amount,
       })
       .from(budgets)
@@ -371,6 +374,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
         categoryName: budget.categoryName,
         categoryColor: budget.categoryColor,
         categoryIcon: budget.categoryIcon,
+        categoryBucket: budget.categoryBucket,
         spent,
         replenished,
         netSpent: spent - replenished,
@@ -389,6 +393,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
         name: categories.name,
         color: categories.color,
         icon: categories.icon,
+        bucket: categories.bucket,
       })
       .from(categories)
       .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')));
@@ -404,6 +409,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
           categoryName: cat.name,
           categoryColor: cat.color,
           categoryIcon: cat.icon,
+          categoryBucket: cat.bucket,
           spent: s.spent,
         };
       })

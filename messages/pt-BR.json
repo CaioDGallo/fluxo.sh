@@ -381,7 +381,9 @@
     "organizeCategories": "Organizar",
     "targetPercentage": "Meta: {percent}%",
     "bucketAllocated": "R$ {amount} / R$ {total}",
-    "noCategoriesInBucket": "Nenhuma categoria neste grupo ainda"
+    "noCategoriesInBucket": "Nenhuma categoria neste grupo ainda",
+    "allBuckets": "Todos",
+    "filterByBucket": "Filtrar por categoria de orçamento"
   },
   "form": {
     "amount": "Valor",

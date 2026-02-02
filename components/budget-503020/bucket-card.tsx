@@ -7,6 +7,8 @@ import { Tick02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import type { BucketData } from '@/lib/actions/budget-503020';
 import { BUCKET_CONFIG } from '@/lib/budget-503020-config';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 interface BucketCardProps {
   bucket: BucketData;
@@ -16,6 +18,8 @@ export function BucketCard({ bucket }: BucketCardProps) {
   const t = useTranslations('budget503020.buckets');
   const config = BUCKET_CONFIG[bucket.bucket];
   const Icon = config.icon;
+  const searchParams = useSearchParams();
+  const currentMonth = searchParams.get('month');
 
   // Status indicator
   const isOverBudget = bucket.percentage > 100;
@@ -35,9 +39,16 @@ export function BucketCard({ bucket }: BucketCardProps) {
     statusLabel = 'Próximo do limite';
   }
 
+  // Build URL with bucket filter and preserve month if present
+  const href = `/budgets?bucket=${bucket.bucket}${currentMonth ? `&month=${currentMonth}` : ''}`;
+
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Link
+      href={href}
+      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+    >
+      <Card className="transition-shadow hover:shadow-md motion-reduce:transition-none">
+        <CardContent className="p-4">
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -80,5 +91,6 @@ export function BucketCard({ bucket }: BucketCardProps) {
         </div>
       </CardContent>
     </Card>
+    </Link>
   );
 }

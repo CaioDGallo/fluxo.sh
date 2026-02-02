@@ -216,14 +216,25 @@ const categoriesData = DEFAULT_CATEGORIES;
 
 function createBudgets(categoryIds: Record<string, number>, userId: string) {
   const months = [CURRENT_MONTH, PREV_MONTH, TWO_MONTHS_AGO];
+
+  // Budget aligned with 50/30/20 methodology on R$ 5,000 monthly budget
+  // Necessities (50% = R$ 2,500): Alimentacao, Transporte, Moradia, Contas, Saude, Educacao
+  // Wants (30% = R$ 1,500): Entretenimento, Compras, Lazer, Assinaturas
+  // Savings (20% = R$ 1,000): Not tracked as expense categories
   const budgetAmounts: Record<string, number> = {
+    // NECESSITIES (R$ 2,500 total)
     'Alimentacao': 80000, // R$ 800
     'Transporte': 50000, // R$ 500
-    'Entretenimento': 30000, // R$ 300
-    'Compras': 60000, // R$ 600
-    'Saude': 40000, // R$ 400
-    'Contas': 120000, // R$ 1200
+    'Moradia': 85000, // R$ 850 (rent)
+    'Contas': 40000, // R$ 400 (utilities)
+    'Saude': 25000, // R$ 250
     'Educacao': 20000, // R$ 200
+
+    // WANTS (R$ 1,500 total)
+    'Entretenimento': 40000, // R$ 400
+    'Compras': 60000, // R$ 600
+    'Lazer': 30000, // R$ 300
+    'Assinaturas': 20000, // R$ 200
   };
 
   return months.flatMap((month) =>
@@ -249,30 +260,35 @@ type TransactionSeed = {
 };
 
 const transactionsData: TransactionSeed[] = [
-  // ALIMENTAÇÃO - Over budget (~R$ 950 vs R$ 800)
+  // ═══════════════════════════════════════════════════════════
+  // NECESSITIES BUCKET - Target: R$ 2,500 | Spent: ~R$ 1,800 (72%)
+  // Status: On track, well-managed
+  // ═══════════════════════════════════════════════════════════
+
+  // ALIMENTAÇÃO - R$ 580 / R$ 800 (72.5%)
   {
-    description: 'iFood mensal',
-    totalAmount: 35000,
-    categoryName: 'Alimentacao',
-    accountName: 'Nubank',
-    startMonth: 0,
-    installments: 1,
-    startDay: 5,
-    paid: false,
-  },
-  {
-    description: 'Mercado Extra',
-    totalAmount: 28000,
+    description: 'Mercado São Paulo',
+    totalAmount: 32000, // R$ 320
     categoryName: 'Alimentacao',
     accountName: 'Itaú Corrente',
     startMonth: 0,
     installments: 1,
-    startDay: 8,
+    startDay: 3,
     paid: true,
   },
   {
-    description: 'Padaria Zé',
-    totalAmount: 4500,
+    description: 'iFood - Delivery',
+    totalAmount: 18500, // R$ 185
+    categoryName: 'Alimentacao',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 8,
+    paid: false,
+  },
+  {
+    description: 'Padaria do Bairro',
+    totalAmount: 7500, // R$ 75
     categoryName: 'Alimentacao',
     accountName: 'Carteira',
     startMonth: 0,
@@ -280,41 +296,21 @@ const transactionsData: TransactionSeed[] = [
     startDay: 12,
     paid: true,
   },
-  {
-    description: 'Restaurante Família',
-    totalAmount: 18000,
-    categoryName: 'Alimentacao',
-    accountName: 'Nubank',
-    startMonth: 0,
-    installments: 1,
-    startDay: 15,
-    paid: false,
-  },
-  {
-    description: 'Supermercado Dia',
-    totalAmount: 9500,
-    categoryName: 'Alimentacao',
-    accountName: 'Carteira',
-    startMonth: 0,
-    installments: 1,
-    startDay: 20,
-    paid: true,
-  },
 
-  // TRANSPORTE - Warning zone (~R$ 425 vs R$ 500)
+  // TRANSPORTE - R$ 380 / R$ 500 (76%)
   {
     description: 'Uber mensal',
-    totalAmount: 22000,
+    totalAmount: 22000, // R$ 220
     categoryName: 'Transporte',
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
-    startDay: 3,
+    startDay: 5,
     paid: false,
   },
   {
-    description: 'Gasolina Shell',
-    totalAmount: 18000,
+    description: 'Gasolina Posto BR',
+    totalAmount: 16000, // R$ 160
     categoryName: 'Transporte',
     accountName: 'Itaú Corrente',
     startMonth: 0,
@@ -322,75 +318,23 @@ const transactionsData: TransactionSeed[] = [
     startDay: 10,
     paid: true,
   },
-  {
-    description: 'Estacionamento',
-    totalAmount: 2500,
-    categoryName: 'Transporte',
-    accountName: 'Carteira',
-    startMonth: 0,
-    installments: 1,
-    startDay: 14,
-    paid: true,
-  },
 
-  // ENTRETENIMENTO - Under budget (~R$ 120 vs R$ 300)
-  {
-    description: 'Netflix',
-    totalAmount: 4500,
-    categoryName: 'Entretenimento',
-    accountName: 'Nubank',
-    startMonth: 0,
-    installments: 1,
-    startDay: 1,
-    paid: true,
-  },
-  {
-    description: 'Cinema Ingresso',
-    totalAmount: 7500,
-    categoryName: 'Entretenimento',
-    accountName: 'Nubank',
-    startMonth: 0,
-    installments: 1,
-    startDay: 18,
-    paid: false,
-  },
-
-  // COMPRAS - Multi-installment examples
-  {
-    description: 'Cadeira Gamer',
-    totalAmount: 120000,
-    categoryName: 'Compras',
-    accountName: 'Nubank',
-    startMonth: -2,
-    installments: 6,
-    startDay: 15,
-    paid: 'partial',
-  },
-  {
-    description: 'Fone Bluetooth',
-    totalAmount: 45000,
-    categoryName: 'Compras',
-    accountName: 'Nubank',
-    startMonth: -1,
-    installments: 3,
-    startDay: 10,
-    paid: 'partial',
-  },
-
-  // CONTAS - Fixed bills (~R$ 870 vs R$ 1200)
+  // MORADIA - R$ 850 / R$ 850 (100%) - Fixed cost
   {
     description: 'Aluguel',
-    totalAmount: 65000,
-    categoryName: 'Contas',
+    totalAmount: 85000, // R$ 850
+    categoryName: 'Moradia',
     accountName: 'Itaú Corrente',
     startMonth: 0,
     installments: 1,
     startDay: 5,
     paid: true,
   },
+
+  // CONTAS - R$ 285 / R$ 400 (71%)
   {
-    description: 'Conta de Luz',
-    totalAmount: 12000,
+    description: 'Conta de Luz CPFL',
+    totalAmount: 14500, // R$ 145
     categoryName: 'Contas',
     accountName: 'Itaú Corrente',
     startMonth: 0,
@@ -399,20 +343,52 @@ const transactionsData: TransactionSeed[] = [
     paid: true,
   },
   {
-    description: 'Internet',
-    totalAmount: 10000,
+    description: 'Conta de Água',
+    totalAmount: 8000, // R$ 80
     categoryName: 'Contas',
     accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 12,
+    paid: true,
+  },
+  {
+    description: 'Internet Vivo Fibra',
+    totalAmount: 6000, // R$ 60
+    categoryName: 'Contas',
+    accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
     startDay: 15,
     paid: false,
   },
 
-  // EDUCAÇÃO - Under budget (~R$ 60 vs R$ 200)
+  // SAÚDE - R$ 180 / R$ 250 (72%)
+  {
+    description: 'Farmácia - Medicamentos',
+    totalAmount: 12000, // R$ 120
+    categoryName: 'Saude',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 7,
+    paid: false,
+  },
+  {
+    description: 'Consulta Dentista',
+    totalAmount: 6000, // R$ 60
+    categoryName: 'Saude',
+    accountName: 'Itaú Corrente',
+    startMonth: 0,
+    installments: 1,
+    startDay: 14,
+    paid: true,
+  },
+
+  // EDUCAÇÃO - R$ 150 / R$ 200 (75%)
   {
     description: 'Curso Udemy',
-    totalAmount: 6000,
+    totalAmount: 7500, // R$ 75
     categoryName: 'Educacao',
     accountName: 'Nubank',
     startMonth: 0,
@@ -420,33 +396,168 @@ const transactionsData: TransactionSeed[] = [
     startDay: 2,
     paid: true,
   },
-
-  // SAÚDE - Zero spending (has budget, no transactions in current month)
-
-  // HISTORICAL DATA - Previous month (mostly paid)
   {
-    description: 'iFood',
-    totalAmount: 32000,
-    categoryName: 'Alimentacao',
+    description: 'Livros técnicos',
+    totalAmount: 7500, // R$ 75
+    categoryName: 'Educacao',
     accountName: 'Nubank',
-    startMonth: -1,
+    startMonth: 0,
     installments: 1,
-    startDay: 8,
+    startDay: 18,
+    paid: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // WANTS BUCKET - Target: R$ 1,500 | Spent: ~R$ 1,200 (80%)
+  // Status: Slightly over pace (warning)
+  // ═══════════════════════════════════════════════════════════
+
+  // ENTRETENIMENTO - R$ 320 / R$ 400 (80%)
+  {
+    description: 'Netflix',
+    totalAmount: 5500, // R$ 55
+    categoryName: 'Entretenimento',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 1,
     paid: true,
   },
   {
-    description: 'Mercado',
-    totalAmount: 25000,
+    description: 'Cinema Ingresso + Pipoca',
+    totalAmount: 9500, // R$ 95
+    categoryName: 'Entretenimento',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 6,
+    paid: false,
+  },
+  {
+    description: 'Steam - Jogo novo',
+    totalAmount: 16000, // R$ 160
+    categoryName: 'Entretenimento',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 9,
+    paid: false,
+  },
+
+  // COMPRAS - R$ 540 / R$ 600 (90%) - Includes installments
+  {
+    description: 'Roupas Renner',
+    totalAmount: 22000, // R$ 220
+    categoryName: 'Compras',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 11,
+    paid: false,
+  },
+  {
+    description: 'Tênis Nike',
+    totalAmount: 36000, // R$ 360 (R$ 120/mês x 3)
+    categoryName: 'Compras',
+    accountName: 'Nubank',
+    startMonth: -1,
+    installments: 3,
+    startDay: 15,
+    paid: 'partial', // 2nd installment in current month
+  },
+  {
+    description: 'Mouse Gamer',
+    totalAmount: 24000, // R$ 240 (R$ 40/mês x 6)
+    categoryName: 'Compras',
+    accountName: 'Nubank',
+    startMonth: -2,
+    installments: 6,
+    startDay: 20,
+    paid: 'partial', // 3rd installment in current month
+  },
+
+  // LAZER - R$ 245 / R$ 300 (81.6%)
+  {
+    description: 'Restaurante Japonês',
+    totalAmount: 18000, // R$ 180
+    categoryName: 'Lazer',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 13,
+    paid: false,
+  },
+  {
+    description: 'Bar com amigos',
+    totalAmount: 6500, // R$ 65
+    categoryName: 'Lazer',
+    accountName: 'Carteira',
+    startMonth: 0,
+    installments: 1,
+    startDay: 16,
+    paid: true,
+  },
+
+  // ASSINATURAS - R$ 95 / R$ 200 (47.5%)
+  {
+    description: 'Spotify Premium',
+    totalAmount: 3490, // R$ 34.90
+    categoryName: 'Assinaturas',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 1,
+    paid: true,
+  },
+  {
+    description: 'YouTube Premium',
+    totalAmount: 2890, // R$ 28.90
+    categoryName: 'Assinaturas',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 3,
+    paid: true,
+  },
+  {
+    description: 'Amazon Prime',
+    totalAmount: 3190, // R$ 31.90
+    categoryName: 'Assinaturas',
+    accountName: 'Nubank',
+    startMonth: 0,
+    installments: 1,
+    startDay: 8,
+    paid: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // HISTORICAL DATA - Previous months
+  // ═══════════════════════════════════════════════════════════
+
+  // PREVIOUS MONTH - Balanced spending
+  {
+    description: 'Mercado mensal',
+    totalAmount: 35000,
     categoryName: 'Alimentacao',
     accountName: 'Itaú Corrente',
     startMonth: -1,
     installments: 1,
-    startDay: 12,
+    startDay: 5,
+    paid: true,
+  },
+  {
+    description: 'Aluguel',
+    totalAmount: 85000,
+    categoryName: 'Moradia',
+    accountName: 'Itaú Corrente',
+    startMonth: -1,
+    installments: 1,
+    startDay: 5,
     paid: true,
   },
   {
     description: 'Consulta Médica',
-    totalAmount: 35000,
+    totalAmount: 25000,
     categoryName: 'Saude',
     accountName: 'Nubank',
     startMonth: -1,
@@ -454,30 +565,33 @@ const transactionsData: TransactionSeed[] = [
     startDay: 20,
     paid: true,
   },
+  {
+    description: 'Show Música',
+    totalAmount: 22000,
+    categoryName: 'Lazer',
+    accountName: 'Nubank',
+    startMonth: -1,
+    installments: 1,
+    startDay: 25,
+    paid: true,
+  },
 
-  // 2 MONTHS AGO - Sparse data
+  // TWO MONTHS AGO
   {
     description: 'Aluguel',
-    totalAmount: 65000,
-    categoryName: 'Contas',
+    totalAmount: 85000,
+    categoryName: 'Moradia',
     accountName: 'Itaú Corrente',
     startMonth: -2,
     installments: 1,
     startDay: 5,
     paid: true,
   },
-  {
-    description: 'Curso Online',
-    totalAmount: 18000,
-    categoryName: 'Educacao',
-    accountName: 'Nubank',
-    startMonth: -2,
-    installments: 3,
-    startDay: 1,
-    paid: true,
-  },
 
+  // ═══════════════════════════════════════════════════════════
   // IGNORED TRANSACTIONS - Should not affect budgets
+  // ═══════════════════════════════════════════════════════════
+
   {
     description: 'Compra empresa (reembolsável)',
     totalAmount: 45000,
@@ -496,19 +610,8 @@ const transactionsData: TransactionSeed[] = [
     accountName: 'Nubank',
     startMonth: 0,
     installments: 1,
-    startDay: 11,
+    startDay: 19,
     paid: false,
-    ignored: true,
-  },
-  {
-    description: 'Transferência entre contas',
-    totalAmount: 20000,
-    categoryName: 'Compras',
-    accountName: 'Itaú Corrente',
-    startMonth: -1,
-    installments: 1,
-    startDay: 25,
-    paid: true,
     ignored: true,
   },
 ];
@@ -525,7 +628,7 @@ type IncomeSeed = {
 };
 
 const incomeData: IncomeSeed[] = [
-  // CURRENT MONTH
+  // CURRENT MONTH - R$ 6,500 total (budget uses R$ 5,000, rest for savings/emergency)
   {
     description: 'Salário mensal',
     amount: 500000, // R$ 5,000
@@ -536,13 +639,13 @@ const incomeData: IncomeSeed[] = [
     received: true,
   },
   {
-    description: 'Projeto freelance - Site empresa',
-    amount: 150000, // R$ 1,500
+    description: 'Projeto freelance - Landing page',
+    amount: 120000, // R$ 1,200
     categoryName: 'Freelance',
     accountName: 'Nubank Rendimento',
     monthOffset: 0,
     day: 12,
-    received: false,
+    received: true,
   },
   {
     description: 'Dividendos ações',
@@ -553,8 +656,17 @@ const incomeData: IncomeSeed[] = [
     day: 20,
     received: true,
   },
+  {
+    description: 'Freelance - Logo design',
+    amount: 28500, // R$ 285
+    categoryName: 'Freelance',
+    accountName: 'Nubank Rendimento',
+    monthOffset: 0,
+    day: 18,
+    received: false, // Pending payment
+  },
 
-  // PREVIOUS MONTH
+  // PREVIOUS MONTH - R$ 5,800 total
   {
     description: 'Salário mensal',
     amount: 500000,
@@ -565,7 +677,7 @@ const incomeData: IncomeSeed[] = [
     received: true,
   },
   {
-    description: 'Projeto freelance - Logo',
+    description: 'Projeto freelance - App mobile',
     amount: 80000, // R$ 800
     categoryName: 'Freelance',
     accountName: 'Nubank Rendimento',
@@ -574,7 +686,7 @@ const incomeData: IncomeSeed[] = [
     received: true,
   },
 
-  // TWO MONTHS AGO
+  // TWO MONTHS AGO - R$ 5,000 (just salary)
   {
     description: 'Salário mensal',
     amount: 500000,
@@ -962,9 +1074,9 @@ async function seedDatabase() {
     // 12. Insert monthly budgets
     console.log('  💰 Inserting monthly budgets...');
     const monthlyBudgetRecords = [
-      { userId: TEST_USER_ID, yearMonth: CURRENT_MONTH, amount: 400000 }, // R$ 4,000
-      { userId: TEST_USER_ID, yearMonth: PREV_MONTH, amount: 380000 }, // R$ 3,800
-      { userId: TEST_USER_ID, yearMonth: TWO_MONTHS_AGO, amount: 350000 }, // R$ 3,500
+      { userId: TEST_USER_ID, yearMonth: CURRENT_MONTH, amount: 500000 }, // R$ 5,000 (50/30/20 base)
+      { userId: TEST_USER_ID, yearMonth: PREV_MONTH, amount: 500000 }, // R$ 5,000
+      { userId: TEST_USER_ID, yearMonth: TWO_MONTHS_AGO, amount: 480000 }, // R$ 4,800
     ];
     await seedRows('monthlyBudgets', monthlyBudgetRecords);
     console.log(`  ✓ ${monthlyBudgetRecords.length} monthly budgets created\n`);
@@ -1648,18 +1760,18 @@ async function seedDatabase() {
     // 22. Insert bill reminders
     console.log('  📋 Inserting bill reminders...');
     const billReminderRecords = [
-      // Monthly bills
+      // NECESSITIES - Monthly bills
       {
         userId: TEST_USER_ID,
         name: 'Aluguel',
-        categoryId: categoryMap['Contas'],
-        amount: 65000, // R$ 650
+        categoryId: categoryMap['Moradia'],
+        amount: 85000, // R$ 850
         dueDay: 5,
         dueTime: null,
         status: 'active' as const,
         recurrenceType: 'monthly',
-        startMonth: getYearMonth(-3), // Started 3 months ago
-        endMonth: null, // Ongoing
+        startMonth: getYearMonth(-12), // 1 year lease
+        endMonth: null,
         notify2DaysBefore: true,
         notify1DayBefore: true,
         notifyOnDueDay: true,
@@ -1669,7 +1781,7 @@ async function seedDatabase() {
         userId: TEST_USER_ID,
         name: 'Conta de Luz',
         categoryId: categoryMap['Contas'],
-        amount: 12000, // R$ 120
+        amount: 14500, // R$ 145
         dueDay: 10,
         dueTime: null,
         status: 'active' as const,
@@ -1683,9 +1795,25 @@ async function seedDatabase() {
       },
       {
         userId: TEST_USER_ID,
-        name: 'Internet',
+        name: 'Conta de Água',
         categoryId: categoryMap['Contas'],
-        amount: 10000, // R$ 100
+        amount: 8000, // R$ 80
+        dueDay: 12,
+        dueTime: null,
+        status: 'active' as const,
+        recurrenceType: 'monthly',
+        startMonth: getYearMonth(-6),
+        endMonth: null,
+        notify2DaysBefore: false,
+        notify1DayBefore: true,
+        notifyOnDueDay: true,
+        lastAcknowledgedMonth: getYearMonth(-1),
+      },
+      {
+        userId: TEST_USER_ID,
+        name: 'Internet Vivo Fibra',
+        categoryId: categoryMap['Contas'],
+        amount: 6000, // R$ 60
         dueDay: 15,
         dueTime: null,
         status: 'active' as const,
@@ -1695,13 +1823,15 @@ async function seedDatabase() {
         notify2DaysBefore: true,
         notify1DayBefore: false,
         notifyOnDueDay: true,
-        lastAcknowledgedMonth: null, // Not acknowledged yet
+        lastAcknowledgedMonth: getYearMonth(-1),
       },
+
+      // WANTS - Subscriptions and entertainment
       {
         userId: TEST_USER_ID,
         name: 'Netflix',
         categoryId: categoryMap['Entretenimento'],
-        amount: 4500, // R$ 45
+        amount: 5500, // R$ 55
         dueDay: 1,
         dueTime: null,
         status: 'active' as const,
@@ -1710,62 +1840,80 @@ async function seedDatabase() {
         endMonth: null,
         notify2DaysBefore: false,
         notify1DayBefore: false,
-        notifyOnDueDay: true, // Only notify on due day
+        notifyOnDueDay: true,
         lastAcknowledgedMonth: getYearMonth(0),
       },
       {
         userId: TEST_USER_ID,
-        name: 'Spotify',
-        categoryId: categoryMap['Entretenimento'],
-        amount: 2990, // R$ 29.90
-        dueDay: 12,
+        name: 'Spotify Premium',
+        categoryId: categoryMap['Assinaturas'],
+        amount: 3490, // R$ 34.90
+        dueDay: 1,
         dueTime: null,
         status: 'active' as const,
         recurrenceType: 'monthly',
         startMonth: getYearMonth(-18),
         endMonth: null,
         notify2DaysBefore: false,
-        notify1DayBefore: true,
-        notifyOnDueDay: false,
+        notify1DayBefore: false,
+        notifyOnDueDay: true,
         lastAcknowledgedMonth: getYearMonth(-1),
       },
       {
         userId: TEST_USER_ID,
-        name: 'Seguro do Carro',
-        categoryId: categoryMap['Contas'],
-        amount: 15000, // R$ 150
-        dueDay: 20,
+        name: 'YouTube Premium',
+        categoryId: categoryMap['Assinaturas'],
+        amount: 2890, // R$ 28.90
+        dueDay: 3,
         dueTime: null,
         status: 'active' as const,
         recurrenceType: 'monthly',
-        startMonth: getYearMonth(-8),
+        startMonth: getYearMonth(-6),
         endMonth: null,
-        notify2DaysBefore: true,
-        notify1DayBefore: true,
+        notify2DaysBefore: false,
+        notify1DayBefore: false,
         notifyOnDueDay: true,
-        lastAcknowledgedMonth: null,
+        lastAcknowledgedMonth: getYearMonth(-1),
       },
-      // Quarterly bill (IPTU - property tax in Brazil)
+      {
+        userId: TEST_USER_ID,
+        name: 'Amazon Prime',
+        categoryId: categoryMap['Assinaturas'],
+        amount: 3190, // R$ 31.90
+        dueDay: 8,
+        dueTime: null,
+        status: 'active' as const,
+        recurrenceType: 'monthly',
+        startMonth: getYearMonth(-10),
+        endMonth: null,
+        notify2DaysBefore: false,
+        notify1DayBefore: true,
+        notifyOnDueDay: false,
+        lastAcknowledgedMonth: getYearMonth(-1),
+      },
+
+      // Quarterly bill (IPTU - property tax)
       {
         userId: TEST_USER_ID,
         name: 'IPTU',
-        categoryId: categoryMap['Contas'],
+        categoryId: categoryMap['Moradia'],
         amount: 45000, // R$ 450
         dueDay: 15,
         dueTime: null,
         status: 'active' as const,
         recurrenceType: 'quarterly',
-        startMonth: '2026-01', // Started this year
+        startMonth: '2026-01',
         endMonth: null,
         notify2DaysBefore: true,
         notify1DayBefore: true,
         notifyOnDueDay: true,
         lastAcknowledgedMonth: null,
       },
-      // Completed/cancelled bill (old gym subscription)
+
+      // Completed bill (old gym subscription)
       {
         userId: TEST_USER_ID,
-        name: 'Academia SmartFit',
+        name: 'Academia SmartFit (cancelada)',
         categoryId: categoryMap['Saude'],
         amount: 8000, // R$ 80
         dueDay: 5,
@@ -1773,7 +1921,7 @@ async function seedDatabase() {
         status: 'completed' as const,
         recurrenceType: 'monthly',
         startMonth: getYearMonth(-15),
-        endMonth: getYearMonth(-3), // Ended 3 months ago
+        endMonth: getYearMonth(-3),
         notify2DaysBefore: false,
         notify1DayBefore: true,
         notifyOnDueDay: true,

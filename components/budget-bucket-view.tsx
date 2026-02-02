@@ -88,7 +88,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
 
       {/* Budget Cards */}
       {isExpanded && (
-        <div className="p-4 space-y-4 bg-background">
+        <div className="p-4 space-y-4 bg-muted">
           {budgets.map((budget) => (
             <BudgetProgress
               key={budget.categoryId}

@@ -23,7 +23,7 @@ export function BudgetBucketTabs() {
     <div
       role="tablist"
       aria-label={t('filterByBucket')}
-      className="mb-6 -mx-4 px-4 overflow-x-auto snap-x snap-mandatory flex gap-2 md:justify-center scrollbar-hide"
+      className="mb-6 grid grid-cols-2 gap-2"
     >
       {BUCKET_OPTIONS.map(({ value, iconKey }) => {
         const isActive = currentBucket === value;
@@ -38,15 +38,17 @@ export function BudgetBucketTabs() {
             aria-controls={`bucket-panel-${value}`}
             onClick={() => setBucket(value)}
             className={cn(
-              'snap-start shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium',
-              'transition-colors duration-200 motion-reduce:transition-none',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-              'min-h-[44px]', // Touch target
+              'flex items-center justify-center gap-2 rounded-none border-2 border-black p-3 text-sm font-bold',
+              'transition-all min-h-[44px]',
+              'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)]',
+              'hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none',
+              'active:translate-x-0.5 active:translate-y-0.5 active:shadow-none',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
               isActive
                 ? config
                   ? `${config.bgColor} ${config.color}`
-                  : 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                  : 'bg-blue-500 text-white dark:bg-blue-600'
+                : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:border-white'
             )}
           >
             <HugeiconsIcon icon={Icon} size={18} aria-hidden="true" />

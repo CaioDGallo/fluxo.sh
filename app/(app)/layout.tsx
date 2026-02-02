@@ -7,6 +7,7 @@ import { BottomTabBar } from '@/components/bottom-tab-bar';
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider';
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard';
 import { PwaInstallBanner } from '@/components/pwa-install-banner';
+import { FAB } from '@/components/fab/fab';
 
 export default async function AppLayout({
   children,
@@ -36,6 +37,9 @@ export default async function AppLayout({
 
         {/* Mobile Bottom Tab Bar */}
         <BottomTabBar />
+
+        {/* Floating Action Button (Mobile) */}
+        <FAB />
 
         {/* Onboarding Wizard */}
         <OnboardingWizard />

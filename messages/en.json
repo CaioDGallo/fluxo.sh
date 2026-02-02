@@ -124,6 +124,12 @@
     "logoutConfirmTitle": "Sign out of your account?",
     "logoutConfirmDescription": "You will be signed out and need to log in again to access your account."
   },
+  "fab": {
+    "addTransaction": "Add transaction",
+    "close": "Close",
+    "expense": "Expense",
+    "income": "Income"
+  },
   "dashboard": {
     "title": "Dashboard",
     "loading": "Loading…",

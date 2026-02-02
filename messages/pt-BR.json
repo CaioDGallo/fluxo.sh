@@ -124,6 +124,12 @@
     "logoutConfirmTitle": "Sair da sua conta?",
     "logoutConfirmDescription": "Você será desconectado e precisará fazer login novamente para acessar sua conta."
   },
+  "fab": {
+    "addTransaction": "Adicionar transação",
+    "close": "Fechar",
+    "expense": "Despesa",
+    "income": "Receita"
+  },
   "dashboard": {
     "title": "Visão Geral",
     "loading": "Carregando…",

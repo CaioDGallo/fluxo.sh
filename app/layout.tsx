@@ -36,7 +36,7 @@ export default async function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/brand-kit/exports/favicon-16-dark.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/brand-kit/exports/favicon-32-dark.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/brand-kit/exports/icon-192-dark.png" />
-        <link rel="shortcut icon" href="/brand-kit/exports/icon-32-dark.png" />
+        <link rel="shortcut icon" href="/brand-kit/exports/favicon-32-dark.png" />
 
         <meta name="theme-color" content="#09090b" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -31,16 +31,16 @@ import { FeedbackSheet } from './feedback-sheet';
 import { LogoutButton } from './logout-button';
 
 const moreItems = [
-  { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
-  { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
-  { key: 'reminders', href: '/reminders', icon: Notification02Icon },
-  { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
-  { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
-  { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
+  { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
+  { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
+  { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
+  { key: 'reminders', href: '/reminders', icon: Notification02Icon },
+  { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
+  { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'settings', href: '/settings', icon: Settings02Icon },
   { key: 'home', href: '/', icon: Home01Icon },
 ];

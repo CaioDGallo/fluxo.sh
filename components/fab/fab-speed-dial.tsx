@@ -53,7 +53,7 @@ export function FABSpeedDial() {
       {/* Backdrop */}
       {isExpanded && (
         <div
-          className="fixed inset-0 z-30 bg-black/20 animate-in fade-in duration-200"
+          className="fixed inset-0 z-30 animate-in fade-in duration-200"
           onClick={() => setIsExpanded(false)}
           aria-hidden="true"
         />
@@ -118,7 +118,7 @@ export function FABSpeedDial() {
           aria-label={isExpanded ? t('close') : t('addTransaction')}
           className={cn(
             'rounded-none size-14 transition-transform duration-200',
-            isExpanded && 'rotate-45'
+            isExpanded && '-rotate-5'
           )}
         >
           <HugeiconsIcon

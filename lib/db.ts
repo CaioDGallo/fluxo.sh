@@ -12,7 +12,7 @@ const pool = new Pool({
   min: 1, // Keep one warm connection
   idleTimeoutMillis: 30000, // Close idle connections after 30s
   connectionTimeoutMillis: 5000, // Fail fast if can't get connection
-  allowExitOnIdle: false, // Keep process alive
+  allowExitOnIdle: true, // Allow scripts to exit naturally
 });
 
 // Log pool errors

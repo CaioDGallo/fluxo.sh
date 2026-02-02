@@ -55,4 +55,6 @@ async function resetDb() {
   }
 }
 
-resetDb();
+(async () => {
+  await resetDb();
+})();

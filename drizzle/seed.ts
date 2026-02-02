@@ -3,7 +3,7 @@ import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { sql } from 'drizzle-orm';
 import { reset } from 'drizzle-seed';
-import { db } from '../lib/db';
+import { db, pool } from '../lib/db';
 import { computeClosingDate, getFaturaMonth, getFaturaPaymentDueDate } from '../lib/fatura-utils';
 import * as schema from '../lib/schema';
 import { getWeeklyWindow } from '../lib/plan-usage';
@@ -1964,4 +1964,14 @@ async function seedDatabase() {
   }
 }
 
-seedDatabase();
+(async () => {
+  try {
+    await seedDatabase();
+    await pool.end();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Fatal error:', error);
+    await pool.end();
+    process.exit(1);
+  }
+})();

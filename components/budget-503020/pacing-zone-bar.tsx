@@ -24,10 +24,10 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
       <div className="relative h-8 bg-muted rounded-none overflow-hidden">
         {/* Zone backgrounds */}
         <div className="absolute inset-0 flex">
-          <div className="w-[45%] bg-blue-500/15 dark:bg-blue-400/20" aria-label={t('saving')} />
-          <div className="w-[10%] bg-green-500/15 dark:bg-green-400/20" aria-label={t('onTrack')} />
-          <div className="w-[10%] bg-orange-500/15 dark:bg-orange-400/20" aria-label={t('careful')} />
-          <div className="w-[35%] bg-red-500/15 dark:bg-red-400/20" aria-label={t('over')} />
+          <div className="w-[45%] bg-blue-400/80" aria-label={t('saving')} />
+          <div className="w-[10%] bg-green-400/80" aria-label={t('onTrack')} />
+          <div className="w-[10%] bg-orange-400/80" aria-label={t('careful')} />
+          <div className="w-[35%] bg-red-400/80" aria-label={t('over')} />
         </div>
 
         {/* Zone separators */}
@@ -37,7 +37,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
 
         {/* Current position marker */}
         <div
-          className="absolute inset-y-0 w-1 bg-foreground rounded-none shadow-sm"
+          className="absolute inset-y-0 w-2 border border-amber-600 bg-amber-300 rounded-none shadow-sm"
           style={{ left: `${visualPercentage}%`, transform: 'translateX(-50%)' }}
           role="progressbar"
           aria-valuenow={Math.round(percentage)}
@@ -49,7 +49,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
             <span className="text-xs font-semibold tabular-nums bg-background px-1.5 py-0.5 rounded shadow-sm border">
               {percentage}%
             </span>
-          </div>]
+          </div>
         </div>
       </div>
 

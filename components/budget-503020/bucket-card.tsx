@@ -53,7 +53,7 @@ export function BucketCard({ bucket }: BucketCardProps) {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className={`p-2 rounded-none ${config.bgColor}`}>
+                <div className={`p-2 rounded-none`}>
                   <HugeiconsIcon icon={Icon} className={config.color} size={20} />
                 </div>
                 <span className="font-medium text-sm">{t(bucket.bucket)}</span>

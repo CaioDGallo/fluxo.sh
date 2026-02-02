@@ -56,7 +56,7 @@ export function CategoryBucketPicker({ value, onChange, disabled }: CategoryBuck
               onClick={() => onChange(bucket.value)}
               disabled={disabled}
               className={cn(
-                'flex flex-col items-start gap-2 rounded-lg border-2 p-3 text-left transition-all',
+                'flex flex-col items-start gap-2 rounded-none border-2 p-3 text-left transition-all',
                 'hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50',
                 isSelected
                   ? `${bucket.borderColor} ${bucket.bgColor} ring-2 ${bucket.ringColor} ring-offset-2`

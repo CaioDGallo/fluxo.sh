@@ -73,22 +73,30 @@ function percentageToAngle(percentage: number): number {
 }
 
 /**
- * Generate SVG path for arc segment
+ * Generate SVG path for ring/donut segment
+ * Creates a closed path that traces outer arc, then inner arc in reverse
  */
-function describeArc(
+function describeRingSegment(
   x: number,
   y: number,
-  radius: number,
+  innerRadius: number,
+  outerRadius: number,
   startAngle: number,
   endAngle: number
 ): string {
-  const start = polarToCartesian(x, y, radius, endAngle);
-  const end = polarToCartesian(x, y, radius, startAngle);
+  const outerStart = polarToCartesian(x, y, outerRadius, startAngle);
+  const outerEnd = polarToCartesian(x, y, outerRadius, endAngle);
+  const innerStart = polarToCartesian(x, y, innerRadius, startAngle);
+  const innerEnd = polarToCartesian(x, y, innerRadius, endAngle);
+
   const largeArcFlag = startAngle - endAngle <= 180 ? '0' : '1';
 
   return [
-    'M', start.x, start.y,
-    'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+    'M', outerStart.x, outerStart.y,
+    'A', outerRadius, outerRadius, 0, largeArcFlag, 0, outerEnd.x, outerEnd.y,
+    'L', innerEnd.x, innerEnd.y,
+    'A', innerRadius, innerRadius, 0, largeArcFlag, 1, innerStart.x, innerStart.y,
+    'Z'
   ].join(' ');
 }
 
@@ -144,11 +152,8 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                   {ZONES.map((zone) => (
                     <path
                       key={zone.name}
-                      d={describeArc(center, center, outerRadius, zone.startAngle, zone.endAngle)}
-                      fill="none"
-                      stroke="var(--zone-color)"
-                      strokeWidth={outerRadius - innerRadius}
-                      strokeLinecap="round"
+                      d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                      fill="var(--zone-color)"
                       className="dark:hidden"
                       style={{ '--zone-color': zone.lightColor } as React.CSSProperties}
                       opacity={0.2}
@@ -157,11 +162,8 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                   {ZONES.map((zone) => (
                     <path
                       key={`${zone.name}-dark`}
-                      d={describeArc(center, center, outerRadius, zone.startAngle, zone.endAngle)}
-                      fill="none"
-                      stroke="var(--zone-color)"
-                      strokeWidth={outerRadius - innerRadius}
-                      strokeLinecap="round"
+                      d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                      fill="var(--zone-color)"
                       className="hidden dark:block"
                       style={{ '--zone-color': zone.darkColor } as React.CSSProperties}
                       opacity={0.2}
@@ -171,18 +173,18 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
 
                 {/* Zone dividers */}
                 {ZONES.slice(0, -1).map((zone) => {
-                  const dividerPos = polarToCartesian(center, center, outerRadius + 5, zone.endAngle);
-                  const dividerInner = polarToCartesian(center, center, innerRadius - 5, zone.endAngle);
+                  const dividerOuter = polarToCartesian(center, center, outerRadius, zone.endAngle);
+                  const dividerInner = polarToCartesian(center, center, innerRadius, zone.endAngle);
                   return (
                     <line
                       key={`divider-${zone.name}`}
                       x1={dividerInner.x}
                       y1={dividerInner.y}
-                      x2={dividerPos.x}
-                      y2={dividerPos.y}
+                      x2={dividerOuter.x}
+                      y2={dividerOuter.y}
                       stroke="currentColor"
-                      strokeWidth="1"
-                      className="text-muted-foreground/30"
+                      strokeWidth="1.5"
+                      className="text-muted-foreground/20"
                     />
                   );
                 })}

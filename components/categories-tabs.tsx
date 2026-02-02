@@ -64,7 +64,7 @@ export function CategoriesTabs({ expenseCategories, incomeCategories }: Categori
           <div className="space-y-3">
             {/* Unassigned categories section */}
             {unassigned.length > 0 && (
-              <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+              <Card className="border-2 border-amber-600/50 bg-amber-600/10 dark:border-amber-400/50 dark:bg-amber-400/10">
                 <CardContent className="flex gap-3 p-4">
                   <HugeiconsIcon
                     icon={AlertCircleIcon}

@@ -55,8 +55,8 @@ export function BudgetProgress({
       : null;
 
   const badgeColor = isOverBudget
-    ? 'bg-red-100 text-red-700'
-    : 'bg-yellow-100 text-yellow-700';
+    ? 'bg-red-600/20 text-red-700 border border-red-600/30 dark:bg-red-400/20 dark:text-red-300 dark:border-red-400/30'
+    : 'bg-yellow-600/20 text-yellow-700 border border-yellow-600/30 dark:bg-yellow-400/20 dark:text-yellow-300 dark:border-yellow-400/30';
 
   const remainingId = `${id}-remaining`;
   const spentId = `${id}-spent`;

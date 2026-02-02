@@ -11,9 +11,9 @@ export const BUCKET_CONFIG = {
     icon: Home01Icon,
     // Tailwind classes
     color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+    bgColor: 'bg-blue-500/10 dark:bg-blue-400/10',
     progressColor: 'bg-blue-500 dark:bg-blue-400',
-    badgeClassName: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    badgeClassName: 'bg-blue-600/20 text-blue-700 border border-blue-600/30 dark:bg-blue-400/20 dark:text-blue-300 dark:border-blue-400/30',
     // Hex colors (for recharts)
     hexColor: '#3b82f6',
     hexColorDark: '#60a5fa',
@@ -23,9 +23,9 @@ export const BUCKET_CONFIG = {
     icon: GameController01Icon,
     // Tailwind classes
     color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/50',
+    bgColor: 'bg-purple-500/10 dark:bg-purple-400/10',
     progressColor: 'bg-purple-500 dark:bg-purple-400',
-    badgeClassName: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+    badgeClassName: 'bg-purple-600/20 text-purple-700 border border-purple-600/30 dark:bg-purple-400/20 dark:text-purple-300 dark:border-purple-400/30',
     // Hex colors (for recharts)
     hexColor: '#a855f7',
     hexColorDark: '#c084fc',
@@ -35,9 +35,9 @@ export const BUCKET_CONFIG = {
     icon: PiggyBankIcon,
     // Tailwind classes
     color: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-50 dark:bg-green-950/50',
+    bgColor: 'bg-green-500/10 dark:bg-green-400/10',
     progressColor: 'bg-green-500 dark:bg-green-400',
-    badgeClassName: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+    badgeClassName: 'bg-green-600/20 text-green-700 border border-green-600/30 dark:bg-green-400/20 dark:text-green-300 dark:border-green-400/30',
     // Hex colors (for recharts)
     hexColor: '#22c55e',
     hexColorDark: '#4ade80',
@@ -64,7 +64,7 @@ export const PACING_CONFIG = {
     description: 'Seu ritmo está equilibrado',
     // Tailwind classes
     color: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-50 dark:bg-green-950/50',
+    bgColor: 'bg-green-500/10 dark:bg-green-400/10',
     barColor: 'bg-green-500 dark:bg-green-400',
     // Hex colors (for recharts)
     hexColor: '#22c55e',
@@ -76,7 +76,7 @@ export const PACING_CONFIG = {
     description: 'Você está acima do ritmo esperado',
     // Tailwind classes
     color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+    bgColor: 'bg-orange-500/10 dark:bg-orange-400/10',
     barColor: 'bg-orange-500 dark:bg-orange-400',
     // Hex colors (for recharts)
     hexColor: '#f97316',
@@ -88,7 +88,7 @@ export const PACING_CONFIG = {
     description: 'Você está abaixo do ritmo esperado',
     // Tailwind classes
     color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+    bgColor: 'bg-blue-500/10 dark:bg-blue-400/10',
     barColor: 'bg-blue-500 dark:bg-blue-400',
     // Hex colors (for recharts)
     hexColor: '#3b82f6',

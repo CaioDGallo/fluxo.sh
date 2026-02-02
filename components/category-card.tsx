@@ -116,7 +116,7 @@ export function CategoryCard({ category }: CategoryCardProps) {
               </span>
             )}
             {category.isImportDefault && (
-              <span className="text-xs p-1 md:px-2 md:py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
+              <span className="text-xs p-1 md:px-2 md:py-0.5 rounded-full bg-foreground/10 text-foreground/80 border border-foreground/20 whitespace-nowrap">
                 <span className='hidden md:flex'>{t('importDefault')}</span>
                 <HugeiconsIcon icon={UploadCircle02Icon} strokeWidth={1} className='flex md:hidden' />
               </span>
@@ -171,7 +171,7 @@ export function CategoryCard({ category }: CategoryCardProps) {
             </AlertDialogHeader>
 
             {deleteError && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+              <div className="rounded-md border-2 border-red-600/50 bg-red-600/10 p-3 text-sm text-red-700 dark:border-red-400/50 dark:bg-red-400/10 dark:text-red-300">
                 {deleteError}
               </div>
             )}

@@ -24,10 +24,10 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
       <div className="relative h-8 bg-muted rounded-none overflow-hidden">
         {/* Zone backgrounds */}
         <div className="absolute inset-0 flex">
-          <div className="w-[45%] bg-blue-100 dark:bg-blue-950/30" aria-label={t('saving')} />
-          <div className="w-[10%] bg-green-100 dark:bg-green-950/30" aria-label={t('onTrack')} />
-          <div className="w-[10%] bg-orange-100 dark:bg-orange-950/30" aria-label={t('careful')} />
-          <div className="w-[35%] bg-red-100 dark:bg-red-950/30" aria-label={t('over')} />
+          <div className="w-[45%] bg-blue-500/15 dark:bg-blue-400/20" aria-label={t('saving')} />
+          <div className="w-[10%] bg-green-500/15 dark:bg-green-400/20" aria-label={t('onTrack')} />
+          <div className="w-[10%] bg-orange-500/15 dark:bg-orange-400/20" aria-label={t('careful')} />
+          <div className="w-[35%] bg-red-500/15 dark:bg-red-400/20" aria-label={t('over')} />
         </div>
 
         {/* Zone separators */}

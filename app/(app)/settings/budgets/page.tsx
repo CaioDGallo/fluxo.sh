@@ -1,10 +1,12 @@
 import { getTranslations } from 'next-intl/server';
 import { getBudgetsForMonth, getMonthlyBudget } from '@/lib/actions/budgets';
+import { getBudgetConfig } from '@/lib/actions/budget-503020';
 import { BudgetForm } from '@/components/budget-form';
 import { MonthPicker } from '@/components/month-picker';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
 import { CopyBudgetsButton } from '@/components/copy-budgets-button';
+import { getBudgetPercentages } from '@/lib/budget-utils';
 
 export default async function BudgetsPage({
   searchParams,
@@ -16,10 +18,13 @@ export default async function BudgetsPage({
   const { month } = await searchParams;
   const yearMonth = month || getCurrentYearMonth();
 
-  const [budgets, monthlyBudget] = await Promise.all([
+  const [budgets, monthlyBudget, config] = await Promise.all([
     getBudgetsForMonth(yearMonth),
     getMonthlyBudget(yearMonth),
+    getBudgetConfig(),
   ]);
+
+  const budgetPercentages = getBudgetPercentages(config);
 
   return (
     <div>
@@ -34,7 +39,12 @@ export default async function BudgetsPage({
         <CopyBudgetsButton currentMonth={yearMonth} />
       </div>
 
-      <BudgetForm yearMonth={yearMonth} budgets={budgets} monthlyBudget={monthlyBudget} />
+      <BudgetForm
+        yearMonth={yearMonth}
+        budgets={budgets}
+        monthlyBudget={monthlyBudget}
+        budgetConfig={budgetPercentages ?? undefined}
+      />
     </div>
   );
 }

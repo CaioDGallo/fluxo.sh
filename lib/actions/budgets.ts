@@ -25,6 +25,7 @@ export const getBudgetsForMonth = cache(async (yearMonth: string) => {
             categoryName: categories.name,
             categoryColor: categories.color,
             categoryIcon: categories.icon,
+            categoryBucket: categories.bucket,
             budgetId: budgets.id,
             budgetAmount: budgets.amount,
           })

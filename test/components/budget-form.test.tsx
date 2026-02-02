@@ -46,6 +46,7 @@ const baseBudgets = [
     categoryName: 'Food',
     categoryColor: '#ef4444',
     categoryIcon: 'Restaurant01Icon',
+    categoryBucket: null,
     budgetAmount: null,
   },
   {
@@ -53,6 +54,7 @@ const baseBudgets = [
     categoryName: 'Bills',
     categoryColor: '#3b82f6',
     categoryIcon: 'Invoice01Icon',
+    categoryBucket: null,
     budgetAmount: null,
   },
 ];
@@ -139,8 +141,8 @@ describe('BudgetForm', () => {
       <BudgetForm
         yearMonth="2026-01"
         budgets={[
-          { ...baseBudgets[0], budgetAmount: 6000 },
-          { ...baseBudgets[1], budgetAmount: 5000 },
+          { ...baseBudgets[0], budgetAmount: 6000, categoryBucket: null },
+          { ...baseBudgets[1], budgetAmount: 5000, categoryBucket: null },
         ]}
         monthlyBudget={10000}
       />

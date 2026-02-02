@@ -361,7 +361,13 @@
     "netSpent": "Net Spent",
     "remaining": "Remaining",
     "nearLimit": "Near limit",
-    "overBudgetLabel": "Over budget"
+    "overBudgetLabel": "Over budget",
+    "unassignedCategories": "Unassigned Categories",
+    "unassignedCategoriesCount": "{count} unclassified categories",
+    "organizeCategories": "Organize",
+    "targetPercentage": "Target: {percent}%",
+    "bucketAllocated": "R$ {amount} / R$ {total}",
+    "noCategoriesInBucket": "No categories in this group yet"
   },
   "form": {
     "amount": "Amount",
@@ -433,7 +439,10 @@
     "setAsImportDefault": "Set as import default",
     "removeImportDefault": "Remove import default",
     "setAsImportDefaultSuccess": "Category set as import default",
-    "removedImportDefault": "Import default removed"
+    "removedImportDefault": "Import default removed",
+    "unassignedCategoriesPrompt": "You have {count} categories without a 50/30/20 budget assigned.",
+    "assignBucketsToTrack": "Assign them to Needs, Wants, or Savings for better tracking on the dashboard.",
+    "unassignedCategories": "Unassigned Categories"
   },
   "accountTypes": {
     "checking": "Checking",

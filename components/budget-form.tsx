@@ -7,29 +7,24 @@ import { upsertBudget, upsertMonthlyBudget } from '@/lib/actions/budgets';
 import { centsToDisplay } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Card, CardContent } from '@/components/ui/card';
-import { CategoryIcon } from '@/components/icon-picker';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Loading03Icon } from '@hugeicons/core-free-icons';
+import { Loading03Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-
-type BudgetRow = {
-  categoryId: number;
-  categoryName: string;
-  categoryColor: string;
-  categoryIcon: string | null;
-  budgetAmount: number | null;
-};
+import { BudgetBucketSection } from '@/components/budget-bucket-section';
+import { CategoryBudgetRow } from '@/components/category-budget-row';
+import { groupBudgetsByBucket, type BudgetRow, type BudgetPercentages } from '@/lib/budget-utils';
 
 type BudgetFormProps = {
   yearMonth: string;
   budgets: BudgetRow[];
   monthlyBudget: number | null;
+  budgetConfig?: BudgetPercentages;
 };
 
-export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProps) {
+export function BudgetForm({ yearMonth, budgets, monthlyBudget, budgetConfig }: BudgetFormProps) {
   const t = useTranslations('budgets');
   const tErrors = useTranslations('errors');
   const tCommon = useTranslations('common');
@@ -57,6 +52,14 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
   );
 
   const totalBudgetCents = totalBudgetEdit ?? (monthlyBudget ?? 0);
+
+  // Group budgets by bucket
+  const { groups, unassigned } = useMemo(() => {
+    if (!budgetConfig) {
+      return { groups: [], unassigned: budgets };
+    }
+    return groupBudgetsByBucket(budgets, totalBudgetCents, budgetConfig);
+  }, [budgets, totalBudgetCents, budgetConfig]);
 
   function handleChange(categoryId: number, cents: number) {
     const baseAmount = baseBudgetMap.get(categoryId) ?? 0;
@@ -114,6 +117,40 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
       return true;
     });
   }, [budgets, hideZero, query, values]);
+
+  // Filter groups when using bucket grouping
+  const filteredGroups = useMemo(() => {
+    if (!budgetConfig) return [];
+
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return groups.map(group => ({
+      ...group,
+      categories: group.categories.filter((budget) => {
+        const amount = values[budget.categoryId] ?? 0;
+        if (hideZero && amount === 0) return false;
+        if (normalizedQuery && !budget.categoryName.toLowerCase().includes(normalizedQuery)) {
+          return false;
+        }
+        return true;
+      }),
+    })).filter(group => group.categories.length > 0);
+  }, [groups, budgetConfig, hideZero, query, values]);
+
+  const filteredUnassigned = useMemo(() => {
+    if (!budgetConfig) return [];
+
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return unassigned.filter((budget) => {
+      const amount = values[budget.categoryId] ?? 0;
+      if (hideZero && amount === 0) return false;
+      if (normalizedQuery && !budget.categoryName.toLowerCase().includes(normalizedQuery)) {
+        return false;
+      }
+      return true;
+    });
+  }, [unassigned, budgetConfig, hideZero, query, values]);
 
   async function handleSave() {
     if (isSaving || !isDirty) return;
@@ -348,52 +385,99 @@ export function BudgetForm({ yearMonth, budgets, monthlyBudget }: BudgetFormProp
             </div>
           </div>
 
-          {/* Category Budgets */}
-          {filteredBudgets.length === 0 ? (
-            <div className="rounded-none border border-dashed p-6 text-center text-xs text-muted-foreground">
-              {t('noResults')}
+          {/* Category Budgets - Grouped or Flat */}
+          {budgetConfig ? (
+            // Grouped by bucket
+            <div className="space-y-3">
+              {/* Unassigned categories warning */}
+              {unassigned.length > 0 && (
+                <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                  <CardContent className="flex gap-3 p-4">
+                    <HugeiconsIcon icon={AlertCircleIcon} size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm text-amber-900 dark:text-amber-100">
+                        {t('unassignedCategoriesCount', { count: unassigned.length })}
+                      </p>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/settings/categories">{t('organizeCategories')}</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Bucket sections */}
+              {filteredGroups.map((group) => (
+                <BudgetBucketSection
+                  key={group.bucket}
+                  bucket={group.bucket}
+                  categories={group.categories}
+                  allocatedAmount={group.categories.reduce(
+                    (sum, cat) => sum + (values[cat.categoryId] ?? 0),
+                    0
+                  )}
+                  targetAmount={group.targetAmount}
+                  targetPercentage={group.targetPercentage}
+                  values={values}
+                  errors={errors}
+                  savingIds={savingIds}
+                  onBudgetChange={handleChange}
+                  isSaving={isSaving}
+                  defaultOpen={true}
+                />
+              ))}
+
+              {/* Unassigned categories (filtered) */}
+              {filteredUnassigned.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground px-1">
+                    {t('unassignedCategories')}
+                  </h3>
+                  {filteredUnassigned.map((budget) => (
+                    <CategoryBudgetRow
+                      key={budget.categoryId}
+                      categoryId={budget.categoryId}
+                      categoryName={budget.categoryName}
+                      categoryColor={budget.categoryColor}
+                      categoryIcon={budget.categoryIcon}
+                      value={values[budget.categoryId] ?? 0}
+                      onChange={(cents) => handleChange(budget.categoryId, cents)}
+                      error={errors[budget.categoryId]}
+                      isSaving={savingIds.has(budget.categoryId)}
+                      disabled={isSaving}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {filteredGroups.length === 0 && filteredUnassigned.length === 0 && (
+                <div className="rounded-none border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  {t('noResults')}
+                </div>
+              )}
             </div>
           ) : (
-            filteredBudgets.map((budget) => (
-              <Card key={budget.categoryId} className="py-0">
-                <CardContent className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3">
-                  {/* Category icon */}
-                  <div
-                    className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
-                    style={{ backgroundColor: budget.categoryColor }}
-                  >
-                    <CategoryIcon icon={budget.categoryIcon} />
-                  </div>
-
-                  {/* Category name */}
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm truncate block">{budget.categoryName}</span>
-                  </div>
-
-                  {/* Budget input */}
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="relative">
-                      <CurrencyInput
-                        aria-label={budget.categoryName}
-                        name={`budget-${budget.categoryId}`}
-                        value={values[budget.categoryId] ?? 0}
-                        onChange={(cents) => handleChange(budget.categoryId, cents)}
-                        className="w-32 sm:w-40 text-right tabular-nums"
-                        disabled={isSaving}
-                      />
-                      {savingIds.has(budget.categoryId) && (
-                        <span className="absolute right-10 top-1/2 -translate-y-1/2">
-                          <HugeiconsIcon icon={Loading03Icon} className="size-3 animate-spin" aria-hidden="true" />
-                        </span>
-                      )}
-                    </div>
-                    {errors[budget.categoryId] && (
-                      <span className="text-xs text-red-600">{errors[budget.categoryId]}</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            // Flat list (legacy mode)
+            filteredBudgets.length === 0 ? (
+              <div className="rounded-none border border-dashed p-6 text-center text-xs text-muted-foreground">
+                {t('noResults')}
+              </div>
+            ) : (
+              filteredBudgets.map((budget) => (
+                <CategoryBudgetRow
+                  key={budget.categoryId}
+                  categoryId={budget.categoryId}
+                  categoryName={budget.categoryName}
+                  categoryColor={budget.categoryColor}
+                  categoryIcon={budget.categoryIcon}
+                  value={values[budget.categoryId] ?? 0}
+                  onChange={(cents) => handleChange(budget.categoryId, cents)}
+                  error={errors[budget.categoryId]}
+                  isSaving={savingIds.has(budget.categoryId)}
+                  disabled={isSaving}
+                />
+              ))
+            )
           )}
         </>
       )}

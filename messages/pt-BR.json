@@ -375,7 +375,13 @@
     "netSpent": "Gasto Líquido",
     "remaining": "Restante",
     "nearLimit": "No limite",
-    "overBudgetLabel": "Acima do orçamento"
+    "overBudgetLabel": "Acima do orçamento",
+    "unassignedCategories": "Categorias Não Classificadas",
+    "unassignedCategoriesCount": "{count} categorias sem classificação",
+    "organizeCategories": "Organizar",
+    "targetPercentage": "Meta: {percent}%",
+    "bucketAllocated": "R$ {amount} / R$ {total}",
+    "noCategoriesInBucket": "Nenhuma categoria neste grupo ainda"
   },
   "form": {
     "amount": "Valor",
@@ -449,7 +455,8 @@
     "setAsImportDefaultSuccess": "Categoria definida como padrão para importação",
     "removedImportDefault": "Padrão de importação removido",
     "unassignedCategoriesPrompt": "Você tem {count} categorias sem orçamento 50/30/20 atribuído.",
-    "assignBucketsToTrack": "Atribua-as a Necessidades, Desejos ou Poupança para melhor acompanhamento no painel."
+    "assignBucketsToTrack": "Atribua-as a Necessidades, Desejos ou Poupança para melhor acompanhamento no painel.",
+    "unassignedCategories": "Categorias Não Classificadas"
   },
   "accountTypes": {
     "checking": "Conta Corrente",

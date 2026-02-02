@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
+  Analytics01Icon,
   ArrowLeftRightIcon,
   Calendar03Icon,
   CreditCardIcon,
@@ -30,6 +31,7 @@ import { FeedbackSheet } from './feedback-sheet';
 import { LogoutButton } from './logout-button';
 
 const moreItems = [
+  { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },

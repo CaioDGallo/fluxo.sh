@@ -23,6 +23,12 @@ export async function LandingHeader() {
           </div>
         </div>
         <nav className="hidden items-center gap-6 text-xs font-medium uppercase tracking-[0.2em] md:flex">
+          <Link href="#metodo" className="hover:text-foreground/70">
+            {t('navMethod')}
+          </Link>
+          <Link href="#meu-fluxo" className="hover:text-foreground/70">
+            {t('navMeuFluxo')}
+          </Link>
           <Link href="#recursos" className="hover:text-foreground/70">
             {t('navFeatures')}
           </Link>

@@ -134,6 +134,15 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
     return percentageToAngle(pacing.percentageOfExpected);
   }, [pacing.percentageOfExpected]);
 
+  // Find the active zone based on percentage
+  const activeZone = useMemo(() => {
+    return ZONES.find(
+      (zone) =>
+        pacing.percentageOfExpected >= zone.startPercent &&
+        pacing.percentageOfExpected < zone.endPercent
+    ) || ZONES[ZONES.length - 1]; // Default to last zone if over 200%
+  }, [pacing.percentageOfExpected]);
+
   // SVG dimensions
   const size = 240;
   const center = size / 2;
@@ -147,121 +156,102 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">{t('spendingPace')}</h3>
 
+          {/* Gauge SVG */}
           <div className="flex items-center justify-center">
-            <div className="relative w-full max-w-[240px] aspect-square">
-              <svg
-                viewBox={`0 0 ${size} ${size}`}
-                className="w-full h-full"
-                role="img"
-                aria-label={`${tPacing(pacingKey)}: ${pacing.percentageOfExpected}% ${tPacing('ofExpected')}`}
-              >
-                {/* Background zones */}
-                <g className="transition-colors duration-200">
-                  {ZONES.map((zone) => (
-                    <path
-                      key={zone.name}
-                      d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
-                      fill="var(--zone-color)"
-                      className="dark:hidden"
-                      style={{ '--zone-color': zone.lightColor } as React.CSSProperties}
-                      opacity={0.2}
-                    />
-                  ))}
-                  {ZONES.map((zone) => (
-                    <path
-                      key={`${zone.name}-dark`}
-                      d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
-                      fill="var(--zone-color)"
-                      className="hidden dark:block"
-                      style={{ '--zone-color': zone.darkColor } as React.CSSProperties}
-                      opacity={0.2}
-                    />
-                  ))}
-                </g>
+            <svg
+              viewBox={`0 0 ${size} ${size}`}
+              className="w-full h-full max-w-full md:max-w-70"
+              role="img"
+              aria-label={`${tPacing(pacingKey)}: ${pacing.percentageOfExpected}% ${tPacing('ofExpected')}`}
+            >
+              {/* Background zones */}
+              <g className="transition-colors duration-200">
+                {ZONES.map((zone) => (
+                  <path
+                    key={zone.name}
+                    d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                    fill="var(--zone-color)"
+                    className="dark:hidden"
+                    style={{ '--zone-color': zone.lightColor } as React.CSSProperties}
+                    opacity={0.2}
+                  />
+                ))}
+                {ZONES.map((zone) => (
+                  <path
+                    key={`${zone.name}-dark`}
+                    d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                    fill="var(--zone-color)"
+                    className="hidden dark:block"
+                    style={{ '--zone-color': zone.darkColor } as React.CSSProperties}
+                    opacity={0.2}
+                  />
+                ))}
+              </g>
 
-                {/* Zone dividers */}
-                {ZONES.slice(0, -1).map((zone) => {
-                  const dividerOuter = polarToCartesian(center, center, outerRadius, zone.endAngle);
-                  const dividerInner = polarToCartesian(center, center, innerRadius, zone.endAngle);
-                  return (
-                    <line
-                      key={`divider-${zone.name}`}
-                      x1={dividerInner.x}
-                      y1={dividerInner.y}
-                      x2={dividerOuter.x}
-                      y2={dividerOuter.y}
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      className="text-muted-foreground/20"
-                    />
-                  );
-                })}
-
-                {/* Needle */}
-                <g
-                  className="transition-transform duration-500 ease-out motion-reduce:transition-none"
-                  style={{ transformOrigin: `${center}px ${center}px` }}
-                >
+              {/* Zone dividers */}
+              {ZONES.slice(0, -1).map((zone) => {
+                const dividerOuter = polarToCartesian(center, center, outerRadius, zone.endAngle);
+                const dividerInner = polarToCartesian(center, center, innerRadius, zone.endAngle);
+                return (
                   <line
-                    x1={center}
-                    y1={center}
-                    x2={center}
-                    y2={center - needleLength}
+                    key={`divider-${zone.name}`}
+                    x1={dividerInner.x}
+                    y1={dividerInner.y}
+                    x2={dividerOuter.x}
+                    y2={dividerOuter.y}
                     stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="text-foreground"
-                    transform={`rotate(${needleAngle} ${center} ${center})`}
+                    strokeWidth="1.5"
+                    className="text-muted-foreground/20"
                   />
-                  <circle
-                    cx={center}
-                    cy={center}
-                    r="6"
-                    fill="currentColor"
-                    className="text-foreground"
-                  />
-                </g>
+                );
+              })}
 
-                {/* Zone labels */}
-                {ZONES.map((zone) => {
-                  const midAngle = (zone.startAngle + zone.endAngle) / 2;
-                  const labelRadius = outerRadius + 20;
-                  const labelPos = polarToCartesian(center, center, labelRadius, midAngle);
-
-                  return (
-                    <text
-                      key={`label-${zone.name}`}
-                      x={labelPos.x}
-                      y={labelPos.y}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="text-[10px] font-medium fill-muted-foreground"
-                    >
-                      {zone.label}
-                    </text>
-                  );
-                })}
-              </svg>
-
-              {/* Center text overlay */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <div className="mt-8">
-                  <span className={`text-3xl font-bold tabular-nums ${config.color}`}>
-                    {pacing.percentageOfExpected}%
-                  </span>
-                  <p className="text-xs text-muted-foreground text-center mt-1">
-                    {tPacing('ofExpected')}
-                  </p>
-                </div>
-              </div>
-            </div>
+              {/* Needle */}
+              <g
+                className="transition-transform duration-500 ease-out motion-reduce:transition-none"
+                style={{ transformOrigin: `${center}px ${center}px` }}
+              >
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={center}
+                  y2={center - needleLength}
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="text-foreground"
+                  transform={`rotate(${needleAngle} ${center} ${center})`}
+                />
+                <circle
+                  cx={center}
+                  cy={center}
+                  r="6"
+                  fill="currentColor"
+                  className="text-foreground"
+                />
+              </g>
+            </svg>
           </div>
 
-          <div className="text-center space-y-1">
-            <p className={`font-medium ${config.color}`}>
-              {tPacing(pacingKey)}
-            </p>
-            <p className="text-sm text-muted-foreground">{tPacing(`${pacingKey}Description`)}</p>
+          {/* Gauge metrics below SVG */}
+          <div className="text-center space-y-3">
+            <div>
+              <div className={`text-4xl font-bold tabular-nums ${config.color}`}>
+                {pacing.percentageOfExpected}%
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {tPacing('ofExpected')}
+              </p>
+            </div>
+
+            {/* Active zone label */}
+            <div>
+              <p className={`text-lg font-semibold ${config.color}`}>
+                {activeZone.label}
+              </p>
+              <p className="text-sm text-muted-foreground">{tPacing(`${pacingKey}Description`)}</p>
+            </div>
+
             <p className="text-xs text-muted-foreground">
               {t('daysRemaining', { count: daysRemaining })}
             </p>

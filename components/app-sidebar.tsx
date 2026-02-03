@@ -59,6 +59,7 @@ const settingsItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
+  { key: 'openFinance', href: '/settings/open-finance', icon: Settings02Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
   { key: 'settings', href: '/settings', icon: Settings02Icon },
 ];

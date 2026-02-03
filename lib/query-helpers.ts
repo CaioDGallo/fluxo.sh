@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { transactions, income, transfers } from '@/lib/schema';
+import { transactions, income } from '@/lib/schema';
 
 /**
  * Standard conditions for active (non-ignored) transactions.
@@ -14,11 +14,4 @@ export function activeTransactionCondition() {
  */
 export function activeIncomeCondition() {
   return eq(income.ignored, false);
-}
-
-/**
- * Standard conditions for active (non-ignored) transfers.
- */
-export function activeTransferCondition() {
-  return eq(transfers.ignored, false);
 }

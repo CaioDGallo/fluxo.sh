@@ -63,9 +63,7 @@ export default async function StatisticsPage({
             <CashFlowReport
               income={data.totalIncome}
               expenses={data.totalSpent}
-              transfersIn={data.totalTransfersIn}
-              transfersOut={data.totalTransfersOut}
-              net={data.cashFlowNet}
+              net={data.netBalance}
             />
             <SummaryCard spent={data.totalSpent} replenished={data.totalReplenished} budget={data.totalBudget} />
             <RecentExpenses expenses={data.recentExpenses} />

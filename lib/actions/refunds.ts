@@ -9,6 +9,7 @@ import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { updateFaturaTotal } from '@/lib/actions/faturas';
+import { assertNotPluggySynced } from '@/lib/pluggy/guards';
 
 export type CreateRefundData = {
   transactionId: number;
@@ -131,6 +132,7 @@ export async function deleteRefund(incomeId: number) {
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('income', incomeId, userId);
 
     // 1. Get refund details
     const [refund] = await db

@@ -1,4 +1,4 @@
-import type { ExportEntry, ExportTransfer } from '@/lib/actions/export';
+import type { ExportEntry } from '@/lib/actions/export';
 import { centsToDisplay } from '@/lib/utils';
 
 /**
@@ -12,19 +12,6 @@ function escapeCSV(value: string | number | null | undefined): string {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
-}
-
-/**
- * Convert transfer type enum to Portuguese label
- */
-function getTransferTypeLabel(type: string): string {
-  const typeMap: Record<string, string> = {
-    fatura_payment: 'Pagamento de fatura',
-    internal_transfer: 'Transferência',
-    deposit: 'Depósito',
-    withdrawal: 'Saque',
-  };
-  return typeMap[type] || type;
 }
 
 /**
@@ -60,35 +47,6 @@ export function generateTransactionsCsv(
       escapeCSV(tipo),
       escapeCSV(status),
       escapeCSV(item.installment || ''),
-      escapeCSV(id),
-    ].join(',');
-  });
-
-  return header + '\n' + rows.join('\n');
-}
-
-/**
- * Generate CSV for transfers
- */
-export function generateTransfersCsv(
-  data: ExportTransfer[]
-): string {
-  // CSV Header
-  const header = 'Data,Origem,Destino,Valor,Tipo,Descricao,ID';
-
-  // CSV Rows
-  const rows = data.map((transfer) => {
-    const amountDisplay = centsToDisplay(transfer.amount);
-    const tipo = getTransferTypeLabel(transfer.type);
-    const id = `TRF-${transfer.id}`;
-
-    return [
-      escapeCSV(transfer.date),
-      escapeCSV(transfer.fromAccountName || ''),
-      escapeCSV(transfer.toAccountName || ''),
-      escapeCSV(amountDisplay),
-      escapeCSV(tipo),
-      escapeCSV(transfer.description || ''),
       escapeCSV(id),
     ].join(',');
   });

@@ -33,6 +33,7 @@ export type IncomeEntry = {
   accountId: number;
   accountName: string;
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+  accountSource: 'manual' | 'pluggy';
   bankLogo: string | null;
   ignored: boolean;
   replenishCategoryId: number | null;
@@ -191,6 +192,7 @@ function generateOptimisticIncome(input: CreateIncomeInput, tempId: string): Opt
     accountId: input.accountId,
     accountName: input.accountName,
     accountType: input.accountType,
+    accountSource: 'manual',
     bankLogo: input.bankLogo,
     ignored: false,
     replenishCategoryId: null,

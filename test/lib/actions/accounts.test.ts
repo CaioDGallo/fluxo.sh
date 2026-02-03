@@ -422,7 +422,7 @@ describe('Account Actions', () => {
   });
 
   describe('reconcileCurrentUserBalances', () => {
-    it('recalculates balances using entries, income, and transfers', async () => {
+    it('recalculates balances using entries and income across accounts', async () => {
       const [checking] = await db
         .insert(schema.accounts)
         .values({ ...testAccounts.checking, currentBalance: 0 })
@@ -483,13 +483,40 @@ describe('Account Actions', () => {
         receivedAt: new Date('2025-01-02T00:00:00Z'),
       });
 
-      await db.insert(schema.transfers).values({
+      const [transferOutTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Transfer Out',
+          totalAmount: 2000,
+          totalInstallments: 1,
+          categoryId: expenseCategory.id,
+          ignored: true,
+          isInternalTransfer: true,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: checking.id,
-        toAccountId: savings.id,
+        transactionId: transferOutTransaction.id,
+        accountId: checking.id,
         amount: 2000,
-        date: '2025-01-03',
-        type: 'internal_transfer',
+        purchaseDate: '2025-01-03',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-03',
+        installmentNumber: 1,
+        paidAt: null,
+      });
+
+      await db.insert(schema.income).values({
+        userId: TEST_USER_ID,
+        description: 'Transfer In',
+        amount: 2000,
+        categoryId: incomeCategory.id,
+        accountId: savings.id,
+        receivedDate: '2025-01-03',
+        receivedAt: new Date('2025-01-03T00:00:00Z'),
+        ignored: true,
       });
 
       await reconcileCurrentUserBalances();

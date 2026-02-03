@@ -42,7 +42,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreVerticalIcon, Tick02Icon, Clock01Icon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { MoreVerticalIcon, Tick02Icon, Clock01Icon, ArrowLeft01Icon, ArrowReloadHorizontalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 import { BankLogo } from '@/components/bank-logo';
 
@@ -66,6 +66,7 @@ type ExpenseCardBaseProps = {
     accountId: number;
     accountName: string;
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+    accountSource: 'manual' | 'pluggy';
     bankLogo: string | null;
     ignored: boolean;
     refundedAmount?: number | null;
@@ -109,19 +110,22 @@ export function ExpenseCard(props: ExpenseCardProps) {
   // Check if expense can be converted to fatura payment
   const canConvertToFatura = entry.accountType !== 'credit_card' && entry.totalInstallments === 1 && unpaidFaturas.length > 0;
 
+  const isSynced = entry.accountSource === 'pluggy';
+
   // Swipe gesture to reveal actions (disabled in selection mode)
   const swipe = useSwipe({
-    disabled: props.selectionMode || isOptimistic || !isMobile,
+    disabled: props.selectionMode || isOptimistic || isSynced || !isMobile,
     threshold: 50,
     velocityThreshold: 0.15,
   });
 
-  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !swipe.isSwiping && !swipe.isRevealed;
+  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !isSynced && !swipe.isSwiping && !swipe.isRevealed;
   const { hintOffset, isHinting } = useSwipeHint({ enabled: swipeHintEnabled });
 
   const t = useTranslations('expenses');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
+  const tSynced = useTranslations('synced');
 
   const [optimisticCategory, setOptimisticCategory] = useOptimistic(
     { id: entry.categoryId, color: entry.categoryColor, icon: entry.categoryIcon, name: entry.categoryName },
@@ -380,9 +384,9 @@ export function ExpenseCard(props: ExpenseCardProps) {
             </div>
             {/* Mobile only: Category • Account */}
             <div className="flex items-center gap-1 text-xs text-gray-500 md:hidden min-w-0">
-              <span className="truncate">{optimisticCategory.name}</span>
+              <span className="w-fit truncate">{optimisticCategory.name}</span>
               <span className="shrink-0">•</span>
-              <span className="shrink-0">{entry.accountName}</span>
+              <span className="shrink truncate">{entry.accountName}</span>
             </div>
           </div>
 
@@ -410,6 +414,16 @@ export function ExpenseCard(props: ExpenseCardProps) {
                 strokeWidth={2}
                 aria-hidden="true"
               />
+              {isSynced && (
+                <span
+                  className="flex items-center justify-center text-blue-600 opacity-80"
+                  title={tSynced('readOnlyBadge')}
+                  aria-label={tSynced('readOnlyBadge')}
+                  role="img"
+                >
+                  <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={12} strokeWidth={2} />
+                </span>
+              )}
               {/* Account icon (bank logo or type icon) */}
               {entry.bankLogo ? (
                 <div className="size-4 rounded-full flex items-center justify-center border border-gray-300 bg-white p-0.5" aria-hidden="true">
@@ -454,13 +468,15 @@ export function ExpenseCard(props: ExpenseCardProps) {
                   >
                     {t('viewDetails')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setEditOpen(true)}
-                    onSelect={stopCardGesture}
-                    onPointerDown={stopCardGesture}
-                  >
-                    {tCommon('edit')}
-                  </DropdownMenuItem>
+                  {!isSynced && (
+                    <DropdownMenuItem
+                      onClick={() => setEditOpen(true)}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {tCommon('edit')}
+                    </DropdownMenuItem>
+                  )}
                   {isPaid ? (
                     <DropdownMenuItem
                       onClick={handleMarkPending}
@@ -481,7 +497,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
                   <DropdownMenuItem onClick={handleToggleIgnore} onSelect={stopCardGesture} onPointerDown={stopCardGesture}>
                     {entry.ignored ? t('showInTotals') : t('hideFromTotals')}
                   </DropdownMenuItem>
-                  {canConvertToFatura && (
+                  {canConvertToFatura && !isSynced && (
                     <DropdownMenuItem
                       onClick={() => setConvertDialogOpen(true)}
                       onSelect={stopCardGesture}
@@ -490,13 +506,15 @@ export function ExpenseCard(props: ExpenseCardProps) {
                       {t('convertToFaturaPayment')}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    onSelect={stopCardGesture}
-                    onPointerDown={stopCardGesture}
-                  >
-                    {t('deleteTransaction')}
-                  </DropdownMenuItem>
+                  {!isSynced && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteConfirm(true)}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {t('deleteTransaction')}
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

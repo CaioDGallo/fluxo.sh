@@ -56,3 +56,6 @@ public/workbox-*.js.map
 
 .claude
 *firebase.json
+test-results/
+nextjs-pluggy-example/
+pluggy-node-example/

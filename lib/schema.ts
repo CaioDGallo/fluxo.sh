@@ -6,12 +6,10 @@ export * from './auth-schema';
 
 // Enum for account types
 export const accountTypeEnum = pgEnum('account_type', ['credit_card', 'checking', 'savings', 'cash']);
+export const accountSourceEnum = pgEnum('account_source', ['manual', 'pluggy']);
 
 // Enum for category types
 export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
-
-// Enum for transfer types
-export const transferTypeEnum = pgEnum('transfer_type', ['fatura_payment', 'internal_transfer', 'deposit', 'withdrawal']);
 
 // Enums for events and tasks
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical']);
@@ -43,9 +41,13 @@ export const accounts = pgTable('accounts', {
   userId: text('user_id').notNull(),
   name: text('name').notNull(),
   type: accountTypeEnum('type').notNull(),
+  source: accountSourceEnum('source').notNull().default('manual'),
   currency: text('currency').default('BRL'),
   currentBalance: integer('current_balance').notNull().default(0), // cents
   lastBalanceUpdate: timestamp('last_balance_update').defaultNow(),
+  externalBalanceCents: integer('external_balance_cents'), // cents from provider
+  externalBalanceUpdatedAt: timestamp('external_balance_updated_at'),
+  externalCreditLimitCents: integer('external_credit_limit_cents'), // optional, cents
   // Credit card billing cycle config (1-28, null for non-CC accounts)
   closingDay: integer('closing_day'),
   paymentDueDay: integer('payment_due_day'),
@@ -53,6 +55,95 @@ export const accounts = pgTable('accounts', {
   bankLogo: text('bank_logo'), // nullable, bank logo key (e.g., "nubank", "inter")
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Pluggy items table
+export const pluggyItems = pgTable(
+  'pluggy_items',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    pluggyItemId: text('pluggy_item_id').notNull(),
+    connectorId: text('connector_id'),
+    status: text('status'),
+    statusDetail: text('status_detail'),
+    lastUpdatedAt: timestamp('last_updated_at'),
+    lastSyncedAt: timestamp('last_synced_at'),
+    nextSyncAt: timestamp('next_sync_at'),
+    lastError: text('last_error'),
+    errorCount: integer('error_count').notNull().default(0),
+    consentExpiresAt: timestamp('consent_expires_at'),
+    clientUserId: text('client_user_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserItem: unique().on(table.userId, table.pluggyItemId),
+  })
+);
+
+// Pluggy accounts table (maps Pluggy accounts to local accounts)
+export const pluggyAccounts = pgTable(
+  'pluggy_accounts',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    itemId: integer('item_id')
+      .notNull()
+      .references(() => pluggyItems.id, { onDelete: 'cascade' }),
+    pluggyAccountId: text('pluggy_account_id').notNull(),
+    accountId: integer('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    name: text('name').notNull(),
+    type: text('type').notNull(),
+    subtype: text('subtype'),
+    currency: text('currency').default('BRL'),
+    mask: text('mask'),
+    institutionId: text('institution_id'),
+    institutionName: text('institution_name'),
+    lastSyncedAt: timestamp('last_synced_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueUserAccount: unique().on(table.userId, table.pluggyAccountId),
+    uniqueLocalAccount: unique().on(table.accountId),
+  })
+);
+
+// Pluggy sync cursors table (incremental sync tokens)
+export const pluggySyncCursors = pgTable(
+  'pluggy_sync_cursors',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    itemId: integer('item_id')
+      .notNull()
+      .references(() => pluggyItems.id, { onDelete: 'cascade' }),
+    scope: text('scope').notNull(),
+    cursor: text('cursor'),
+    lastSyncedAt: timestamp('last_synced_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueItemScope: unique().on(table.itemId, table.scope),
+  })
+);
+
+// Pluggy webhook events (idempotency)
+export const pluggyWebhookEvents = pgTable(
+  'pluggy_webhook_events',
+  {
+    id: serial('id').primaryKey(),
+    eventId: text('event_id').notNull(),
+    event: text('event').notNull(),
+    itemId: text('item_id'),
+    userId: text('user_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueEvent: unique().on(table.eventId),
+  })
+);
 
 // Categories table
 export const categories = pgTable('categories', {
@@ -148,6 +239,8 @@ export const transactions = pgTable('transactions', {
     .references(() => categories.id, { onDelete: 'restrict' }),
   externalId: text('external_id'), // UUID from bank statement for idempotency
   ignored: boolean('ignored').notNull().default(false),
+  isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
+  isFaturaPayment: boolean('is_fatura_payment').notNull().default(false),
   refundedAmount: integer('refunded_amount').default(0), // cached sum of refunds (cents)
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -187,28 +280,14 @@ export const faturas = pgTable(
     dueDate: date('due_date').notNull(), // when payment is due
     paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
     paidFromAccountId: integer('paid_from_account_id').references(() => accounts.id), // which checking account paid it
+    pluggyBillId: text('pluggy_bill_id'), // Links to Pluggy bill for Pluggy-sourced faturas
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
     uniqueAccountMonth: unique().on(table.accountId, table.yearMonth),
+    uniquePluggyBill: unique().on(table.accountId, table.pluggyBillId),
   })
 );
-
-// Transfers table (account-to-account movements, including fatura payments)
-export const transfers = pgTable('transfers', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  fromAccountId: integer('from_account_id').references(() => accounts.id),
-  toAccountId: integer('to_account_id').references(() => accounts.id),
-  amount: integer('amount').notNull(), // cents
-  date: date('date').notNull(),
-  type: transferTypeEnum('type').notNull(),
-  faturaId: integer('fatura_id').references(() => faturas.id),
-  description: text('description'),
-  externalId: text('external_id'), // UUID from bank statement - preserves idempotency when expenses are converted to fatura payments
-  ignored: boolean('ignored').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
 
 // Income table
 export const income = pgTable('income', {
@@ -500,6 +579,18 @@ export const sentEmails = pgTable('sent_emails', {
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
 
+export type PluggyItem = typeof pluggyItems.$inferSelect;
+export type NewPluggyItem = typeof pluggyItems.$inferInsert;
+
+export type PluggyAccount = typeof pluggyAccounts.$inferSelect;
+export type NewPluggyAccount = typeof pluggyAccounts.$inferInsert;
+
+export type PluggySyncCursor = typeof pluggySyncCursors.$inferSelect;
+export type NewPluggySyncCursor = typeof pluggySyncCursors.$inferInsert;
+
+export type PluggyWebhookEvent = typeof pluggyWebhookEvents.$inferSelect;
+export type NewPluggyWebhookEvent = typeof pluggyWebhookEvents.$inferInsert;
+
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 
@@ -532,9 +623,6 @@ export type NewCalendarSource = typeof calendarSources.$inferInsert;
 
 export type Fatura = typeof faturas.$inferSelect;
 export type NewFatura = typeof faturas.$inferInsert;
-
-export type Transfer = typeof transfers.$inferSelect;
-export type NewTransfer = typeof transfers.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
@@ -603,8 +691,30 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const accountsRelations = relations(accounts, ({ many }) => ({
   entries: many(entries),
   income: many(income),
-  transfersFrom: many(transfers, { relationName: 'transfersFrom' }),
-  transfersTo: many(transfers, { relationName: 'transfersTo' }),
+  pluggyAccounts: many(pluggyAccounts),
+}));
+
+export const pluggyItemsRelations = relations(pluggyItems, ({ many }) => ({
+  accounts: many(pluggyAccounts),
+  syncCursors: many(pluggySyncCursors),
+}));
+
+export const pluggyAccountsRelations = relations(pluggyAccounts, ({ one }) => ({
+  item: one(pluggyItems, {
+    fields: [pluggyAccounts.itemId],
+    references: [pluggyItems.id],
+  }),
+  account: one(accounts, {
+    fields: [pluggyAccounts.accountId],
+    references: [accounts.id],
+  }),
+}));
+
+export const pluggySyncCursorsRelations = relations(pluggySyncCursors, ({ one }) => ({
+  item: one(pluggyItems, {
+    fields: [pluggySyncCursors.itemId],
+    references: [pluggyItems.id],
+  }),
 }));
 
 export const incomeRelations = relations(income, ({ one }) => ({
@@ -641,23 +751,6 @@ export const faturasRelations = relations(faturas, ({ one }) => ({
   paidFromAccount: one(accounts, {
     fields: [faturas.paidFromAccountId],
     references: [accounts.id],
-  }),
-}));
-
-export const transfersRelations = relations(transfers, ({ one }) => ({
-  fromAccount: one(accounts, {
-    fields: [transfers.fromAccountId],
-    references: [accounts.id],
-    relationName: 'transfersFrom',
-  }),
-  toAccount: one(accounts, {
-    fields: [transfers.toAccountId],
-    references: [accounts.id],
-    relationName: 'transfersTo',
-  }),
-  fatura: one(faturas, {
-    fields: [transfers.faturaId],
-    references: [faturas.id],
   }),
 }));
 

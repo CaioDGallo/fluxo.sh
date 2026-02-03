@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { createExpense, updateExpense } from '@/lib/actions/expenses';
@@ -112,8 +112,11 @@ export function TransactionForm({
     setInstallmentsInput(String(clamped));
   };
 
+  // Filter out pluggy-synced accounts — can't create manual transactions on them
+  const manualAccounts = useMemo(() => accounts.filter((a) => a.source !== 'pluggy'), [accounts]);
+
   const hasCategories = categories.length > 0;
-  const hasAccounts = accounts.length > 0;
+  const hasAccounts = manualAccounts.length > 0;
   const canSubmit = hasCategories && hasAccounts && !isSubmitting;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -334,7 +337,7 @@ export function TransactionForm({
                 <FieldLabel htmlFor="account">{t('account')}</FieldLabel>
                 {hasAccounts ? (
                   <AccountPicker
-                    accounts={accounts}
+                    accounts={manualAccounts}
                     recentAccounts={recentAccounts}
                     value={accountId}
                     onChange={setAccountId}

@@ -80,7 +80,6 @@ export function BottomTabBar() {
     pathname.startsWith('/calendar') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/faturas') ||
-    pathname.startsWith('/transfers') ||
     pathname.startsWith('/reminders');
 
   return (

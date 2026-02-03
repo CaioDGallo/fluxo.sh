@@ -24,7 +24,9 @@ export default async function FaturasPage({
     getAccounts(),
   ]);
 
-  const checkingAccounts = accounts.filter(a => a.type !== 'credit_card');
+  // Exclude pluggy-synced accounts from payment source — sync handles those automatically
+  const checkingAccounts = accounts.filter(a => a.type !== 'credit_card' && a.source !== 'pluggy');
+  const syncedAccountIds = accounts.filter(a => a.source === 'pluggy').map(a => a.id);
 
   // Calculate totals for summary
   const now = new Date();
@@ -66,6 +68,7 @@ export default async function FaturasPage({
         <FaturaList
           faturas={faturas}
           checkingAccounts={checkingAccounts}
+          syncedAccountIds={syncedAccountIds}
         />
       </div>
   );

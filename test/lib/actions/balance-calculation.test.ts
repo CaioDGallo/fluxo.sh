@@ -211,9 +211,14 @@ describe('Balance Calculation', () => {
         .values({ userId: TEST_USER_ID, name: 'Savings', type: 'savings', currentBalance: 0 })
         .returning();
 
-      const [category] = await db
+      const [incomeCategory] = await db
         .insert(schema.categories)
         .values(testCategories.income)
+        .returning();
+
+      const [expenseCategory] = await db
+        .insert(schema.categories)
+        .values(testCategories.expense)
         .returning();
 
       // Add income to checking
@@ -221,20 +226,47 @@ describe('Balance Calculation', () => {
         userId: TEST_USER_ID,
         description: 'Salary',
         amount: 500000,
-        categoryId: category.id,
+        categoryId: incomeCategory.id,
         accountId: checking.id,
         receivedDate: '2025-01-01',
         receivedAt: new Date('2025-01-01T10:00:00Z'),
       });
 
-      // Transfer from checking to savings
-      await db.insert(schema.transfers).values({
+      // Internal transfer: expense out + income in (ignored, but still affects balances)
+      const [transferTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Transfer Out',
+          totalAmount: 200000,
+          totalInstallments: 1,
+          categoryId: expenseCategory.id,
+          ignored: true,
+          isInternalTransfer: true,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: checking.id,
-        toAccountId: savings.id,
+        transactionId: transferTransaction.id,
+        accountId: checking.id,
         amount: 200000,
-        date: '2025-01-05',
-        type: 'internal_transfer',
+        purchaseDate: '2025-01-05',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-05',
+        installmentNumber: 1,
+        paidAt: null,
+      });
+
+      await db.insert(schema.income).values({
+        userId: TEST_USER_ID,
+        description: 'Transfer In',
+        amount: 200000,
+        categoryId: incomeCategory.id,
+        accountId: savings.id,
+        receivedDate: '2025-01-05',
+        receivedAt: new Date('2025-01-05T10:00:00Z'),
+        ignored: true,
       });
 
       const checkingBalance = await calculateAccountBalance(checking.id);
@@ -254,14 +286,19 @@ describe('Balance Calculation', () => {
         .values(testAccounts.checking)
         .returning();
 
-      await db.insert(schema.transfers).values({
+      const [category] = await db
+        .insert(schema.categories)
+        .values(testCategories.income)
+        .returning();
+
+      await db.insert(schema.income).values({
         userId: TEST_USER_ID,
-        fromAccountId: null, // External source
-        toAccountId: account.id,
+        description: 'Deposit',
         amount: 100000,
-        date: '2025-01-10',
-        type: 'deposit',
-        description: 'ATM Deposit',
+        categoryId: category.id,
+        accountId: account.id,
+        receivedDate: '2025-01-10',
+        receivedAt: new Date('2025-01-10T10:00:00Z'),
       });
 
       const balance = await calculateAccountBalance(account.id);
@@ -275,9 +312,14 @@ describe('Balance Calculation', () => {
         .values(testAccounts.checking)
         .returning();
 
-      const [category] = await db
+      const [incomeCategory] = await db
         .insert(schema.categories)
         .values(testCategories.income)
+        .returning();
+
+      const [expenseCategory] = await db
+        .insert(schema.categories)
+        .values(testCategories.expense)
         .returning();
 
       // Add income first
@@ -285,21 +327,34 @@ describe('Balance Calculation', () => {
         userId: TEST_USER_ID,
         description: 'Salary',
         amount: 500000,
-        categoryId: category.id,
+        categoryId: incomeCategory.id,
         accountId: account.id,
         receivedDate: '2025-01-01',
         receivedAt: new Date('2025-01-01T10:00:00Z'),
       });
 
-      // Withdraw
-      await db.insert(schema.transfers).values({
+      // Withdraw (modeled as an expense entry)
+      const [withdrawTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'ATM Withdrawal',
+          totalAmount: 50000,
+          totalInstallments: 1,
+          categoryId: expenseCategory.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: account.id,
-        toAccountId: null, // External destination
+        transactionId: withdrawTransaction.id,
+        accountId: account.id,
         amount: 50000,
-        date: '2025-01-05',
-        type: 'withdrawal',
-        description: 'ATM Withdrawal',
+        purchaseDate: '2025-01-05',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-05',
+        installmentNumber: 1,
+        paidAt: null,
       });
 
       const balance = await calculateAccountBalance(account.id);
@@ -363,38 +418,39 @@ describe('Balance Calculation', () => {
         paidAt: null,
       });
 
-      // Create fatura
-      const [fatura] = await db
-        .insert(schema.faturas)
+      // Pay fatura (modeled as ignored expense on paying account)
+      const [paymentTransaction] = await db
+        .insert(schema.transactions)
         .values({
           userId: TEST_USER_ID,
-          accountId: creditCard.id,
-          yearMonth: '2025-01',
-          closingDate: '2025-01-15',
+          description: 'Fatura 2025-01',
           totalAmount: 15000,
-          dueDate: '2025-02-05',
+          totalInstallments: 1,
+          categoryId: category.id,
+          ignored: true,
+          isFaturaPayment: true,
         })
         .returning();
 
-      // Pay fatura (creates transfer + marks entries paid)
-      await db.insert(schema.transfers).values({
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: checking.id,
-        toAccountId: creditCard.id,
+        transactionId: paymentTransaction.id,
+        accountId: checking.id,
         amount: 15000,
-        date: '2025-02-05',
-        type: 'fatura_payment',
-        faturaId: fatura.id,
-        description: 'Fatura 2025-01',
+        purchaseDate: '2025-02-05',
+        faturaMonth: '2025-01',
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+        paidAt: new Date('2025-02-05T10:00:00Z'),
       });
 
       const checkingBalance = await calculateAccountBalance(checking.id);
       const creditCardBalance = await calculateAccountBalance(creditCard.id);
 
-      // Checking: 500000 - 15000 (transfer out) = 485000
+      // Checking: 500000 - 15000 (payment) = 485000
       expect(checkingBalance).toBe(485000);
-      // Credit card: -15000 (expense) + 15000 (payment) = 0
-      expect(creditCardBalance).toBe(0);
+      // Credit card: -15000 (expense); payment does not credit card balance
+      expect(creditCardBalance).toBe(-15000);
     });
 
     it('handles multi-operation sequence correctly', async () => {
@@ -454,33 +510,75 @@ describe('Balance Calculation', () => {
       });
 
       // 3. Transfer to savings: checking -100000, savings +100000
-      await db.insert(schema.transfers).values({
+      const [transferTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Transfer Out',
+          totalAmount: 100000,
+          totalInstallments: 1,
+          categoryId: expenseCategory.id,
+          ignored: true,
+          isInternalTransfer: true,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: checking.id,
-        toAccountId: savings.id,
+        transactionId: transferTransaction.id,
+        accountId: checking.id,
         amount: 100000,
-        date: '2025-01-10',
-        type: 'internal_transfer',
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-10',
+        installmentNumber: 1,
+        paidAt: null,
+      });
+
+      await db.insert(schema.income).values({
+        userId: TEST_USER_ID,
+        description: 'Transfer In',
+        amount: 100000,
+        categoryId: incomeCategory.id,
+        accountId: savings.id,
+        receivedDate: '2025-01-10',
+        receivedAt: new Date('2025-01-10T10:00:00Z'),
+        ignored: true,
       });
 
       // 4. Withdraw cash: -50000
-      await db.insert(schema.transfers).values({
+      const [withdrawTransaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'ATM Withdrawal',
+          totalAmount: 50000,
+          totalInstallments: 1,
+          categoryId: expenseCategory.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
         userId: TEST_USER_ID,
-        fromAccountId: checking.id,
-        toAccountId: null,
+        transactionId: withdrawTransaction.id,
+        accountId: checking.id,
         amount: 50000,
-        date: '2025-01-15',
-        type: 'withdrawal',
+        purchaseDate: '2025-01-15',
+        faturaMonth: '2025-01',
+        dueDate: '2025-01-15',
+        installmentNumber: 1,
+        paidAt: null,
       });
 
       // 5. Deposit check: +30000
-      await db.insert(schema.transfers).values({
+      await db.insert(schema.income).values({
         userId: TEST_USER_ID,
-        fromAccountId: null,
-        toAccountId: checking.id,
+        description: 'Deposit',
         amount: 30000,
-        date: '2025-01-20',
-        type: 'deposit',
+        categoryId: incomeCategory.id,
+        accountId: checking.id,
+        receivedDate: '2025-01-20',
+        receivedAt: new Date('2025-01-20T10:00:00Z'),
       });
 
       const checkingBalance = await calculateAccountBalance(checking.id);

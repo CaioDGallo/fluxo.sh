@@ -1,0 +1,1 @@
+ALTER TABLE "pluggy_items" ADD COLUMN "error_count" integer DEFAULT 0 NOT NULL;

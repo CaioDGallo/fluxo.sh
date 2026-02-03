@@ -295,6 +295,55 @@
       "when": 1770024903157,
       "tag": "0041_happy_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1770079616574,
+      "tag": "0042_aromatic_the_spike",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1770082267263,
+      "tag": "0043_opposite_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1770114646935,
+      "tag": "0044_tiny_mikhail_rasputin",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1770119395307,
+      "tag": "0045_gigantic_tyrannus",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1770120455043,
+      "tag": "0046_yielding_deadpool",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1770140591888,
+      "tag": "0047_dusty_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1770150620067,
+      "tag": "0048_sweet_moon_knight",
+      "breakpoints": true
     }
   ]
 }

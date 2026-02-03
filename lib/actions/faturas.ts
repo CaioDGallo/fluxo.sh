@@ -2,16 +2,17 @@
 
 import { getCurrentUserId } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate, getCurrentYearMonth, addMonths } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { accounts, categories, entries, faturas, income, transactions, transfers, type Fatura } from '@/lib/schema';
+import { accounts, categories, entries, faturas, income, transactions, type Fatura } from '@/lib/schema';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
 import { cache } from 'react';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackUserActivity } from '@/lib/analytics';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
 
 export type UnpaidFatura = {
   id: number;
@@ -95,9 +96,22 @@ export async function ensureFaturaExists(
 
 /**
  * Updates the total amount for a fatura by summing all its entries.
+ * CRITICAL: Only updates manual faturas - Pluggy faturas use bank's authoritative amount.
  */
 export async function updateFaturaTotal(accountId: number, yearMonth: string): Promise<void> {
   const userId = await getCurrentUserId();
+
+  // Check if this is a Pluggy fatura - if so, skip recalculation
+  const [fatura] = await db
+    .select({ pluggyBillId: faturas.pluggyBillId })
+    .from(faturas)
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)))
+    .limit(1);
+
+  if (fatura?.pluggyBillId) {
+    // Pluggy fatura - trust bank's amount, don't recalculate
+    return;
+  }
 
   // Sum all entries for this fatura
   const entriesResult = await db
@@ -322,11 +336,12 @@ export async function recalculateInstallmentDates(
  */
 export async function batchEnsureFaturasExist(
   accountId: number,
-  months: string[]
+  months: string[],
+  userIdOverride?: string
 ): Promise<void> {
   if (months.length === 0) return;
 
-  const userId = await getCurrentUserId();
+  const userId = userIdOverride ?? await getCurrentUserId();
 
   // Get account to compute dates
   const account = await db
@@ -373,13 +388,18 @@ export async function batchEnsureFaturasExist(
  */
 export async function batchUpdateFaturaTotals(
   accountId: number,
-  months: string[]
+  months: string[],
+  userIdOverride?: string
 ): Promise<void> {
   if (months.length === 0) return;
 
-  const userId = await getCurrentUserId();
+  const userId = userIdOverride ?? await getCurrentUserId();
 
   // Update all fatura totals in a single query using subqueries
+  // Use IN clause instead of ANY for array parameter compatibility
+  // CRITICAL: Only update manual faturas - Pluggy faturas use bank's authoritative amount
+  const monthsCondition = sql.join(months.map(m => sql`${m}`), sql`, `);
+
   await db.execute(sql`
     UPDATE faturas
     SET total_amount = COALESCE(entries_total, 0) - COALESCE(refunds_total, 0)
@@ -392,7 +412,7 @@ export async function batchUpdateFaturaTotals(
       FROM entries e
       WHERE e.user_id = ${userId}
         AND e.account_id = ${accountId}
-        AND e.fatura_month = ANY(${months})
+        AND e.fatura_month IN (${monthsCondition})
       GROUP BY e.user_id, e.account_id, e.fatura_month
     ) AS entries_agg
     FULL OUTER JOIN (
@@ -404,7 +424,7 @@ export async function batchUpdateFaturaTotals(
       FROM income i
       WHERE i.user_id = ${userId}
         AND i.account_id = ${accountId}
-        AND i.fatura_month = ANY(${months})
+        AND i.fatura_month IN (${monthsCondition})
         AND (i.refund_of_transaction_id IS NOT NULL OR i.is_refund = true)
       GROUP BY i.user_id, i.account_id, i.fatura_month
     ) AS refunds_agg
@@ -414,6 +434,7 @@ export async function batchUpdateFaturaTotals(
     WHERE faturas.user_id = ${userId}
       AND faturas.account_id = ${accountId}
       AND faturas.year_month = COALESCE(entries_agg.year_month, refunds_agg.year_month)
+      AND faturas.pluggy_bill_id IS NULL
   `);
 }
 
@@ -466,6 +487,78 @@ export async function batchRecalculateInstallmentDates(
 }
 
 /**
+ * Syncs credit card bills from Pluggy and upserts faturas.
+ * Called during syncPluggyItem for credit card accounts.
+ */
+export async function syncPluggyBills(
+  accountId: number,
+  pluggyAccountId: string,
+  userId: string
+): Promise<void> {
+  const client = getPluggyClient();
+
+  try {
+    const billsResponse = await client.fetchCreditCardBills(pluggyAccountId);
+    const bills = billsResponse.results || [];
+
+    for (const bill of bills) {
+      // Extract yearMonth from bill dueDate
+      const dueDate = bill.dueDate instanceof Date ? bill.dueDate : new Date(bill.dueDate);
+      const yearMonth = dueDate.toISOString().slice(0, 7);
+
+      // Compute closing date (typically dueDate - typical offset, e.g., 7 days)
+      const closingDate = new Date(dueDate);
+      closingDate.setDate(closingDate.getDate() - 7);
+      const closingDateStr = closingDate.toISOString().slice(0, 10);
+
+      const totalAmount = Math.round(Math.abs(bill.totalAmount ?? 0) * 100); // Convert to cents
+
+      await db.insert(faturas).values({
+        userId,
+        accountId,
+        yearMonth,
+        pluggyBillId: bill.id,
+        dueDate: dueDate.toISOString().slice(0, 10),
+        closingDate: closingDateStr,
+        startDate: null,
+        totalAmount,
+      }).onConflictDoUpdate({
+        target: [faturas.accountId, faturas.pluggyBillId],
+        set: {
+          dueDate: dueDate.toISOString().slice(0, 10),
+          totalAmount,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('[faturas] Failed to sync Pluggy bills:', error);
+    // Don't throw - continue with sync even if bills fetch fails
+  }
+}
+
+/**
+ * Ensures recent faturas exist for manual credit card accounts.
+ * Creates empty faturas for current month + next 2 months.
+ */
+export async function ensureRecentFaturasExist(
+  accountId: number,
+  userId: string
+): Promise<void> {
+  const [account] = await db.select().from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+
+  if (!account || account.type !== 'credit_card') return;
+  if (account.source === 'pluggy') return; // Pluggy CCs get faturas from bills sync
+  if (!account.closingDay || !account.paymentDueDay) return;
+
+  // Create faturas for current month + next 2 months
+  const currentMonth = getCurrentYearMonth();
+  const months = [currentMonth, addMonths(currentMonth, 1), addMonths(currentMonth, 2)];
+
+  await batchEnsureFaturasExist(accountId, months, userId);
+}
+
+/**
  * Gets all faturas for a specific account, ordered by month descending.
  */
 export const getFaturasByAccount = cache(async (accountId: number) => {
@@ -486,9 +579,22 @@ export const getFaturasByAccount = cache(async (accountId: number) => {
 
 /**
  * Gets all faturas for a specific month across all credit card accounts.
+ * Auto-creates empty faturas for manual CCs if they don't exist.
  */
 export const getFaturasByMonth = cache(async (yearMonth: string) => {
   const userId = await getCurrentUserId();
+
+  // Ensure recent faturas exist for all manual CCs (on-demand creation)
+  const creditCards = await db.select().from(accounts)
+    .where(and(
+      eq(accounts.userId, userId),
+      eq(accounts.type, 'credit_card'),
+      eq(accounts.source, 'manual')
+    ));
+
+  for (const cc of creditCards) {
+    await ensureRecentFaturasExist(cc.id, userId);
+  }
 
   return unstable_cache(
     async () => {
@@ -670,19 +776,46 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
         throw new Error(await t('errors.cannotPayFromCreditCard'));
       }
 
-      // 3. Create transfer record
-      await tx
-        .insert(transfers)
+      // 3. Create ignored expense transaction on paying account (fatura payment)
+      const expenseCategory = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.type, 'expense'), eq(categories.isImportDefault, true)))
+        .limit(1);
+      const categoryId = expenseCategory[0]?.id ?? (await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')))
+        .limit(1))[0]?.id;
+
+      if (!categoryId) {
+        throw new Error(await t('errors.categoryNotFound'));
+      }
+
+      const [paymentTx] = await tx
+        .insert(transactions)
         .values({
           userId,
-          fromAccountId,
-          toAccountId: fatura[0].accountId,
-          amount: fatura[0].totalAmount,
-          date: paymentDate,
-          type: 'fatura_payment',
-          faturaId: faturaId,
           description: `Fatura ${fatura[0].yearMonth}`,
-        });
+          totalAmount: fatura[0].totalAmount,
+          totalInstallments: 1,
+          categoryId,
+          ignored: true,
+          isFaturaPayment: true,
+        })
+        .returning({ id: transactions.id });
+
+      await tx.insert(entries).values({
+        userId,
+        transactionId: paymentTx.id,
+        accountId: fromAccountId,
+        amount: fatura[0].totalAmount,
+        purchaseDate: paymentDate,
+        faturaMonth: fatura[0].yearMonth,
+        dueDate: paymentDate,
+        paidAt: now,
+        installmentNumber: 1,
+      });
 
       // 4. Mark fatura as paid
       await tx
@@ -732,7 +865,6 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to pay fatura:', { faturaId, fromAccountId, error });
@@ -750,8 +882,6 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
 
   try {
     const userId = await getCurrentUserId();
-    const now = new Date();
-    const reversalDate = now.toISOString().split('T')[0];
 
     await db.transaction(async (tx) => {
       // Get fatura details
@@ -765,18 +895,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
         throw new Error(await t('errors.faturaNotFound'));
       }
 
-      const wasPaid = !!fatura[0].paidAt;
-
-      const [paymentTransfer] = await tx
-        .select()
-        .from(transfers)
-        .where(and(
-          eq(transfers.userId, userId),
-          eq(transfers.faturaId, faturaId),
-          eq(transfers.type, 'fatura_payment')
-        ))
-        .orderBy(desc(transfers.createdAt))
-        .limit(1);
+      const paidFromAccountId = fatura[0].paidFromAccountId;
 
       // Mark fatura as unpaid
       await tx
@@ -799,22 +918,28 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
           )
         );
 
-      if (wasPaid && paymentTransfer?.fromAccountId && paymentTransfer?.toAccountId) {
-        await tx.insert(transfers).values({
-          userId,
-          fromAccountId: paymentTransfer.toAccountId,
-          toAccountId: paymentTransfer.fromAccountId,
-          amount: paymentTransfer.amount,
-          date: reversalDate,
-          type: 'internal_transfer',
-          faturaId,
-          description: `Reversal: ${paymentTransfer.description ?? 'Fatura payment'}`,
-        });
+      // Delete the fatura payment transaction (ignored expense on paying account)
+      if (paidFromAccountId) {
+        const [paymentTx] = await tx
+          .select({ id: transactions.id })
+          .from(transactions)
+          .innerJoin(entries, eq(entries.transactionId, transactions.id))
+          .where(and(
+            eq(transactions.userId, userId),
+            eq(transactions.isFaturaPayment, true),
+            eq(transactions.description, `Fatura ${fatura[0].yearMonth}`),
+            eq(entries.accountId, paidFromAccountId)
+          ))
+          .limit(1);
+
+        if (paymentTx) {
+          await tx.delete(transactions).where(eq(transactions.id, paymentTx.id));
+        }
       }
 
       const affectedAccounts = new Set<number>();
-      if (fatura[0].paidFromAccountId) {
-        affectedAccounts.add(fatura[0].paidFromAccountId);
+      if (paidFromAccountId) {
+        affectedAccounts.add(paidFromAccountId);
       }
       affectedAccounts.add(fatura[0].accountId);
       for (const accountId of affectedAccounts) {
@@ -826,7 +951,6 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
@@ -836,7 +960,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
 
 /**
  * Converts an expense (from checking/savings/cash) into a fatura payment.
- * Deletes the expense and creates a fatura_payment transfer.
+ * Marks the existing transaction as ignored with isFaturaPayment flag.
  */
 export async function convertExpenseToFaturaPayment(entryId: number, faturaId: number): Promise<void> {
   if (!Number.isInteger(entryId) || entryId <= 0) {
@@ -919,21 +1043,17 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
         throw new Error(await t('errors.amountMismatch'));
       }
 
-      // 4. Create fatura_payment transfer (preserve externalId for duplicate detection on reimport)
-      const paymentDate = entry[0].purchaseDate;
-      const paymentTimestamp = new Date(paymentDate);
+      // 4. Convert the existing expense into an ignored fatura payment
+      const paymentTimestamp = new Date(entry[0].purchaseDate);
 
-      await tx.insert(transfers).values({
-        userId,
-        fromAccountId: entry[0].accountId,
-        toAccountId: fatura[0].accountId,
-        amount: entry[0].entryAmount,
-        date: paymentDate,
-        type: 'fatura_payment',
-        faturaId: faturaId,
-        description: `Fatura ${fatura[0].yearMonth}`,
-        externalId: transaction[0].externalId,
-      });
+      await tx
+        .update(transactions)
+        .set({
+          ignored: true,
+          isFaturaPayment: true,
+          description: `Fatura ${fatura[0].yearMonth}`,
+        })
+        .where(eq(transactions.id, entry[0].transactionId));
 
       // 5. Mark fatura paid
       await tx
@@ -956,12 +1076,7 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
           )
         );
 
-      // 7. Delete expense transaction + entries (cascade handles entries)
-      await tx
-        .delete(transactions)
-        .where(and(eq(transactions.userId, userId), eq(transactions.id, entry[0].transactionId)));
-
-      // 8. Sync both account balances
+      // 7. Sync both account balances
       await syncAccountBalance(entry[0].accountId, tx, userId);
       await syncAccountBalance(fatura[0].accountId, tx, userId);
     });
@@ -971,7 +1086,6 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to convert expense to fatura payment:', { entryId, faturaId, error });

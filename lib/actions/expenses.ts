@@ -19,6 +19,7 @@ import { getPostHogClient } from '@/lib/posthog-server';
 import { trackFirstExpense, trackUserActivity } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
 import { checkBudgetAlerts } from '@/lib/actions/budget-alerts';
+import { assertNotPluggySynced } from '@/lib/pluggy/guards';
 
 type CreateExpenseData = {
   description?: string;
@@ -253,6 +254,7 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('expense', transactionId, userId);
 
     // 1. Get old entries to track affected faturas for cleanup
     const oldEntries = await db
@@ -415,6 +417,7 @@ export async function deleteExpense(transactionId: number) {
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('expense', transactionId, userId);
 
     // Get entries before deletion to update affected faturas
     const oldEntries = await db
@@ -535,6 +538,7 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
           accountId: accounts.id,
           accountName: accounts.name,
           accountType: accounts.type,
+          accountSource: accounts.source,
           bankLogo: accounts.bankLogo,
         })
         .from(entries)

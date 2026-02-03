@@ -1,5 +1,5 @@
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
-import { entries, income, transfers } from '@/lib/schema';
+import { entries, income } from '@/lib/schema';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { computeBalance } from '@/lib/balance';
 
@@ -8,7 +8,7 @@ import { computeBalance } from '@/lib/balance';
  * Mirrors the logic in /lib/actions/accounts.ts:calculateAccountBalanceForUser
  */
 export async function calculateAccountBalanceForUser(
-  db: PgliteDatabase,
+  db: PgliteDatabase<Record<string, unknown>>,
   userId: string,
   accountId: number
 ): Promise<number> {
@@ -24,20 +24,8 @@ export async function calculateAccountBalanceForUser(
       and(eq(income.userId, userId), eq(income.accountId, accountId), isNotNull(income.receivedAt))
     );
 
-  const [{ total: totalTransfersOut }] = await db
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(eq(transfers.userId, userId), eq(transfers.fromAccountId, accountId)));
-
-  const [{ total: totalTransfersIn }] = await db
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(eq(transfers.userId, userId), eq(transfers.toAccountId, accountId)));
-
   return computeBalance({
     totalExpenses,
     totalReceivedIncome: totalIncome,
-    totalTransfersIn,
-    totalTransfersOut,
   });
 }

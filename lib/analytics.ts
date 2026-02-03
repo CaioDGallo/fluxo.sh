@@ -37,7 +37,6 @@ interface FirstImportData extends BaseEventData {
 interface UserActivityData extends BaseEventData {
   activityType: 'create_expense' | 'edit_expense' | 'delete_expense' |
                 'create_income' | 'edit_income' | 'delete_income' |
-                'create_transfer' | 'edit_transfer' | 'delete_transfer' |
                 'create_budget' | 'edit_budget' | 'delete_budget' |
                 'create_category' | 'edit_category' | 'delete_category' |
                 'pay_fatura' | 'view_dashboard' |
@@ -63,7 +62,6 @@ interface ExportData extends BaseEventData {
   timeRange: 'month' | 'year' | 'all';
   includeExpenses: boolean;
   includeIncome: boolean;
-  includeTransfers: boolean;
   recordCount: number;
   userCreatedAt: Date;
   isFirstExport: boolean;
@@ -322,7 +320,6 @@ export async function trackExport(data: ExportData) {
         time_range: data.timeRange,
         include_expenses: data.includeExpenses,
         include_income: data.includeIncome,
-        include_transfers: data.includeTransfers,
         record_count: data.recordCount,
         days_since_signup: timeDiff.days,
         is_first_export: data.isFirstExport,

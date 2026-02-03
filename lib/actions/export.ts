@@ -1,9 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { entries, transactions, categories, accounts, income, transfers } from '@/lib/schema';
+import { entries, transactions, categories, accounts, income } from '@/lib/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { alias as aliasedTable } from 'drizzle-orm/pg-core';
 import { getCurrentUserId } from '@/lib/auth';
 import { trackExport } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
@@ -22,16 +21,6 @@ export type ExportEntry = {
   installment: string | null; // "1/3" or null
   transactionId: number;
   ignored: boolean;
-};
-
-export type ExportTransfer = {
-  id: number;
-  date: string; // YYYY-MM-DD
-  fromAccountName: string | null;
-  toAccountName: string | null;
-  amount: number; // cents (always positive)
-  type: string;
-  description: string | null;
 };
 
 /**
@@ -173,80 +162,12 @@ export async function getTransactionsForExport(
 }
 
 /**
- * Fetch transfers for export
- */
-export async function getTransfersForExport(
-  timeRange: TimeRange,
-  yearMonth?: string
-): Promise<ExportTransfer[]> {
-  const userId = await getCurrentUserId();
-
-  // Build date filter conditions
-  let dateFilter: { gte: string; lte: string } | undefined = undefined;
-  if (timeRange === 'month' && yearMonth) {
-    const year = yearMonth.substring(0, 4);
-    const month = yearMonth.substring(5, 7);
-    const startDate = `${year}-${month}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-    dateFilter = { gte: startDate, lte: endDate };
-  } else if (timeRange === 'year' && yearMonth) {
-    const year = yearMonth.substring(0, 4);
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
-    dateFilter = { gte: startDate, lte: endDate };
-  }
-
-  // Create alias for to_account
-  const toAccount = aliasedTable(accounts, 'to_account');
-
-  const transfersQuery = db
-    .select({
-      id: transfers.id,
-      date: transfers.date,
-      amount: transfers.amount,
-      type: transfers.type,
-      description: transfers.description,
-      fromAccountName: accounts.name,
-      toAccountName: toAccount.name,
-    })
-    .from(transfers)
-    .leftJoin(accounts, eq(transfers.fromAccountId, accounts.id))
-    .leftJoin(toAccount, eq(transfers.toAccountId, toAccount.id))
-    .where(
-      and(
-        eq(transfers.userId, userId),
-        eq(transfers.ignored, false),
-        dateFilter
-          ? and(
-              gte(transfers.date, dateFilter.gte),
-              lte(transfers.date, dateFilter.lte)
-            )
-          : undefined
-      )
-    )
-    .orderBy(transfers.date);
-
-  const results = await transfersQuery;
-
-  return results.map((transfer) => ({
-    id: transfer.id,
-    date: transfer.date,
-    fromAccountName: transfer.fromAccountName,
-    toAccountName: transfer.toAccountName,
-    amount: transfer.amount,
-    type: transfer.type,
-    description: transfer.description,
-  }));
-}
-
-/**
  * Track data export event
  */
 export async function trackDataExport(params: {
   timeRange: TimeRange;
   includeExpenses: boolean;
   includeIncome: boolean;
-  includeTransfers: boolean;
   recordCount: number;
 }) {
   try {
@@ -277,7 +198,6 @@ export async function trackDataExport(params: {
       timeRange: params.timeRange,
       includeExpenses: params.includeExpenses,
       includeIncome: params.includeIncome,
-      includeTransfers: params.includeTransfers,
       recordCount: params.recordCount,
       userCreatedAt: user.createdAt,
       isFirstExport,

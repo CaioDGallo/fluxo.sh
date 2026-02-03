@@ -28,6 +28,8 @@ import { accountTypeConfig } from '@/lib/account-type-config';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { BankLogo } from '@/components/bank-logo';
+import { useFormat } from '@/lib/hooks/use-format';
+import { Badge } from '@/components/ui/badge';
 
 type AccountCardProps = {
   account: Account;
@@ -42,20 +44,40 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
   const t = useTranslations('accounts');
   const tCommon = useTranslations('common');
   const tAccountTypes = useTranslations('accountTypes');
+  const { date: formatDate } = useFormat();
 
   const config = accountTypeConfig[account.type];
   const isCreditCard = account.type === 'credit_card';
+  const isSynced = account.source === 'pluggy';
 
-  // For credit cards, display debt and available credit
-  const debt = isCreditCard ? Math.abs(account.currentBalance) : 0;
-  const availableCredit = isCreditCard && account.creditLimit
-    ? account.creditLimit - debt
+  const externalBalanceCents = typeof account.externalBalanceCents === 'number'
+    ? account.externalBalanceCents
+    : null;
+  const externalCreditLimitCents = typeof account.externalCreditLimitCents === 'number'
+    ? account.externalCreditLimitCents
+    : null;
+  const externalBalanceUpdatedAt = account.externalBalanceUpdatedAt
+    ? new Date(account.externalBalanceUpdatedAt)
     : null;
 
-  const balanceLabel = account.currentBalance < 0 ? 'text-red-600' : 'text-green-600';
+  const displayBalanceCents = isSynced && externalBalanceCents !== null
+    ? externalBalanceCents
+    : account.currentBalance;
+  const balanceLabel = displayBalanceCents < 0 ? 'text-red-600' : 'text-green-600';
+  const displayDebtCents = isCreditCard
+    ? Math.abs(isSynced && externalBalanceCents !== null ? externalBalanceCents : account.currentBalance)
+    : 0;
+  const availableCredit = !isSynced && isCreditCard && account.creditLimit
+    ? account.creditLimit - displayDebtCents
+    : null;
   const availableCreditLabel = availableCredit !== null && availableCredit < 0
     ? 'text-red-600'
     : 'text-green-600';
+  const externalUpdatedText = externalBalanceUpdatedAt
+    ? t('externalBalanceUpdatedAt', {
+      date: formatDate(externalBalanceUpdatedAt),
+    })
+    : null;
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -91,99 +113,127 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
         )}
 
         {/* Account name + type */}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate">{account.name}</h3>
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex flex-col items-start gap-1 min-w-0">
+            {isSynced && (
+              <Badge variant="outline">{t('syncedBadge')}</Badge>
+            )}
+            <h3 className="font-medium text-start text-sm truncate w-full">{account.name}</h3>
+          </div>
           <p className="text-xs text-gray-500">{tAccountTypes(account.type)}</p>
+          {isSynced && externalUpdatedText && (
+            <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
+          )}
         </div>
 
         {/* Balance / Debt display */}
         {isCreditCard ? (
-          <div className="text-right space-y-1">
-            {/* Current Debt */}
-            <div>
-              <p className="text-sm font-semibold text-red-600">
-                {formatCurrency(debt)}
-              </p>
-              <p className="text-xs text-gray-500">{t('currentDebt')}</p>
-            </div>
-            {/* Available Credit (if limit is set) */}
-            {availableCredit !== null && (
+          <div className="text-right space-y-2">
+            <div className="space-y-1">
               <div>
-                <p className={`text-sm font-semibold ${availableCreditLabel}`}>
-                  {formatCurrency(availableCredit)}
+                <p className="text-sm font-semibold text-red-600">
+                  {formatCurrency(displayDebtCents)}
                 </p>
-                <p className="text-xs text-gray-500">{t('availableCredit')}</p>
+                <p className="text-xs text-gray-500">
+                  {t('currentDebt')}
+                </p>
               </div>
-            )}
+              {availableCredit !== null && (
+                <div>
+                  <p className={`text-sm font-semibold ${availableCreditLabel}`}>
+                    {formatCurrency(availableCredit)}
+                  </p>
+                  <p className="text-xs text-gray-500">{t('availableCredit')}</p>
+                </div>
+              )}
+              {isSynced && externalCreditLimitCents !== null && (
+                <div>
+                  <p className="text-sm font-semibold text-green-600">
+                    {formatCurrency(externalCreditLimitCents)}
+                  </p>
+                  <p className="text-xs text-gray-500">{t('externalCreditLimit')}</p>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="text-right">
-            <p className={`text-sm font-semibold ${balanceLabel}`}>
-              {formatCurrency(account.currentBalance)}
-            </p>
-            <p className="text-xs text-gray-500">{t('currentBalance')}</p>
+          <div className="text-right space-y-2">
+            <div>
+              <p className={`text-sm font-semibold ${balanceLabel}`}>
+                {formatCurrency(displayBalanceCents)}
+              </p>
+              <p className="text-xs text-gray-500">
+                {t('currentBalance')}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Actions dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8">
-              <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
-              {tCommon('edit')} {t('title')}
-            </DropdownMenuItem>
+        {!isSynced && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <HugeiconsIcon icon={MoreVerticalIcon} strokeWidth={2} size={16} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                {tCommon('edit')} {t('title')}
+              </DropdownMenuItem>
 
-            <DropdownMenuItem onSelect={() => setDeleteOpen(true)}>
-              {tCommon('delete')} {t('title')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onSelect={() => setDeleteOpen(true)}>
+                {tCommon('delete')} {t('title')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
-        <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
-          <AlertDialogContent closeOnBackdropClick>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
-            </AlertDialogHeader>
-            <AccountForm
-              account={account}
-              onSuccess={async () => {
-                await onChange?.();
-                setEditOpen(false);
-              }}
-            />
-          </AlertDialogContent>
-        </AlertDialog>
+        {!isSynced && (
+          <>
+            <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
+              <AlertDialogContent closeOnBackdropClick>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
+                </AlertDialogHeader>
+                <AccountForm
+                  account={account}
+                  onSuccess={async () => {
+                    await onChange?.();
+                    setEditOpen(false);
+                  }}
+                />
+              </AlertDialogContent>
+            </AlertDialog>
 
-        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{tCommon('delete')} {t('title')}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                {tCommon('actionCannotBeUndone')}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{tCommon('delete')} {t('title')}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {tCommon('actionCannotBeUndone')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
 
-            {deleteError && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-                {deleteError}
-              </div>
-            )}
+                {deleteError && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                    {deleteError}
+                  </div>
+                )}
 
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>{tCommon('cancel')}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? tCommon('deleting') : tCommon('delete')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>{tCommon('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? tCommon('deleting') : tCommon('delete')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -31,6 +31,13 @@ export default async function SettingsPage() {
           <p className="text-sm text-gray-600">{t('calendarsDescription')}</p>
         </Link>
         <Link
+          href="/settings/open-finance"
+          className="block border border-gray-300 p-4 hover:border-gray-400"
+        >
+          <h2 className="font-semibold">{t('openFinance')}</h2>
+          <p className="text-sm text-gray-600">{t('openFinanceDescription')}</p>
+        </Link>
+        <Link
           href="/settings/data"
           className="block border border-destructive/50 p-4 hover:border-destructive bg-destructive/5"
         >

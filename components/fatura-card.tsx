@@ -24,9 +24,10 @@ type FaturaCardProps = {
     paidFromAccountId: number | null;
   };
   checkingAccounts: Account[];
+  isSyncedAccount?: boolean;
 };
 
-export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
+export function FaturaCard({ fatura, checkingAccounts, isSyncedAccount = false }: FaturaCardProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const t = useTranslations('faturas');
 
@@ -94,6 +95,7 @@ export function FaturaCard({ fatura, checkingAccounts }: FaturaCardProps) {
         accountName={fatura.accountName}
         yearMonth={fatura.yearMonth}
         checkingAccounts={checkingAccounts}
+        isSyncedAccount={isSyncedAccount}
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />

@@ -43,6 +43,11 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
   const data = expense || income;
   const t = useTranslations('transactionDetail');
   const tIncome = useTranslations('income');
+  const tSynced = useTranslations('synced');
+
+  const isSynced = isExpense
+    ? expense?.accountSource === 'pluggy'
+    : income?.accountSource === 'pluggy';
 
   if (!data) return null;
 
@@ -128,6 +133,14 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
 
               {/* Account */}
               <DetailRow label={t('account')} value={data.accountName} />
+
+              {/* Synced indicator */}
+              {isSynced && (
+                <DetailRow
+                  label={tSynced('readOnlyBadge')}
+                  value={<span className="text-xs text-blue-600">{tSynced('sourceOpenFinance')}</span>}
+                />
+              )}
 
               {/* Date */}
               <DetailRow
@@ -256,8 +269,8 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
               </Button>
             )}
 
-            {/* Edit button */}
-            {accounts && categories && (
+            {/* Edit button — hidden for synced items */}
+            {!isSynced && accounts && categories && (
               <Button
                 variant="default"
                 className="w-full"

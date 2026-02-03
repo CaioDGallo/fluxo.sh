@@ -14,6 +14,7 @@ import { syncAccountBalance } from '@/lib/actions/accounts';
 import { incrementCategoryFrequency, transferCategoryFrequency } from '@/lib/actions/category-frequency';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackUserActivity } from '@/lib/analytics';
+import { assertNotPluggySynced } from '@/lib/pluggy/guards';
 
 export type CreateIncomeData = {
   description?: string;
@@ -120,6 +121,7 @@ export async function updateIncome(incomeId: number, data: CreateIncomeData) {
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('income', incomeId, userId);
 
     const [existing] = await db
       .select({ id: income.id, accountId: income.accountId, receivedAt: income.receivedAt })
@@ -183,6 +185,7 @@ export async function deleteIncome(incomeId: number) {
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('income', incomeId, userId);
 
     const [existing] = await db
       .select({ id: income.id, accountId: income.accountId })
@@ -283,6 +286,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       accountId: accounts.id,
     accountName: accounts.name,
     accountType: accounts.type,
+    accountSource: accounts.source,
     bankLogo: accounts.bankLogo,
     replenishCategoryId: income.replenishCategoryId,
     replenishCategoryName: sql<string | null>`replenish_cat.name`,

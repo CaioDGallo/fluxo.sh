@@ -46,7 +46,7 @@ export async function LandingHeader() {
           <ThemeToggleRow
             showLabel={false}
             iconOnly
-            className="h-9 w-auto border border-foreground px-3 py-0"
+            className="h-9 w-auto border border-foreground px-3 py-0 rounded-none"
             labelClassName="text-[11px]"
           />
           {isLoggedIn ? (
@@ -71,7 +71,7 @@ export async function LandingHeader() {
             showLabel={false}
             iconOnly
             asButton
-            className="h-9 w-auto border border-foreground px-3 py-0"
+            className="h-9 w-auto border border-foreground px-3 py-0 rounded-none"
             labelClassName="text-[11px]"
           />
           {isLoggedIn ? (

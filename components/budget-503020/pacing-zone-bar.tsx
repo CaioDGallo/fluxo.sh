@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 interface PacingZoneBarProps {
@@ -19,9 +20,9 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
   const visualPercentage = Math.min(percentage / 2, 100);
 
   return (
-    <div className={className}>
+    <div className={cn(className, 'pt-10')}>
       {/* Zone bar */}
-      <div className="relative h-8 bg-muted rounded-none overflow-hidden">
+      <div className="relative h-8 bg-muted rounded-none overflow-visible">
         {/* Zone backgrounds */}
         <div className="absolute inset-0 flex">
           <div className="w-[45%] bg-blue-400/80" aria-label={t('saving')} />
@@ -37,7 +38,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
 
         {/* Current position marker */}
         <div
-          className="absolute inset-y-0 w-2 border-3 border-black dark:border-white bg-white dark:bg-black rounded-none shadow-sm"
+          className="absolute inset-y-0 w-3 z-30 bg-gray-300 dark:bg-white rounded-none border-2 border-gray-400 dark:border-black shadow-[2px_2px_0px_0px_rgba(155,155,155,1)] dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           style={{ left: `${visualPercentage}%`, transform: 'translateX(-50%)' }}
           role="progressbar"
           aria-valuenow={Math.round(percentage)}
@@ -45,7 +46,7 @@ export function PacingZoneBar({ percentage, className }: PacingZoneBarProps) {
           aria-valuemax={200}
           aria-label={`${percentage}%`}
         >
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <div className="absolute -top-full left-1/2 -translate-x-1/2 whitespace-nowrap">
             <span className="text-xs font-semibold tabular-nums bg-background px-1.5 py-0.5 rounded shadow-sm border">
               {percentage}%
             </span>

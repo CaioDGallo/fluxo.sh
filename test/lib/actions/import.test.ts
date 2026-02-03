@@ -157,7 +157,7 @@ describe('Import Actions', () => {
       }
     });
 
-    it('skips expenses with externalId already in transfers (converted to fatura payment)', async () => {
+    it('skips expenses with externalId already in transactions after fatura payment conversion', async () => {
       const checking = await seedAccount(testAccounts.checking);
       const creditCard = await seedAccount(testAccounts.creditCardWithBilling);
       const expenseCategory = await seedCategory('expense');
@@ -198,22 +198,17 @@ describe('Import Actions', () => {
       // Convert the expense to a fatura payment
       await convertExpenseToFaturaPayment(entry.id, fatura.id);
 
-      // Verify the externalId is now in transfers
-      const [transfer] = await db
-        .select()
-        .from(schema.transfers)
-        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.externalId, externalId)));
-
-      expect(transfer).toBeDefined();
-      expect(transfer.externalId).toBe(externalId);
-
-      // Verify the original transaction is deleted
-      const deletedTransaction = await db
+      // Verify the original transaction is preserved and marked as fatura payment
+      const [paymentTransaction] = await db
         .select()
         .from(schema.transactions)
         .where(and(eq(schema.transactions.userId, TEST_USER_ID), eq(schema.transactions.externalId, externalId)));
 
-      expect(deletedTransaction).toHaveLength(0);
+      expect(paymentTransaction).toMatchObject({
+        externalId,
+        ignored: true,
+        isFaturaPayment: true,
+      });
 
       // Now try to import with the same externalId - should be skipped
       const result = await importMixed({
@@ -242,8 +237,8 @@ describe('Import Actions', () => {
         .from(schema.transactions)
         .where(eq(schema.transactions.userId, TEST_USER_ID));
 
-      // Should only have the fatura entry transaction, not the reimported one
-      expect(allTransactions).toHaveLength(1);
+      // Should have the fatura entry transaction + the converted payment transaction
+      expect(allTransactions).toHaveLength(2);
     });
 
     it('imports new expenses without externalId conflict', async () => {
@@ -930,7 +925,10 @@ describe('Import Actions', () => {
         );
 
       expect(frequency.count).toBe(4);
-      expect(frequency.lastUsedAt.getTime()).toBeGreaterThan(new Date('2025-01-01').getTime());
+      expect(frequency.lastUsedAt).not.toBeNull();
+      expect((frequency.lastUsedAt ?? new Date(0)).getTime()).toBeGreaterThan(
+        new Date('2025-01-01').getTime()
+      );
     });
 
     it('handles both expense and income types separately', async () => {
@@ -1480,6 +1478,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1492,6 +1491,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1504,6 +1504,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'checking',
+        source: 'manual' as const,
         closingDay: null,
         paymentDueDay: null,
       };
@@ -1517,6 +1518,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1530,6 +1532,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1544,6 +1547,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1557,6 +1561,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };
@@ -1569,6 +1574,7 @@ describe('Import Helper Functions (Unit Tests)', () => {
       const { computeEntryDates } = await import('@/lib/import-helpers');
       const account = {
         type: 'credit_card',
+        source: 'manual' as const,
         closingDay: 15,
         paymentDueDay: 5,
       };

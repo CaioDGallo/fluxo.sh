@@ -88,9 +88,6 @@ describe('Dashboard Actions - getDashboardData', () => {
         totalBudget: 0,
         totalIncome: 0,
         netBalance: 0,
-        totalTransfersIn: 0,
-        totalTransfersOut: 0,
-        cashFlowNet: 0,
         categoryBreakdown: [],
         recentExpenses: [],
         recentIncome: [],
@@ -172,42 +169,6 @@ describe('Dashboard Actions - getDashboardData', () => {
       expect(result.netBalance).toBe(120000);
       expect(result.recentIncome).toHaveLength(2);
       expect(result.recentExpenses).toHaveLength(0);
-    });
-
-    it('includes transfers in cash flow totals', async () => {
-      await db.insert(schema.transfers).values([
-        {
-          userId: TEST_USER_ID,
-          fromAccountId: accountId2,
-          toAccountId: accountId1,
-          amount: 15000,
-          date: '2025-01-10',
-          type: 'internal_transfer',
-        },
-        {
-          userId: TEST_USER_ID,
-          fromAccountId: accountId2,
-          toAccountId: null,
-          amount: 5000,
-          date: '2025-01-12',
-          type: 'withdrawal',
-        },
-        {
-          userId: TEST_USER_ID,
-          fromAccountId: null,
-          toAccountId: accountId1,
-          amount: 3000,
-          date: '2025-01-15',
-          type: 'deposit',
-        },
-      ]);
-
-      const result = await getDashboardData('2025-01');
-
-      // Internal transfer (15000) should be excluded from cash flow
-      expect(result.totalTransfersIn).toBe(3000); // Only deposit
-      expect(result.totalTransfersOut).toBe(5000); // Only withdrawal
-      expect(result.cashFlowNet).toBe(-2000); // 0 income + 3000 in - 0 spent - 5000 out
     });
 
     it('handles budgets without spending', async () => {
@@ -928,9 +889,6 @@ describe('Dashboard Actions - getDashboardData', () => {
       expect(result).toHaveProperty('totalBudget');
       expect(result).toHaveProperty('totalIncome');
       expect(result).toHaveProperty('netBalance');
-      expect(result).toHaveProperty('totalTransfersIn');
-      expect(result).toHaveProperty('totalTransfersOut');
-      expect(result).toHaveProperty('cashFlowNet');
       expect(result).toHaveProperty('categoryBreakdown');
       expect(result).toHaveProperty('recentExpenses');
       expect(result).toHaveProperty('recentIncome');
@@ -1036,98 +994,4 @@ describe('Dashboard Actions - getDashboardData', () => {
     });
   });
 
-  describe('Transfer Type Tests', () => {
-    it('counts only deposits (external in) in transfersIn', async () => {
-      // Deposit: toAccountId set, fromAccountId null
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: null,
-        toAccountId: accountId1,
-        amount: 50000,
-        date: '2025-01-10',
-        type: 'deposit',
-      });
-
-      const result = await getDashboardData('2025-01');
-
-      expect(result.totalTransfersIn).toBe(50000);
-      expect(result.totalTransfersOut).toBe(0);
-      expect(result.cashFlowNet).toBe(50000); // 0 income + 50000 transfersIn - 0 spent - 0 transfersOut
-    });
-
-    it('counts only withdrawals (external out) in transfersOut', async () => {
-      // Withdrawal: fromAccountId set, toAccountId null
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: accountId1,
-        toAccountId: null,
-        amount: 30000,
-        date: '2025-01-15',
-        type: 'withdrawal',
-      });
-
-      const result = await getDashboardData('2025-01');
-
-      expect(result.totalTransfersIn).toBe(0);
-      expect(result.totalTransfersOut).toBe(30000);
-      expect(result.cashFlowNet).toBe(-30000); // 0 income + 0 transfersIn - 0 spent - 30000 transfersOut
-    });
-
-    it('excludes internal transfers (both accounts set) from cash flow', async () => {
-      // Internal transfer: both fromAccountId and toAccountId set
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: accountId1,
-        toAccountId: accountId2,
-        amount: 100000,
-        date: '2025-01-20',
-        type: 'internal_transfer',
-      });
-
-      const result = await getDashboardData('2025-01');
-
-      // Internal transfers should NOT appear in either transfersIn or transfersOut
-      expect(result.totalTransfersIn).toBe(0);
-      expect(result.totalTransfersOut).toBe(0);
-      expect(result.cashFlowNet).toBe(0); // No impact on cash flow
-    });
-
-    it('handles mixed transfer types correctly', async () => {
-      // Deposit
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: null,
-        toAccountId: accountId1,
-        amount: 50000,
-        date: '2025-01-05',
-        type: 'deposit',
-      });
-
-      // Withdrawal
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: accountId1,
-        toAccountId: null,
-        amount: 20000,
-        date: '2025-01-10',
-        type: 'withdrawal',
-      });
-
-      // Internal transfer (should be excluded)
-      await db.insert(schema.transfers).values({
-        userId: TEST_USER_ID,
-        fromAccountId: accountId1,
-        toAccountId: accountId2,
-        amount: 100000,
-        date: '2025-01-15',
-        type: 'internal_transfer',
-      });
-
-      const result = await getDashboardData('2025-01');
-
-      expect(result.totalTransfersIn).toBe(50000); // Only deposit
-      expect(result.totalTransfersOut).toBe(20000); // Only withdrawal
-      expect(result.cashFlowNet).toBe(30000); // 0 income + 50000 in - 0 spent - 20000 out
-    });
-  });
 });

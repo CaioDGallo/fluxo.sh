@@ -8,7 +8,7 @@ import { computeBalance } from '@/lib/balance';
  * Mirrors the logic in /lib/actions/accounts.ts:calculateAccountBalanceForUser
  */
 export async function calculateAccountBalanceForUser(
-  db: PgliteDatabase,
+  db: PgliteDatabase<Record<string, unknown>>,
   userId: string,
   accountId: number
 ): Promise<number> {

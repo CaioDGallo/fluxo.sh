@@ -7,7 +7,7 @@ import { calculateAccountBalanceForUser } from './balance-calculator';
  * Verifies that an account's cached balance matches its computed balance
  */
 export async function verifyBalanceConsistency(
-  db: PgliteDatabase,
+  db: PgliteDatabase<Record<string, unknown>>,
   userId: string,
   accountId: number
 ): Promise<{
@@ -46,7 +46,7 @@ export async function verifyBalanceConsistency(
  * Verifies balance consistency for all accounts belonging to a user
  */
 export async function verifyAllBalancesConsistent(
-  db: PgliteDatabase,
+  db: PgliteDatabase<Record<string, unknown>>,
   userId: string
 ): Promise<{
   allConsistent: boolean;

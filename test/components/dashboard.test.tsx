@@ -668,30 +668,24 @@ describe('Dashboard Components', () => {
 
   describe('CashFlowReport Component', () => {
     describe('Display Tests', () => {
-      it('shows income, expenses, transfers, and net cash flow', () => {
+      it('shows income, expenses, and net cash flow', () => {
         render(
           <CashFlowReport
             income={100000}
             expenses={60000}
-            transfersIn={5000}
-            transfersOut={10000}
-            net={35000}
+            net={40000}
           />
         );
 
         expect(screen.getByText('Cash Flow')).toBeInTheDocument();
         expect(screen.getByText('Income')).toBeInTheDocument();
         expect(screen.getByText('Expenses')).toBeInTheDocument();
-        expect(screen.getByText('Transfers In')).toBeInTheDocument();
-        expect(screen.getByText('Transfers Out')).toBeInTheDocument();
         expect(screen.getByText('Net Cash Flow')).toBeInTheDocument();
 
         // Check formatted amounts
         expect(screen.getByText(/R\$\s*1\.000,00/)).toBeInTheDocument(); // Income
         expect(screen.getByText(/R\$\s*600,00/)).toBeInTheDocument(); // Expenses
-        expect(screen.getByText(/R\$\s*50,00/)).toBeInTheDocument(); // TransfersIn
-        expect(screen.getByText(/R\$\s*100,00/)).toBeInTheDocument(); // TransfersOut
-        expect(screen.getByText(/R\$\s*350,00/)).toBeInTheDocument(); // Net
+        expect(screen.getByText(/R\$\s*400,00/)).toBeInTheDocument(); // Net
       });
 
       it('displays positive net cash flow in green', () => {
@@ -699,8 +693,6 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={100000}
             expenses={60000}
-            transfersIn={0}
-            transfersOut={0}
             net={40000}
           />
         );
@@ -714,8 +706,6 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={50000}
             expenses={80000}
-            transfersIn={0}
-            transfersOut={0}
             net={-30000}
           />
         );
@@ -729,8 +719,6 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={50000}
             expenses={50000}
-            transfersIn={0}
-            transfersOut={0}
             net={0}
           />
         );
@@ -750,15 +738,13 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={0}
             expenses={0}
-            transfersIn={0}
-            transfersOut={0}
             net={0}
           />
         );
 
         // All amounts should be R$ 0,00
         const zeroAmounts = screen.getAllByText(/R\$\s*0,00/);
-        expect(zeroAmounts.length).toBeGreaterThanOrEqual(5);
+        expect(zeroAmounts.length).toBeGreaterThanOrEqual(3);
       });
 
       it('handles large amounts correctly', () => {
@@ -766,15 +752,13 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={99999999}
             expenses={50000000}
-            transfersIn={10000000}
-            transfersOut={5000000}
-            net={54999999}
+            net={49999999}
           />
         );
 
         expect(screen.getByText(/R\$\s*999\.999,99/)).toBeInTheDocument();
         expect(screen.getByText(/R\$\s*500\.000,00/)).toBeInTheDocument();
-        expect(screen.getByText(/R\$\s*549\.999,99/)).toBeInTheDocument();
+        expect(screen.getByText(/R\$\s*499\.999,99/)).toBeInTheDocument();
       });
 
       it('handles negative values with correct sign display', () => {
@@ -782,32 +766,28 @@ describe('Dashboard Components', () => {
           <CashFlowReport
             income={0}
             expenses={100000}
-            transfersIn={0}
-            transfersOut={50000}
-            net={-150000}
+            net={-100000}
           />
         );
 
         // Negative net should show with - prefix
-        const netText = screen.getByText(/-R\$\s*1\.500,00/);
-        expect(netText).toBeInTheDocument();
+        const netLabel = screen.getByText('Net Cash Flow');
+        const netRow = netLabel.closest('.flex');
+        const netText = within(netRow as HTMLElement).getByText(/-R\$\s*1\.000,00/);
         expect(netText).toHaveClass('text-red-600');
       });
 
-      it('handles transfers only (no income/expenses)', () => {
+      it('handles income only (no expenses)', () => {
         render(
           <CashFlowReport
-            income={0}
+            income={50000}
             expenses={0}
-            transfersIn={50000}
-            transfersOut={30000}
-            net={20000}
+            net={50000}
           />
         );
 
-        expect(screen.getByText(/\+R\$\s*500,00/)).toBeInTheDocument(); // TransfersIn
-        expect(screen.getByText(/-R\$\s*300,00/)).toBeInTheDocument(); // TransfersOut
-        expect(screen.getByText(/\+R\$\s*200,00/)).toBeInTheDocument(); // Net
+        const amounts = screen.getAllByText(/\+R\$\s*500,00/);
+        expect(amounts).toHaveLength(2); // Income + Net
       });
     });
   });

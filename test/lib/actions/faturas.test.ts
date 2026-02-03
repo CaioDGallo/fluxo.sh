@@ -605,22 +605,37 @@ describe('Fatura Actions', () => {
       expect(updatedEntries[0].paidAt).not.toBeNull();
     });
 
-    it('creates a transfer and updates account balances', async () => {
+    it('creates a fatura payment entry and updates account balances', async () => {
       const { account, fatura, amount } = await seedFaturaWithEntry();
       const checking = await seedAccount(testAccounts.checking);
 
       await payFatura(fatura.id, checking.id);
 
-      const [transfer] = await db
+      const [paymentTransaction] = await db
         .select()
-        .from(schema.transfers)
-        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.faturaId, fatura.id)));
+        .from(schema.transactions)
+        .where(
+          and(
+            eq(schema.transactions.userId, TEST_USER_ID),
+            eq(schema.transactions.isFaturaPayment, true),
+            eq(schema.transactions.description, `Fatura ${fatura.yearMonth}`)
+          )
+        );
 
-      expect(transfer).toMatchObject({
-        fromAccountId: checking.id,
-        toAccountId: account.id,
+      expect(paymentTransaction).toMatchObject({
+        totalAmount: amount,
+        ignored: true,
+        isFaturaPayment: true,
+      });
+
+      const [paymentEntry] = await db
+        .select()
+        .from(schema.entries)
+        .where(and(eq(schema.entries.userId, TEST_USER_ID), eq(schema.entries.transactionId, paymentTransaction.id)));
+
+      expect(paymentEntry).toMatchObject({
+        accountId: checking.id,
         amount,
-        type: 'fatura_payment',
       });
 
       const [updatedChecking] = await db
@@ -634,7 +649,7 @@ describe('Fatura Actions', () => {
         .where(and(eq(schema.accounts.userId, TEST_USER_ID), eq(schema.accounts.id, account.id)));
 
       expect(updatedChecking.currentBalance).toBe(-amount);
-      expect(updatedCard.currentBalance).toBe(0);
+      expect(updatedCard.currentBalance).toBe(-amount);
     });
   });
 
@@ -913,46 +928,46 @@ describe('Fatura Actions', () => {
       expect(updatedEntries.every((e) => e.paidAt !== null)).toBe(true);
     });
 
-    it('creates fatura_payment transfer', async () => {
+    it('marks the expense as a fatura payment', async () => {
       const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
-      const { entry, checking } = await seedExpenseFromChecking(amount);
+      const { entry } = await seedExpenseFromChecking(amount);
 
       await convertExpenseToFaturaPayment(entry.id, fatura.id);
 
-      const [transfer] = await db
+      const [updatedTransaction] = await db
         .select()
-        .from(schema.transfers)
-        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.faturaId, fatura.id)));
+        .from(schema.transactions)
+        .where(and(eq(schema.transactions.userId, TEST_USER_ID), eq(schema.transactions.id, entry.transactionId)));
 
-      expect(transfer).toMatchObject({
-        fromAccountId: checking.id,
-        toAccountId: fatura.accountId,
-        amount,
-        type: 'fatura_payment',
+      expect(updatedTransaction).toMatchObject({
+        ignored: true,
+        isFaturaPayment: true,
+        description: `Fatura ${fatura.yearMonth}`,
       });
     });
 
-    it('deletes original expense', async () => {
+    it('keeps the original expense but marks it ignored', async () => {
       const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
       const { entry, transaction } = await seedExpenseFromChecking(amount);
 
       await convertExpenseToFaturaPayment(entry.id, fatura.id);
 
-      // Verify transaction deleted
-      const deletedTransaction = await db
+      const [updatedTransaction] = await db
         .select()
         .from(schema.transactions)
         .where(and(eq(schema.transactions.userId, TEST_USER_ID), eq(schema.transactions.id, transaction.id)));
 
-      expect(deletedTransaction).toHaveLength(0);
+      expect(updatedTransaction).toMatchObject({
+        ignored: true,
+        isFaturaPayment: true,
+      });
 
-      // Verify source entry deleted (cascade)
-      const deletedEntry = await db
+      const [updatedEntry] = await db
         .select()
         .from(schema.entries)
         .where(and(eq(schema.entries.userId, TEST_USER_ID), eq(schema.entries.id, entry.id)));
 
-      expect(deletedEntry).toHaveLength(0);
+      expect(updatedEntry).toBeDefined();
     });
 
     it('updates account balances', async () => {
@@ -973,11 +988,11 @@ describe('Fatura Actions', () => {
 
       // Checking balance should be negative (money out)
       expect(updatedChecking.currentBalance).toBe(-amount);
-      // Credit card balance should be 0 (paid off)
-      expect(updatedCard.currentBalance).toBe(0);
+      // Credit card balance remains negative (payment does not credit card account)
+      expect(updatedCard.currentBalance).toBe(-amount);
     });
 
-    it('preserves externalId in transfer for duplicate detection on reimport', async () => {
+    it('preserves externalId on the converted transaction', async () => {
       const { fatura, amount } = await seedFaturaWithEntry({ amount: 10000 });
       const checking = await seedAccount(testAccounts.checking);
       const category = await seedCategory();
@@ -1012,26 +1027,15 @@ describe('Fatura Actions', () => {
 
       await convertExpenseToFaturaPayment(entry.id, fatura.id);
 
-      // Verify transaction is deleted
-      const deletedTransaction = await db
+      const [updatedTransaction] = await db
         .select()
         .from(schema.transactions)
         .where(and(eq(schema.transactions.userId, TEST_USER_ID), eq(schema.transactions.id, transaction.id)));
 
-      expect(deletedTransaction).toHaveLength(0);
-
-      // Verify externalId is preserved in the transfer
-      const [transfer] = await db
-        .select()
-        .from(schema.transfers)
-        .where(and(eq(schema.transfers.userId, TEST_USER_ID), eq(schema.transfers.faturaId, fatura.id)));
-
-      expect(transfer).toMatchObject({
-        fromAccountId: checking.id,
-        toAccountId: fatura.accountId,
-        amount,
-        type: 'fatura_payment',
+      expect(updatedTransaction).toMatchObject({
         externalId,
+        ignored: true,
+        isFaturaPayment: true,
       });
     });
   });

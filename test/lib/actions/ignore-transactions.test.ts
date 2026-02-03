@@ -8,7 +8,6 @@ const OTHER_USER_ID = 'other-user-id';
 
 type ExpenseActions = typeof import('@/lib/actions/expenses');
 type IncomeActions = typeof import('@/lib/actions/income');
-type TransferActions = typeof import('@/lib/actions/transfers');
 type DashboardActions = typeof import('@/lib/actions/dashboard');
 type BudgetActions = typeof import('@/lib/actions/budgets');
 type AccountActions = typeof import('@/lib/actions/accounts');
@@ -21,7 +20,6 @@ describe('Ignore Transactions', () => {
 
   let toggleIgnoreTransaction: ExpenseActions['toggleIgnoreTransaction'];
   let toggleIgnoreIncome: IncomeActions['toggleIgnoreIncome'];
-  let toggleIgnoreTransfer: TransferActions['toggleIgnoreTransfer'];
   let getDashboardData: DashboardActions['getDashboardData'];
   let getBudgetsWithSpending: BudgetActions['getBudgetsWithSpending'];
   let syncAccountBalance: AccountActions['syncAccountBalance'];
@@ -109,47 +107,12 @@ describe('Ignore Transactions', () => {
     return incomeRecord;
   };
 
-  const seedTransfer = async (
-    fromAccountId: number | null,
-    toAccountId: number | null,
-    amount: number,
-    date: string,
-    type: 'internal_transfer' | 'deposit' | 'withdrawal' | 'fatura_payment' = 'internal_transfer',
-    faturaId?: number
-  ) => {
-    const [transfer] = await db
-      .insert(schema.transfers)
-      .values({
-        userId: TEST_USER_ID,
-        fromAccountId,
-        toAccountId,
-        amount,
-        date,
-        type,
-        faturaId: faturaId ?? null,
-        description: 'Test Transfer',
-      })
-      .returning();
-
-    if (fromAccountId) {
-      await syncAccountBalance(fromAccountId);
-    }
-    if (toAccountId) {
-      await syncAccountBalance(toAccountId);
-    }
-
-    return transfer;
-  };
-
   const loadActions = async () => {
     const expenseActions = await import('@/lib/actions/expenses');
     toggleIgnoreTransaction = expenseActions.toggleIgnoreTransaction;
 
     const incomeActions = await import('@/lib/actions/income');
     toggleIgnoreIncome = incomeActions.toggleIgnoreIncome;
-
-    const transferActions = await import('@/lib/actions/transfers');
-    toggleIgnoreTransfer = transferActions.toggleIgnoreTransfer;
 
     const dashboardActions = await import('@/lib/actions/dashboard');
     getDashboardData = dashboardActions.getDashboardData;
@@ -209,11 +172,6 @@ describe('Ignore Transactions', () => {
       await expect(toggleIgnoreIncome(1)).rejects.toThrow();
     });
 
-    it('rejects not authenticated for transfers', async () => {
-      getCurrentUserIdMock.mockResolvedValueOnce('');
-      await expect(toggleIgnoreTransfer(1)).rejects.toThrow();
-    });
-
     it('rejects invalid expense id', async () => {
       await expect(toggleIgnoreTransaction(0)).rejects.toThrow();
     });
@@ -222,20 +180,12 @@ describe('Ignore Transactions', () => {
       await expect(toggleIgnoreIncome(-1)).rejects.toThrow();
     });
 
-    it('rejects invalid transfer id', async () => {
-      await expect(toggleIgnoreTransfer(0)).rejects.toThrow();
-    });
-
     it('rejects missing expense records', async () => {
       await expect(toggleIgnoreTransaction(999999)).rejects.toThrow();
     });
 
     it('rejects missing income records', async () => {
       await expect(toggleIgnoreIncome(999999)).rejects.toThrow();
-    });
-
-    it('rejects missing transfer records', async () => {
-      await expect(toggleIgnoreTransfer(999999)).rejects.toThrow();
     });
 
     it('blocks toggling transactions from other users', async () => {
@@ -303,36 +253,6 @@ describe('Ignore Transactions', () => {
       expect(dashboard.totalIncome).toBe(0);
     });
 
-    it('blocks toggling transfers from other users', async () => {
-      const otherFrom = await seedOtherAccount({ ...testAccounts.checking, name: 'Other From' });
-      const otherTo = await seedOtherAccount({ ...testAccounts.checking, name: 'Other To' });
-
-      const [otherTransfer] = await db
-        .insert(schema.transfers)
-        .values({
-          userId: OTHER_USER_ID,
-          fromAccountId: otherFrom.id,
-          toAccountId: otherTo.id,
-          amount: 30000,
-          date: '2025-01-20',
-          type: 'internal_transfer',
-          description: 'Other Transfer',
-        })
-        .returning();
-
-      await expect(toggleIgnoreTransfer(otherTransfer.id)).rejects.toThrow();
-
-      const [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, otherTransfer.id));
-      expect(record.ignored).toBe(false);
-
-      const dashboard = await getDashboardData('2025-01');
-      expect(dashboard.totalTransfersIn).toBe(0);
-      expect(dashboard.totalTransfersOut).toBe(0);
-    });
-
     it('toggleIgnoreTransaction flips ignored state for expenses', async () => {
       const account = await seedAccount(testAccounts.checking);
       const category = await seedCategory('expense');
@@ -394,37 +314,6 @@ describe('Ignore Transactions', () => {
         .where(eq(schema.income.id, incomeRecord.id));
       expect(record.ignored).toBe(false);
     });
-
-    it('toggleIgnoreTransfer flips ignored state for transfers', async () => {
-      const account1 = await seedAccount({ ...testAccounts.checking, name: 'Account 1' });
-      const account2 = await seedAccount({ ...testAccounts.checking, name: 'Account 2' });
-      const transfer = await seedTransfer(account1.id, account2.id, 15000, '2025-01-15');
-
-      // Initially not ignored
-      let [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, transfer.id));
-      expect(record.ignored).toBe(false);
-
-      // Toggle to ignored
-      await toggleIgnoreTransfer(transfer.id);
-
-      [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, transfer.id));
-      expect(record.ignored).toBe(true);
-
-      // Toggle back
-      await toggleIgnoreTransfer(transfer.id);
-
-      [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, transfer.id));
-      expect(record.ignored).toBe(false);
-    });
   });
 
   describe('Dashboard Excludes Ignored', () => {
@@ -482,39 +371,6 @@ describe('Ignore Transactions', () => {
 
       dashboard = await getDashboardData('2025-01');
       expect(dashboard.totalIncome).toBe(50000);
-    });
-
-    it('ignored transfers excluded from cash flow', async () => {
-      const account = await seedAccount(testAccounts.checking);
-
-      // Deposits (transfers in)
-      await seedTransfer(null, account.id, 50000, '2025-01-05', 'deposit');
-      const deposit2 = await seedTransfer(null, account.id, 30000, '2025-01-10', 'deposit');
-
-      // Withdrawals (transfers out)
-      const withdrawal1 = await seedTransfer(account.id, null, 20000, '2025-01-15', 'withdrawal');
-      await seedTransfer(account.id, null, 15000, '2025-01-20', 'withdrawal');
-
-      // Before ignoring
-      let dashboard = await getDashboardData('2025-01');
-      expect(dashboard.totalTransfersIn).toBe(80000);
-      expect(dashboard.totalTransfersOut).toBe(35000);
-      expect(dashboard.cashFlowNet).toBe(45000); // 80000 - 35000
-
-      // Ignore one deposit
-      await toggleIgnoreTransfer(deposit2.id);
-
-      dashboard = await getDashboardData('2025-01');
-      expect(dashboard.totalTransfersIn).toBe(50000);
-      expect(dashboard.totalTransfersOut).toBe(35000);
-
-      // Ignore one withdrawal
-      await toggleIgnoreTransfer(withdrawal1.id);
-
-      dashboard = await getDashboardData('2025-01');
-      expect(dashboard.totalTransfersIn).toBe(50000);
-      expect(dashboard.totalTransfersOut).toBe(15000);
-      expect(dashboard.cashFlowNet).toBe(35000); // 50000 - 15000
     });
   });
 
@@ -589,16 +445,16 @@ describe('Ignore Transactions', () => {
         .where(eq(schema.accounts.id, account.id));
       expect(accountRecord.currentBalance).toBe(-10000);
 
-      // Ignore expense - balance should return to 0
+      // Ignore expense - balance should remain unchanged
       await toggleIgnoreTransaction(transaction.id);
 
       [accountRecord] = await db
         .select()
         .from(schema.accounts)
         .where(eq(schema.accounts.id, account.id));
-      expect(accountRecord.currentBalance).toBe(0);
+      expect(accountRecord.currentBalance).toBe(-10000);
 
-      // Un-ignore - balance should be -10000 again
+      // Un-ignore - balance should stay -10000
       await toggleIgnoreTransaction(transaction.id);
 
       [accountRecord] = await db
@@ -621,14 +477,14 @@ describe('Ignore Transactions', () => {
         .where(eq(schema.accounts.id, account.id));
       expect(accountRecord.currentBalance).toBe(50000);
 
-      // Ignore income - balance should return to 0
+      // Ignore income - balance should remain unchanged
       await toggleIgnoreIncome(incomeRecord.id);
 
       [accountRecord] = await db
         .select()
         .from(schema.accounts)
         .where(eq(schema.accounts.id, account.id));
-      expect(accountRecord.currentBalance).toBe(0);
+      expect(accountRecord.currentBalance).toBe(50000);
 
       // Un-ignore
       await toggleIgnoreIncome(incomeRecord.id);
@@ -638,95 +494,6 @@ describe('Ignore Transactions', () => {
         .from(schema.accounts)
         .where(eq(schema.accounts.id, account.id));
       expect(accountRecord.currentBalance).toBe(50000);
-    });
-
-    it('multi-account transfer balance sync on ignore toggle', async () => {
-      const account1 = await seedAccount({ ...testAccounts.checking, name: 'Account 1', currentBalance: 0 });
-      const account2 = await seedAccount({ ...testAccounts.checking, name: 'Account 2', currentBalance: 0 });
-
-      // Transfer 20000 from account1 to account2
-      const transfer = await seedTransfer(account1.id, account2.id, 20000, '2025-01-15');
-
-      // Account1: -20000 (transferred out)
-      // Account2: +20000 (transferred in)
-      let [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));
-      let [acc2] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account2.id));
-      expect(acc1.currentBalance).toBe(-20000);
-      expect(acc2.currentBalance).toBe(20000);
-
-      // Ignore transfer - should return to 0
-      await toggleIgnoreTransfer(transfer.id);
-
-      [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));
-      [acc2] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account2.id));
-      expect(acc1.currentBalance).toBe(0);
-      expect(acc2.currentBalance).toBe(0);
-
-      // Un-ignore - transfer should apply again
-      await toggleIgnoreTransfer(transfer.id);
-
-      [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));
-      [acc2] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account2.id));
-      expect(acc1.currentBalance).toBe(-20000);
-      expect(acc2.currentBalance).toBe(20000);
-    });
-  });
-
-  describe('Locked Transfers (faturaId)', () => {
-    it('toggleIgnoreTransfer rejects fatura-linked transfers', async () => {
-      const creditCard = await seedAccount(testAccounts.creditCard);
-      const checking = await seedAccount(testAccounts.checking);
-
-      // Create a fatura
-      const [fatura] = await db
-        .insert(schema.faturas)
-        .values({
-          userId: TEST_USER_ID,
-          accountId: creditCard.id,
-          yearMonth: '2025-01',
-          closingDate: '2025-01-15',
-          totalAmount: 50000,
-          dueDate: '2025-02-05',
-          paidAt: new Date('2025-02-05'),
-          paidFromAccountId: checking.id,
-        })
-        .returning();
-
-      // Create fatura payment transfer
-      const transfer = await seedTransfer(
-        checking.id,
-        creditCard.id,
-        50000,
-        '2025-02-05',
-        'fatura_payment',
-        fatura.id
-      );
-
-      // Attempt to ignore should throw
-      await expect(toggleIgnoreTransfer(transfer.id)).rejects.toThrow();
-
-      // Verify it's still not ignored
-      const [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, transfer.id));
-      expect(record.ignored).toBe(false);
-    });
-
-    it('regular transfers without faturaId can be toggled', async () => {
-      const account1 = await seedAccount({ ...testAccounts.checking, name: 'Account 1' });
-      const account2 = await seedAccount({ ...testAccounts.checking, name: 'Account 2' });
-
-      const transfer = await seedTransfer(account1.id, account2.id, 15000, '2025-01-15');
-
-      // Should work fine
-      await toggleIgnoreTransfer(transfer.id);
-
-      const [record] = await db
-        .select()
-        .from(schema.transfers)
-        .where(eq(schema.transfers.id, transfer.id));
-      expect(record.ignored).toBe(true);
     });
   });
 
@@ -790,15 +557,15 @@ describe('Ignore Transactions', () => {
       expect(acc1.currentBalance).toBe(-20000);
       expect(acc2.currentBalance).toBe(-20000);
 
-      // Ignore transaction - both should return to 0
+      // Ignore transaction - balances should remain unchanged
       await toggleIgnoreTransaction(transaction.id);
 
       [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));
       [acc2] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account2.id));
-      expect(acc1.currentBalance).toBe(0);
-      expect(acc2.currentBalance).toBe(0);
+      expect(acc1.currentBalance).toBe(-20000);
+      expect(acc2.currentBalance).toBe(-20000);
 
-      // Un-ignore - both should be -20000 again
+      // Un-ignore - balances should stay -20000
       await toggleIgnoreTransaction(transaction.id);
 
       [acc1] = await db.select().from(schema.accounts).where(eq(schema.accounts.id, account1.id));

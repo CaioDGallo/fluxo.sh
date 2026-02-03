@@ -7,12 +7,10 @@ import { useTranslations } from 'next-intl';
 type CashFlowReportProps = {
   income: number;
   expenses: number;
-  transfersIn: number;
-  transfersOut: number;
   net: number;
 };
 
-export function CashFlowReport({ income, expenses, transfersIn, transfersOut, net }: CashFlowReportProps) {
+export function CashFlowReport({ income, expenses, net }: CashFlowReportProps) {
   const t = useTranslations('cashFlow');
   const netPositive = net >= 0;
 
@@ -29,14 +27,6 @@ export function CashFlowReport({ income, expenses, transfersIn, transfersOut, ne
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500">{t('expenses')}</span>
           <span className="font-semibold text-red-600">-{formatCurrency(expenses)}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">{t('transfersIn')}</span>
-          <span className="font-semibold text-green-600">+{formatCurrency(transfersIn)}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">{t('transfersOut')}</span>
-          <span className="font-semibold text-red-600">-{formatCurrency(transfersOut)}</span>
         </div>
 
         <div className="border-t pt-3 flex items-center justify-between text-sm">

@@ -138,7 +138,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
               {isSynced && (
                 <DetailRow
                   label={tSynced('readOnlyBadge')}
-                  value={<span className="text-xs text-blue-600">{tSynced('readOnlyExplanation')}</span>}
+                  value={<span className="text-xs text-blue-600">{tSynced('sourceOpenFinance')}</span>}
                 />
               )}
 

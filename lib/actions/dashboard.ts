@@ -3,10 +3,10 @@
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { db } from '@/lib/db';
-import { entries, transactions, categories, budgets, accounts, income, transfers } from '@/lib/schema';
-import { eq, and, gte, lte, sql, desc, isNotNull, isNull } from 'drizzle-orm';
+import { entries, transactions, categories, budgets, accounts, income } from '@/lib/schema';
+import { eq, and, gte, lte, sql, desc, isNotNull } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
-import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
+import { activeTransactionCondition, activeIncomeCondition } from '@/lib/query-helpers';
 
 export type DashboardData = {
   totalSpent: number;
@@ -14,9 +14,6 @@ export type DashboardData = {
   totalBudget: number;
   totalIncome: number;
   netBalance: number;
-  totalTransfersIn: number;
-  totalTransfersOut: number;
-  cashFlowNet: number;
   categoryBreakdown: {
     categoryId: number;
     categoryName: string;
@@ -145,39 +142,11 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
 
   const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
 
-  // 5. Get transfers for the month (exclude internal transfers)
-  // TransfersIn: Only deposits (toAccountId set, fromAccountId null)
-  const [{ total: totalTransfersIn }] = await db
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(
-      gte(transfers.date, startDate),
-      lte(transfers.date, endDate),
-      eq(transfers.userId, userId),
-      isNotNull(transfers.toAccountId),
-      isNull(transfers.fromAccountId),
-      activeTransferCondition()
-    ));
-
-  // TransfersOut: Only withdrawals (fromAccountId set, toAccountId null)
-  const [{ total: totalTransfersOut }] = await db
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(
-      gte(transfers.date, startDate),
-      lte(transfers.date, endDate),
-      eq(transfers.userId, userId),
-      isNotNull(transfers.fromAccountId),
-      isNull(transfers.toAccountId),
-      activeTransferCondition()
-    ));
-
-  // 6. Calculate totals
+  // 5. Calculate totals
   const totalBudget = categoryBreakdown.reduce((sum, cat) => sum + cat.budget, 0);
   const totalSpent = Array.from(spendingMap.values()).reduce((sum, spent) => sum + spent, 0);
   const totalReplenished = Array.from(replenishmentsMap.values()).reduce((sum, rep) => sum + rep, 0);
   const netBalance = totalIncome - totalSpent;
-  const cashFlowNet = totalIncome + totalTransfersIn - totalSpent - totalTransfersOut;
 
   // 7. Get recent 5 expenses (filtered by purchaseDate)
   const recentExpenses = await db
@@ -235,9 +204,6 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
         totalBudget,
         totalIncome,
         netBalance,
-        totalTransfersIn,
-        totalTransfersOut,
-        cashFlowNet,
         categoryBreakdown,
         recentExpenses,
         recentIncome,

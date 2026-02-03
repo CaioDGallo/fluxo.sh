@@ -22,7 +22,6 @@ import {
   recurrenceRules,
   tasks,
   transactions,
-  transfers,
   usageCounters,
   userSettings,
 } from '@/lib/schema';
@@ -161,7 +160,6 @@ export async function deleteAccount(): Promise<DeleteAccountResult> {
       await tx.delete(fcmTokens).where(eq(fcmTokens.userId, userId));
       await tx.delete(usageCounters).where(eq(usageCounters.userId, userId));
 
-      await tx.delete(transfers).where(eq(transfers.userId, userId));
       await tx.delete(income).where(eq(income.userId, userId));
       await tx.delete(entries).where(eq(entries.userId, userId));
       await tx.delete(faturas).where(eq(faturas.userId, userId));

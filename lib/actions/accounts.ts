@@ -2,14 +2,13 @@
 
 import { cache } from 'react';
 import { db } from '@/lib/db';
-import { accounts, entries, income, transfers, transactions, type NewAccount } from '@/lib/schema';
+import { accounts, entries, income, transactions, type NewAccount } from '@/lib/schema';
 import { eq, and, isNotNull, sql } from 'drizzle-orm';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { computeBalance } from '@/lib/balance';
-import { activeTransactionCondition, activeIncomeCondition, activeTransferCondition } from '@/lib/query-helpers';
 import { isValidBankLogo } from '@/lib/bank-logos';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { requireCronAuth } from '@/lib/cron-auth';
@@ -143,49 +142,29 @@ export const getRecentAccounts = cache(async (limit = 3): Promise<RecentAccount[
 type DbClient = Pick<typeof db, 'select' | 'update'>;
 
 async function calculateAccountBalanceForUser(dbClient: DbClient, userId: string, accountId: number) {
+  // All entries count for balance — ignored expenses (fatura payments, internal transfers)
+  // are real money movements even though they're hidden from display totals.
   const [{ total: totalExpenses }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${entries.amount}), 0) AS INTEGER)` })
     .from(entries)
-    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
     .where(and(
       eq(entries.userId, userId),
-      eq(entries.accountId, accountId),
-      activeTransactionCondition()
+      eq(entries.accountId, accountId)
     ));
 
+  // All received income counts — including ignored income (internal transfer receiving ends).
   const [{ total: totalIncome }] = await dbClient
     .select({ total: sql<number>`CAST(COALESCE(SUM(${income.amount}), 0) AS INTEGER)` })
     .from(income)
     .where(and(
       eq(income.userId, userId),
       eq(income.accountId, accountId),
-      isNotNull(income.receivedAt),
-      activeIncomeCondition()
-    ));
-
-  const [{ total: totalTransfersOut }] = await dbClient
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(
-      eq(transfers.userId, userId),
-      eq(transfers.fromAccountId, accountId),
-      activeTransferCondition()
-    ));
-
-  const [{ total: totalTransfersIn }] = await dbClient
-    .select({ total: sql<number>`CAST(COALESCE(SUM(${transfers.amount}), 0) AS INTEGER)` })
-    .from(transfers)
-    .where(and(
-      eq(transfers.userId, userId),
-      eq(transfers.toAccountId, accountId),
-      activeTransferCondition()
+      isNotNull(income.receivedAt)
     ));
 
   return computeBalance({
     totalExpenses,
     totalReceivedIncome: totalIncome,
-    totalTransfersIn,
-    totalTransfersOut,
   });
 }
 
@@ -207,7 +186,20 @@ export async function syncAccountBalance(
   }
 
   const effectiveUserId = userId ?? await getCurrentUserId();
-  const balance = await calculateAccountBalanceForUser(dbClient, effectiveUserId, accountId);
+
+  // Synced accounts use external balance from the provider
+  const [account] = await dbClient
+    .select({ source: accounts.source, externalBalanceCents: accounts.externalBalanceCents })
+    .from(accounts)
+    .where(and(eq(accounts.userId, effectiveUserId), eq(accounts.id, accountId)))
+    .limit(1);
+
+  let balance: number;
+  if (account?.source === 'pluggy' && account.externalBalanceCents !== null) {
+    balance = account.externalBalanceCents;
+  } else {
+    balance = await calculateAccountBalanceForUser(dbClient, effectiveUserId, accountId);
+  }
 
   await dbClient
     .update(accounts)

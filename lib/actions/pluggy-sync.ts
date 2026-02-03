@@ -10,7 +10,7 @@ import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
 import { batchEnsureFaturasExist, batchUpdateFaturaTotals } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getFaturaMonth } from '@/lib/fatura-utils';
-import { accounts, categories, entries, faturas, income, pluggyAccounts, pluggyItems, pluggySyncCursors, transactions, transfers } from '@/lib/schema';
+import { accounts, categories, entries, faturas, income, pluggyAccounts, pluggyItems, pluggySyncCursors, transactions } from '@/lib/schema';
 import { and, asc, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getPostHogClient } from '@/lib/posthog-server';
@@ -24,7 +24,6 @@ type PluggySyncResult =
     accountsCreated: number;
     transactionsCreated: number;
     incomeCreated: number;
-    transfersCreated: number;
     skipped: number;
   }
   | {
@@ -55,6 +54,22 @@ function toDateOnly(value?: string | Date | null): string | null {
   const parsed = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString().slice(0, 10);
+}
+
+/**
+ * Back-calculate the original purchase date from a statement date and installment number.
+ * Used when Pluggy doesn't provide creditCardMetadata.purchaseDate.
+ *
+ * Example: If installment 8/10 has statement date March 2024,
+ * the original purchase was in August 2023 (March - 7 months).
+ */
+function calculateBasePurchaseDateFromInstallment(
+  statementDate: string,
+  installmentNumber: number
+): string {
+  const date = new Date(statementDate + 'T00:00:00Z');
+  date.setUTCMonth(date.getUTCMonth() - (installmentNumber - 1));
+  return date.toISOString().split('T')[0];
 }
 
 function parseIsoDate(value?: string | Date | null): Date | null {
@@ -123,6 +138,7 @@ function groupInstallmentTransactions(
     amountCents: number;
     purchaseDate: string;
     installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
+    isFaturaPayment?: boolean;
   }>
 ): { grouped: Map<string, InstallmentGroup>; singles: typeof transactions } {
   const grouped = new Map<string, InstallmentGroup>();
@@ -134,9 +150,9 @@ function groupInstallmentTransactions(
       continue;
     }
 
-    // Key: baseDescription (normalized) + total installments
-    // Collision guard: if same key but different total amounts exist, treat as separate purchases
-    const key = `${tx.installmentInfo.baseDescription}|${tx.installmentInfo.total}`;
+    // Key: baseDescription (normalized) + total installments + amount per installment
+    // Collision guard: amount prevents merging different purchases with same description
+    const key = `${tx.installmentInfo.baseDescription}|${tx.installmentInfo.total}|${tx.amountCents}`;
 
     const existing = grouped.get(key);
     if (existing) {
@@ -174,23 +190,22 @@ function groupInstallmentTransactions(
   return { grouped, singles };
 }
 
-// Transfer candidate for pairing debit/credit sides
-type TransferCandidate = {
+// Pair candidate for cross-account internal transfer detection
+type PairCandidate = {
   externalId: string;
   accountId: number;
   amount: number;
   date: string;
-  type: 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal';
   direction: 'debit' | 'credit';
-  description: string;
 };
 
-// Pair internal transfers by matching debit ↔ credit with ±1% amount tolerance and same date
-function pairInternalTransfers(candidates: TransferCandidate[]): {
-  paired: Array<{ fromExternalId: string; toExternalId: string; fromAccountId: number; toAccountId: number; amount: number; date: string; type: string; description: string }>;
-  unpaired: TransferCandidate[];
+// Match debit↔credit pairs by same amount (±1%), same date, different accounts
+function detectInternalTransferPairs(candidates: PairCandidate[]): {
+  expenseExternalIds: string[];  // debit side → mark expense as isInternalTransfer + ignored
+  incomeExternalIds: string[];   // credit side → mark income as ignored
 } {
-  const paired: Array<{ fromExternalId: string; toExternalId: string; fromAccountId: number; toAccountId: number; amount: number; date: string; type: string; description: string }> = [];
+  const expenseExternalIds: string[] = [];
+  const incomeExternalIds: string[] = [];
   const usedIds = new Set<string>();
 
   const debits = candidates.filter((c) => c.direction === 'debit');
@@ -203,31 +218,19 @@ function pairInternalTransfers(candidates: TransferCandidate[]): {
       if (usedIds.has(credit.externalId)) return false;
       if (credit.date !== debit.date) return false;
       if (credit.accountId === debit.accountId) return false;
-      // Only pair internal_transfer types (not fatura_payment, deposit, withdrawal)
-      if (debit.type !== 'internal_transfer' || credit.type !== 'internal_transfer') return false;
-      // ±1% tolerance
       const tolerance = Math.max(debit.amount * 0.01, 1);
       return Math.abs(credit.amount - debit.amount) <= tolerance;
     });
 
     if (match) {
-      paired.push({
-        fromExternalId: debit.externalId,
-        toExternalId: match.externalId,
-        fromAccountId: debit.accountId,
-        toAccountId: match.accountId,
-        amount: debit.amount,
-        date: debit.date,
-        type: 'internal_transfer',
-        description: debit.description,
-      });
+      expenseExternalIds.push(debit.externalId);
+      incomeExternalIds.push(match.externalId);
       usedIds.add(debit.externalId);
       usedIds.add(match.externalId);
     }
   }
 
-  const unpaired = candidates.filter((c) => !usedIds.has(c.externalId));
-  return { paired, unpaired };
+  return { expenseExternalIds, incomeExternalIds };
 }
 
 async function fetchExistingExternalIds(userId: string, externalIds: string[]): Promise<Set<string>> {
@@ -236,7 +239,7 @@ async function fetchExistingExternalIds(userId: string, externalIds: string[]): 
     return new Set();
   }
 
-  const [existingTransactions, existingIncome, existingTransfers] = await Promise.all([
+  const [existingTransactions, existingIncome] = await Promise.all([
     db
       .select({ externalId: transactions.externalId })
       .from(transactions)
@@ -245,16 +248,11 @@ async function fetchExistingExternalIds(userId: string, externalIds: string[]): 
       .select({ externalId: income.externalId })
       .from(income)
       .where(and(eq(income.userId, userId), inArray(income.externalId, uniqueIds))),
-    db
-      .select({ externalId: transfers.externalId })
-      .from(transfers)
-      .where(and(eq(transfers.userId, userId), inArray(transfers.externalId, uniqueIds))),
   ]);
 
   return new Set([
     ...existingTransactions.map((row) => row.externalId).filter((id): id is string => !!id),
     ...existingIncome.map((row) => row.externalId).filter((id): id is string => !!id),
-    ...existingTransfers.map((row) => row.externalId).filter((id): id is string => !!id),
   ]);
 }
 
@@ -388,11 +386,12 @@ export async function syncPluggyItem(
     let accountsCreated = 0;
     let transactionsCreated = 0;
     let incomeCreated = 0;
-    let transfersCreated = 0;
     let skipped = 0;
 
-    // Cross-account accumulators for transfer pairing and income
-    const allTransferCandidates: TransferCandidate[] = [];
+    // Cross-account accumulators for pairing detection
+    const allPairCandidates: PairCandidate[] = [];
+    // Track fatura payment expenses for auto-matching unpaid faturas
+    const faturaPaymentExpenses: Array<{ accountId: number; amountCents: number; date: string }> = [];
     const perAccountIncomeValues: Array<{
       userId: string;
       description: string;
@@ -470,6 +469,7 @@ export async function syncPluggyItem(
         amountCents: number;
         purchaseDate: string;
         installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
+        isFaturaPayment?: boolean;
       }> = [];
 
       const incomeValues: Array<{
@@ -484,8 +484,6 @@ export async function syncPluggyItem(
         faturaMonth?: string;
         isRefund: boolean;
       }> = [];
-
-      const transferCandidates: TransferCandidate[] = [];
 
       const affectedFaturas = new Set<string>();
 
@@ -521,18 +519,30 @@ export async function syncPluggyItem(
           || classification.normalizedDescription
           || 'Transacao Pluggy';
 
-        if (classification.kind === 'transfer' || classification.kind === 'payment') {
-          const transferType = classification.transferType ?? (classification.kind === 'payment' ? 'fatura_payment' : 'internal_transfer');
-          transferCandidates.push({
+        // Fatura payments → ignored expense on the paying account
+        if (classification.kind === 'payment') {
+          expenseCandidates.push({
+            rawId,
+            externalId,
+            description,
+            amountCents,
+            purchaseDate: date,
+            installmentInfo: undefined,
+            isFaturaPayment: true,
+          });
+          faturaPaymentExpenses.push({ accountId, amountCents, date });
+          continue;
+        }
+
+        // Track pair candidates for cross-account internal transfer detection
+        if (classification.isPairCandidate) {
+          allPairCandidates.push({
             externalId,
             accountId,
             amount: amountCents,
             date,
-            type: transferType,
             direction: classification.direction,
-            description,
           });
-          continue;
         }
 
         if (classification.kind === 'refund' || classification.kind === 'income') {
@@ -559,8 +569,11 @@ export async function syncPluggyItem(
         }
 
         // Expense — extract installment info for grouping
-        const basePurchaseDate = toDateOnly(transaction.creditCardMetadata?.purchaseDate) ?? date;
         const installmentInfo = extractPluggyInstallmentInfo(normalizedTransaction);
+        const basePurchaseDate = toDateOnly(transaction.creditCardMetadata?.purchaseDate)
+          ?? (installmentInfo
+            ? calculateBasePurchaseDateFromInstallment(date, installmentInfo.current)
+            : date);
 
         expenseCandidates.push({
           rawId,
@@ -569,6 +582,7 @@ export async function syncPluggyItem(
           amountCents,
           purchaseDate: basePurchaseDate,
           installmentInfo,
+          isFaturaPayment: false,
         });
       }
 
@@ -583,6 +597,8 @@ export async function syncPluggyItem(
         totalInstallments: number;
         categoryId: number;
         externalId: string;
+        ignored: boolean;
+        isFaturaPayment: boolean;
       }> = [];
 
       // Each element maps 1:1 with expenseTransactions — contains N entry metadata rows
@@ -595,8 +611,11 @@ export async function syncPluggyItem(
       }>> = [];
 
       // Singles: 1 transaction, 1 entry each
+      // Preserve actual installment info if available (e.g., single installment from multi-installment purchase)
       for (const tx of singleExpenses) {
-        const entryDates = computeEntryDates(tx.purchaseDate, 1, accountInfo);
+        const installmentNumber = tx.installmentInfo?.current ?? 1;
+        const totalInstallments = tx.installmentInfo?.total ?? 1;
+        const entryDates = computeEntryDates(tx.purchaseDate, installmentNumber, accountInfo);
         if (accountInfo.type === 'credit_card' && accountInfo.closingDay && accountInfo.paymentDueDay) {
           affectedFaturas.add(entryDates.faturaMonth);
         }
@@ -605,9 +624,11 @@ export async function syncPluggyItem(
           userId,
           description: tx.description,
           totalAmount: tx.amountCents,
-          totalInstallments: 1,
+          totalInstallments,
           categoryId: expenseCategoryId,
           externalId: tx.externalId,
+          ignored: tx.isFaturaPayment ?? false,
+          isFaturaPayment: tx.isFaturaPayment ?? false,
         });
 
         entryBatches.push([{
@@ -615,20 +636,17 @@ export async function syncPluggyItem(
           purchaseDate: entryDates.purchaseDate,
           faturaMonth: entryDates.faturaMonth,
           dueDate: entryDates.dueDate,
-          installmentNumber: 1,
+          installmentNumber,
         }]);
       }
 
-      // Grouped installments: 1 transaction, N entries
+      // Grouped installments: 1 transaction, N entries (only for received installments)
       for (const [, group] of installmentGroups) {
         // Sort entries by installment number
         group.entries.sort((a, b) => a.installmentNumber - b.installmentNumber);
 
         // Use the earliest entry's purchase date as the base
         const basePurchaseDate = group.entries[0].purchaseDate;
-        const perInstallment = group.entries.length > 0
-          ? Math.round(group.entries.reduce((sum, e) => sum + e.amount, 0) / group.totalInstallments)
-          : 0;
 
         // Use first entry's externalId as the transaction-level identifier
         const txExternalId = group.entries[0].externalId;
@@ -640,32 +658,31 @@ export async function syncPluggyItem(
           totalInstallments: group.totalInstallments,
           categoryId: expenseCategoryId,
           externalId: txExternalId,
+          ignored: false,
+          isFaturaPayment: false,
         });
 
-        // Generate entries for ALL installments (even missing ones from partial sync)
+        // CRITICAL FIX: Only create entries for installments we actually received from Pluggy
+        // Don't generate phantom entries for missing installments
         const entryRows: Array<{ amount: number; purchaseDate: string; faturaMonth: string; dueDate: string; installmentNumber: number }> = [];
-        for (let i = 1; i <= group.totalInstallments; i++) {
-          const entryDates = computeEntryDates(basePurchaseDate, i, accountInfo);
+        for (const entry of group.entries) {
+          const entryDates = computeEntryDates(basePurchaseDate, entry.installmentNumber, accountInfo);
           if (accountInfo.type === 'credit_card' && accountInfo.closingDay && accountInfo.paymentDueDay) {
             affectedFaturas.add(entryDates.faturaMonth);
           }
 
-          // Use actual amount if we have this installment, otherwise estimate
-          const actual = group.entries.find((e) => e.installmentNumber === i);
           entryRows.push({
-            amount: actual?.amount ?? perInstallment,
+            amount: entry.amount,
             purchaseDate: entryDates.purchaseDate,
             faturaMonth: entryDates.faturaMonth,
             dueDate: entryDates.dueDate,
-            installmentNumber: i,
+            installmentNumber: entry.installmentNumber,
           });
         }
         entryBatches.push(entryRows);
       }
 
-      // --- Transfer processing: collect candidates across all accounts for pairing (done after loop) ---
-      // Store per-account transfer candidates for later cross-account pairing
-      allTransferCandidates.push(...transferCandidates);
+      // Collect per-account income for cross-account processing
       perAccountIncomeValues.push(...incomeValues);
       perAccountAffectedFaturas[accountId] = affectedFaturas;
 
@@ -748,39 +765,28 @@ export async function syncPluggyItem(
         ));
     }
 
-    // --- Cross-account transfer pairing ---
-    const { paired: pairedTransfers, unpaired: unpairedTransfers } = pairInternalTransfers(allTransferCandidates);
+    // --- Cross-account internal transfer pairing ---
+    // Detect paired debit↔credit transactions and mark them as ignored internal transfers
+    const { expenseExternalIds: pairedExpenseIds, incomeExternalIds: pairedIncomeIds } = detectInternalTransferPairs(allPairCandidates);
 
-    // Insert paired transfers (single row with both from/to)
-    if (pairedTransfers.length > 0) {
-      const pairedValues = pairedTransfers.map((p) => ({
-        userId,
-        fromAccountId: p.fromAccountId,
-        toAccountId: p.toAccountId,
-        amount: p.amount,
-        date: p.date,
-        type: p.type as 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal',
-        description: p.description,
-        externalId: p.fromExternalId, // Use debit side as canonical ID
-      }));
-      await db.insert(transfers).values(pairedValues);
-      transfersCreated += pairedTransfers.length;
+    if (pairedExpenseIds.length > 0) {
+      await db
+        .update(transactions)
+        .set({ isInternalTransfer: true, ignored: true })
+        .where(and(
+          eq(transactions.userId, userId),
+          inArray(transactions.externalId, pairedExpenseIds)
+        ));
     }
 
-    // Insert unpaired transfers (single-sided: deposit, withdrawal, fatura_payment, unmatched internal)
-    if (unpairedTransfers.length > 0) {
-      const unpairedValues = unpairedTransfers.map((t) => ({
-        userId,
-        fromAccountId: t.direction === 'debit' ? t.accountId : null,
-        toAccountId: t.direction === 'credit' ? t.accountId : null,
-        amount: t.amount,
-        date: t.date,
-        type: t.type,
-        description: t.description,
-        externalId: t.externalId,
-      }));
-      await db.insert(transfers).values(unpairedValues);
-      transfersCreated += unpairedTransfers.length;
+    if (pairedIncomeIds.length > 0) {
+      await db
+        .update(income)
+        .set({ ignored: true })
+        .where(and(
+          eq(income.userId, userId),
+          inArray(income.externalId, pairedIncomeIds)
+        ));
     }
 
     // --- Refund linking: for refund income, find matching expense to update refundedAmount ---
@@ -816,47 +822,28 @@ export async function syncPluggyItem(
       incomeCreated += perAccountIncomeValues.length;
     }
 
-    // --- Fatura payment matching for fatura_payment transfers ---
-    // Find unpaid faturas matching the transfer amount and mark them paid
-    const faturaPayments = unpairedTransfers.filter((t) => t.type === 'fatura_payment');
-    for (const payment of faturaPayments) {
-      const creditAccountId = payment.direction === 'credit' ? payment.accountId : null;
-      if (!creditAccountId) continue;
-
-      // Find the credit card account this payment targets
-      const [creditAccount] = await db
-        .select({ id: accounts.id, type: accounts.type })
-        .from(accounts)
-        .where(and(eq(accounts.id, creditAccountId), eq(accounts.userId, userId)))
-        .limit(1);
-
-      if (creditAccount?.type !== 'credit_card') continue;
-
-      // Find unpaid fatura closest to payment date with amount tolerance ±10%
-      const tolerance = Math.max(Math.round(payment.amount * 0.1), 100);
+    // --- Fatura payment auto-matching ---
+    // For each detected fatura payment expense, find the matching unpaid fatura by amount
+    for (const payment of faturaPaymentExpenses) {
+      const tolerance = Math.max(Math.round(payment.amountCents * 0.1), 100);
       const [matchingFatura] = await db
-        .select({ id: faturas.id, totalAmount: faturas.totalAmount })
+        .select({ id: faturas.id })
         .from(faturas)
         .where(and(
-          eq(faturas.accountId, creditAccountId),
           eq(faturas.userId, userId),
           isNull(faturas.paidAt),
-          gte(faturas.totalAmount, payment.amount - tolerance),
-          lte(faturas.totalAmount, payment.amount + tolerance),
+          gte(faturas.totalAmount, payment.amountCents - tolerance),
+          lte(faturas.totalAmount, payment.amountCents + tolerance),
         ))
         .orderBy(asc(faturas.dueDate))
         .limit(1);
 
       if (matchingFatura) {
-        // Find the from-account for this payment (the debit side)
-        const debitCandidate = pairedTransfers.find((p) => p.toAccountId === creditAccountId);
-        const fromAccountId = debitCandidate?.fromAccountId ?? payment.accountId;
-
         await db
           .update(faturas)
           .set({
             paidAt: new Date(payment.date + 'T00:00:00Z'),
-            paidFromAccountId: fromAccountId,
+            paidFromAccountId: payment.accountId,
           })
           .where(eq(faturas.id, matchingFatura.id));
       }
@@ -887,7 +874,6 @@ export async function syncPluggyItem(
       accountsCreated,
       transactionsCreated,
       incomeCreated,
-      transfersCreated,
       skipped,
       durationMs,
     });
@@ -908,7 +894,6 @@ export async function syncPluggyItem(
           accounts_created: accountsCreated,
           transactions_created: transactionsCreated,
           income_created: incomeCreated,
-          transfers_created: transfersCreated,
           skipped,
           duration_ms: durationMs,
         },
@@ -935,7 +920,6 @@ export async function syncPluggyItem(
       accountsCreated,
       transactionsCreated,
       incomeCreated,
-      transfersCreated,
       skipped,
     };
   } catch (error) {

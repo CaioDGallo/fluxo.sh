@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { accounts, categories, entries, faturas, income, transactions, transfers, type Fatura } from '@/lib/schema';
+import { accounts, categories, entries, faturas, income, transactions, type Fatura } from '@/lib/schema';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
 import { cache } from 'react';
@@ -670,19 +670,46 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
         throw new Error(await t('errors.cannotPayFromCreditCard'));
       }
 
-      // 3. Create transfer record
-      await tx
-        .insert(transfers)
+      // 3. Create ignored expense transaction on paying account (fatura payment)
+      const expenseCategory = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.type, 'expense'), eq(categories.isImportDefault, true)))
+        .limit(1);
+      const categoryId = expenseCategory[0]?.id ?? (await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), eq(categories.type, 'expense')))
+        .limit(1))[0]?.id;
+
+      if (!categoryId) {
+        throw new Error(await t('errors.categoryNotFound'));
+      }
+
+      const [paymentTx] = await tx
+        .insert(transactions)
         .values({
           userId,
-          fromAccountId,
-          toAccountId: fatura[0].accountId,
-          amount: fatura[0].totalAmount,
-          date: paymentDate,
-          type: 'fatura_payment',
-          faturaId: faturaId,
           description: `Fatura ${fatura[0].yearMonth}`,
-        });
+          totalAmount: fatura[0].totalAmount,
+          totalInstallments: 1,
+          categoryId,
+          ignored: true,
+          isFaturaPayment: true,
+        })
+        .returning({ id: transactions.id });
+
+      await tx.insert(entries).values({
+        userId,
+        transactionId: paymentTx.id,
+        accountId: fromAccountId,
+        amount: fatura[0].totalAmount,
+        purchaseDate: paymentDate,
+        faturaMonth: fatura[0].yearMonth,
+        dueDate: paymentDate,
+        paidAt: now,
+        installmentNumber: 1,
+      });
 
       // 4. Mark fatura as paid
       await tx
@@ -732,7 +759,6 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to pay fatura:', { faturaId, fromAccountId, error });
@@ -750,8 +776,6 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
 
   try {
     const userId = await getCurrentUserId();
-    const now = new Date();
-    const reversalDate = now.toISOString().split('T')[0];
 
     await db.transaction(async (tx) => {
       // Get fatura details
@@ -765,18 +789,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
         throw new Error(await t('errors.faturaNotFound'));
       }
 
-      const wasPaid = !!fatura[0].paidAt;
-
-      const [paymentTransfer] = await tx
-        .select()
-        .from(transfers)
-        .where(and(
-          eq(transfers.userId, userId),
-          eq(transfers.faturaId, faturaId),
-          eq(transfers.type, 'fatura_payment')
-        ))
-        .orderBy(desc(transfers.createdAt))
-        .limit(1);
+      const paidFromAccountId = fatura[0].paidFromAccountId;
 
       // Mark fatura as unpaid
       await tx
@@ -799,22 +812,28 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
           )
         );
 
-      if (wasPaid && paymentTransfer?.fromAccountId && paymentTransfer?.toAccountId) {
-        await tx.insert(transfers).values({
-          userId,
-          fromAccountId: paymentTransfer.toAccountId,
-          toAccountId: paymentTransfer.fromAccountId,
-          amount: paymentTransfer.amount,
-          date: reversalDate,
-          type: 'internal_transfer',
-          faturaId,
-          description: `Reversal: ${paymentTransfer.description ?? 'Fatura payment'}`,
-        });
+      // Delete the fatura payment transaction (ignored expense on paying account)
+      if (paidFromAccountId) {
+        const [paymentTx] = await tx
+          .select({ id: transactions.id })
+          .from(transactions)
+          .innerJoin(entries, eq(entries.transactionId, transactions.id))
+          .where(and(
+            eq(transactions.userId, userId),
+            eq(transactions.isFaturaPayment, true),
+            eq(transactions.description, `Fatura ${fatura[0].yearMonth}`),
+            eq(entries.accountId, paidFromAccountId)
+          ))
+          .limit(1);
+
+        if (paymentTx) {
+          await tx.delete(transactions).where(eq(transactions.id, paymentTx.id));
+        }
       }
 
       const affectedAccounts = new Set<number>();
-      if (fatura[0].paidFromAccountId) {
-        affectedAccounts.add(fatura[0].paidFromAccountId);
+      if (paidFromAccountId) {
+        affectedAccounts.add(paidFromAccountId);
       }
       affectedAccounts.add(fatura[0].accountId);
       for (const accountId of affectedAccounts) {
@@ -826,7 +845,6 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to mark fatura unpaid:', { faturaId, error });
@@ -836,7 +854,7 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
 
 /**
  * Converts an expense (from checking/savings/cash) into a fatura payment.
- * Deletes the expense and creates a fatura_payment transfer.
+ * Marks the existing transaction as ignored with isFaturaPayment flag.
  */
 export async function convertExpenseToFaturaPayment(entryId: number, faturaId: number): Promise<void> {
   if (!Number.isInteger(entryId) || entryId <= 0) {
@@ -919,21 +937,17 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
         throw new Error(await t('errors.amountMismatch'));
       }
 
-      // 4. Create fatura_payment transfer (preserve externalId for duplicate detection on reimport)
-      const paymentDate = entry[0].purchaseDate;
-      const paymentTimestamp = new Date(paymentDate);
+      // 4. Convert the existing expense into an ignored fatura payment
+      const paymentTimestamp = new Date(entry[0].purchaseDate);
 
-      await tx.insert(transfers).values({
-        userId,
-        fromAccountId: entry[0].accountId,
-        toAccountId: fatura[0].accountId,
-        amount: entry[0].entryAmount,
-        date: paymentDate,
-        type: 'fatura_payment',
-        faturaId: faturaId,
-        description: `Fatura ${fatura[0].yearMonth}`,
-        externalId: transaction[0].externalId,
-      });
+      await tx
+        .update(transactions)
+        .set({
+          ignored: true,
+          isFaturaPayment: true,
+          description: `Fatura ${fatura[0].yearMonth}`,
+        })
+        .where(eq(transactions.id, entry[0].transactionId));
 
       // 5. Mark fatura paid
       await tx
@@ -956,12 +970,7 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
           )
         );
 
-      // 7. Delete expense transaction + entries (cascade handles entries)
-      await tx
-        .delete(transactions)
-        .where(and(eq(transactions.userId, userId), eq(transactions.id, entry[0].transactionId)));
-
-      // 8. Sync both account balances
+      // 7. Sync both account balances
       await syncAccountBalance(entry[0].accountId, tx, userId);
       await syncAccountBalance(fatura[0].accountId, tx, userId);
     });
@@ -971,7 +980,6 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
     revalidatePath('/faturas');
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    revalidatePath('/transfers');
     revalidatePath('/settings/accounts');
   } catch (error) {
     console.error('Failed to convert expense to fatura payment:', { entryId, faturaId, error });

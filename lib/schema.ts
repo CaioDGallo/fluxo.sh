@@ -11,9 +11,6 @@ export const accountSourceEnum = pgEnum('account_source', ['manual', 'pluggy']);
 // Enum for category types
 export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
 
-// Enum for transfer types
-export const transferTypeEnum = pgEnum('transfer_type', ['fatura_payment', 'internal_transfer', 'deposit', 'withdrawal']);
-
 // Enums for events and tasks
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical']);
 export const eventStatusEnum = pgEnum('event_status', ['scheduled', 'cancelled', 'completed']);
@@ -242,6 +239,8 @@ export const transactions = pgTable('transactions', {
     .references(() => categories.id, { onDelete: 'restrict' }),
   externalId: text('external_id'), // UUID from bank statement for idempotency
   ignored: boolean('ignored').notNull().default(false),
+  isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
+  isFaturaPayment: boolean('is_fatura_payment').notNull().default(false),
   refundedAmount: integer('refunded_amount').default(0), // cached sum of refunds (cents)
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -287,22 +286,6 @@ export const faturas = pgTable(
     uniqueAccountMonth: unique().on(table.accountId, table.yearMonth),
   })
 );
-
-// Transfers table (account-to-account movements, including fatura payments)
-export const transfers = pgTable('transfers', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  fromAccountId: integer('from_account_id').references(() => accounts.id),
-  toAccountId: integer('to_account_id').references(() => accounts.id),
-  amount: integer('amount').notNull(), // cents
-  date: date('date').notNull(),
-  type: transferTypeEnum('type').notNull(),
-  faturaId: integer('fatura_id').references(() => faturas.id),
-  description: text('description'),
-  externalId: text('external_id'), // UUID from bank statement - preserves idempotency when expenses are converted to fatura payments
-  ignored: boolean('ignored').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
 
 // Income table
 export const income = pgTable('income', {
@@ -639,9 +622,6 @@ export type NewCalendarSource = typeof calendarSources.$inferInsert;
 export type Fatura = typeof faturas.$inferSelect;
 export type NewFatura = typeof faturas.$inferInsert;
 
-export type Transfer = typeof transfers.$inferSelect;
-export type NewTransfer = typeof transfers.$inferInsert;
-
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 
@@ -709,8 +689,6 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const accountsRelations = relations(accounts, ({ many }) => ({
   entries: many(entries),
   income: many(income),
-  transfersFrom: many(transfers, { relationName: 'transfersFrom' }),
-  transfersTo: many(transfers, { relationName: 'transfersTo' }),
   pluggyAccounts: many(pluggyAccounts),
 }));
 
@@ -771,23 +749,6 @@ export const faturasRelations = relations(faturas, ({ one }) => ({
   paidFromAccount: one(accounts, {
     fields: [faturas.paidFromAccountId],
     references: [accounts.id],
-  }),
-}));
-
-export const transfersRelations = relations(transfers, ({ one }) => ({
-  fromAccount: one(accounts, {
-    fields: [transfers.fromAccountId],
-    references: [accounts.id],
-    relationName: 'transfersFrom',
-  }),
-  toAccount: one(accounts, {
-    fields: [transfers.toAccountId],
-    references: [accounts.id],
-    relationName: 'transfersTo',
-  }),
-  fatura: one(faturas, {
-    fields: [transfers.faturaId],
-    references: [faturas.id],
   }),
 }));
 

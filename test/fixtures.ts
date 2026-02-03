@@ -10,7 +10,6 @@ import type {
   NewEvent,
   NewTask,
   NewCalendarSource,
-  NewTransfer,
   NewFatura,
   NewMonthlyBudget,
   NewBillReminder,
@@ -93,49 +92,6 @@ export function createTestIncome(overrides: Partial<NewIncome> = {}): NewIncome 
     accountId: 1,
     receivedDate: new Date().toISOString().split('T')[0],
     receivedAt: null,
-    ...overrides,
-  };
-}
-
-type TransferVariant = 'internal' | 'deposit' | 'withdrawal';
-
-export function createTestTransfer(
-  variant: TransferVariant = 'internal',
-  overrides: Partial<NewTransfer> = {}
-): NewTransfer {
-  const date = new Date().toISOString().split('T')[0];
-  const base: NewTransfer = {
-    userId: TEST_USER_ID,
-    amount: 15000, // R$ 150
-    date,
-    type: 'internal_transfer',
-    fromAccountId: 1,
-    toAccountId: 2,
-    description: 'Test Transfer',
-  };
-
-  if (variant === 'deposit') {
-    return {
-      ...base,
-      type: 'deposit',
-      fromAccountId: null,
-      toAccountId: 1,
-      ...overrides,
-    };
-  }
-
-  if (variant === 'withdrawal') {
-    return {
-      ...base,
-      type: 'withdrawal',
-      fromAccountId: 1,
-      toAccountId: null,
-      ...overrides,
-    };
-  }
-
-  return {
-    ...base,
     ...overrides,
   };
 }

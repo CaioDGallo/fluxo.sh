@@ -55,7 +55,6 @@ type SyncSummary = {
   accountsCreated: number;
   transactionsCreated: number;
   incomeCreated: number;
-  transfersCreated: number;
   skipped: number;
 };
 
@@ -298,7 +297,6 @@ export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientPr
                 <span>{t('syncResultCreated', { count: syncResult.accountsCreated })}</span>
                 <span>{t('syncResultTransactions', { count: syncResult.transactionsCreated })}</span>
                 <span>{t('syncResultIncome', { count: syncResult.incomeCreated })}</span>
-                <span>{t('syncResultTransfers', { count: syncResult.transfersCreated })}</span>
                 <span>{t('syncResultSkipped', { count: syncResult.skipped })}</span>
               </div>
             </div>

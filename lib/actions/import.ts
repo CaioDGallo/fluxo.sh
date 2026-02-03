@@ -24,7 +24,7 @@ import { getUserEntitlements } from '@/lib/plan-entitlements';
 import { getUsageCount, getUserTimezone, getWeeklyWindow, incrementUsageCount } from '@/lib/plan-usage';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
-import { accounts, categories, categoryFrequency, entries, income, transactions, transfers } from '@/lib/schema';
+import { accounts, categories, categoryFrequency, entries, income, transactions } from '@/lib/schema';
 import { addMonths } from '@/lib/utils';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -49,7 +49,7 @@ async function fetchExistingExternalIds(
     return new Set<string>();
   }
 
-  const [existingTransactions, existingIncome, existingTransfers] = await Promise.all([
+  const [existingTransactions, existingIncome] = await Promise.all([
     db
       .select({ externalId: transactions.externalId })
       .from(transactions)
@@ -58,16 +58,11 @@ async function fetchExistingExternalIds(
       .select({ externalId: income.externalId })
       .from(income)
       .where(and(eq(income.userId, userId), inArray(income.externalId, uniqueIds))),
-    db
-      .select({ externalId: transfers.externalId })
-      .from(transfers)
-      .where(and(eq(transfers.userId, userId), inArray(transfers.externalId, uniqueIds))),
   ]);
 
   return new Set([
     ...existingTransactions.map((t) => t.externalId).filter((id): id is string => !!id),
     ...existingIncome.map((i) => i.externalId).filter((id): id is string => !!id),
-    ...existingTransfers.map((t) => t.externalId).filter((id): id is string => !!id),
   ]);
 }
 

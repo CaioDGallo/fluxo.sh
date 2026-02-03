@@ -6,16 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getTransactionsForExport, getTransfersForExport, trackDataExport, type TimeRange } from '@/lib/actions/export';
-import { generateTransactionsCsv, generateTransfersCsv, downloadCsv } from '@/lib/csv-generator';
+import { getTransactionsForExport, trackDataExport, type TimeRange } from '@/lib/actions/export';
+import { generateTransactionsCsv, downloadCsv } from '@/lib/csv-generator';
 import { getCurrentYearMonth } from '@/lib/utils';
-
-type ExportType = 'transactions' | 'transfers';
 
 export function ExportForm() {
   const t = useTranslations('export');
   const locale = useLocale();
-  const [exportType, setExportType] = useState<ExportType>('transactions');
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
   const [includeExpenses, setIncludeExpenses] = useState(true);
@@ -28,65 +25,29 @@ export function ExportForm() {
     setError(null);
 
     try {
-      if (exportType === 'transactions') {
-        // Fetch transactions
-        const data = await getTransactionsForExport(
-          timeRange,
-          timeRange !== 'all' ? selectedMonth : undefined,
-          includeExpenses,
-          includeIncome
-        );
+      const data = await getTransactionsForExport(
+        timeRange,
+        timeRange !== 'all' ? selectedMonth : undefined,
+        includeExpenses,
+        includeIncome
+      );
 
-        if (data.length === 0) {
-          setError(t('noDataDescription'));
-          setIsExporting(false);
-          return;
-        }
-
-        // Generate CSV
-        const csv = generateTransactionsCsv(data);
-
-        // Download
-        const filename = `transacoes_${timeRange === 'all' ? 'todas' : selectedMonth}.csv`;
-        downloadCsv(csv, filename);
-
-        // Track export analytics
-        await trackDataExport({
-          timeRange,
-          includeExpenses,
-          includeIncome,
-          includeTransfers: false,
-          recordCount: data.length,
-        });
-      } else {
-        // Fetch transfers
-        const data = await getTransfersForExport(
-          timeRange,
-          timeRange !== 'all' ? selectedMonth : undefined
-        );
-
-        if (data.length === 0) {
-          setError(t('noDataDescription'));
-          setIsExporting(false);
-          return;
-        }
-
-        // Generate CSV
-        const csv = generateTransfersCsv(data);
-
-        // Download
-        const filename = `transferencias_${timeRange === 'all' ? 'todas' : selectedMonth}.csv`;
-        downloadCsv(csv, filename);
-
-        // Track export analytics
-        await trackDataExport({
-          timeRange,
-          includeExpenses: false,
-          includeIncome: false,
-          includeTransfers: true,
-          recordCount: data.length,
-        });
+      if (data.length === 0) {
+        setError(t('noDataDescription'));
+        setIsExporting(false);
+        return;
       }
+
+      const csv = generateTransactionsCsv(data);
+      const filename = `transacoes_${timeRange === 'all' ? 'todas' : selectedMonth}.csv`;
+      downloadCsv(csv, filename);
+
+      await trackDataExport({
+        timeRange,
+        includeExpenses,
+        includeIncome,
+        recordCount: data.length,
+      });
     } catch (err) {
       console.error('Export error:', err);
       setError('Falha ao exportar. Tente novamente.');
@@ -113,35 +74,6 @@ export function ExportForm() {
 
   return (
     <FieldGroup className="max-w-2xl">
-      {/* Export Type */}
-      <Field>
-        <FieldLabel>{t('exportType')}</FieldLabel>
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="exportType"
-              value="transactions"
-              checked={exportType === 'transactions'}
-              onChange={(e) => setExportType(e.target.value as ExportType)}
-              className="w-4 h-4 text-blue-600"
-            />
-            <span>{t('transactions')}</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="exportType"
-              value="transfers"
-              checked={exportType === 'transfers'}
-              onChange={(e) => setExportType(e.target.value as ExportType)}
-              className="w-4 h-4 text-blue-600"
-            />
-            <span>{t('transfers')}</span>
-          </label>
-        </div>
-      </Field>
-
       {/* Time Range */}
       <Field>
         <FieldLabel>{t('timeRange')}</FieldLabel>
@@ -219,28 +151,26 @@ export function ExportForm() {
         </Field>
       )}
 
-      {/* Include Options (only for transactions) */}
-      {exportType === 'transactions' && (
-        <Field>
-          <FieldLabel>Incluir</FieldLabel>
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={includeExpenses}
-                onCheckedChange={(checked) => setIncludeExpenses(checked === true)}
-              />
-              <span>{t('includeExpenses')}</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={includeIncome}
-                onCheckedChange={(checked) => setIncludeIncome(checked === true)}
-              />
-              <span>{t('includeIncome')}</span>
-            </label>
-          </div>
-        </Field>
-      )}
+      {/* Include Options */}
+      <Field>
+        <FieldLabel>Incluir</FieldLabel>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={includeExpenses}
+              onCheckedChange={(checked) => setIncludeExpenses(checked === true)}
+            />
+            <span>{t('includeExpenses')}</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={includeIncome}
+              onCheckedChange={(checked) => setIncludeIncome(checked === true)}
+            />
+            <span>{t('includeIncome')}</span>
+          </label>
+        </div>
+      </Field>
 
       {/* Error Message */}
       {error && (
@@ -257,7 +187,7 @@ export function ExportForm() {
       {/* Export Button */}
       <Button
         onClick={handleExport}
-        disabled={isExporting || (exportType === 'transactions' && !includeExpenses && !includeIncome)}
+        disabled={isExporting || (!includeExpenses && !includeIncome)}
         className="w-full"
       >
         {isExporting ? t('exporting') : t('exportButton')}

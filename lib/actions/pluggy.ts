@@ -8,8 +8,8 @@ import type { Item } from 'pluggy-sdk';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
 import { batchUpdateFaturaTotals } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
-import { accounts, entries, faturas, income, pluggyAccounts, pluggyItems, transactions, transfers } from '@/lib/schema';
-import { and, eq, inArray, like, or } from 'drizzle-orm';
+import { accounts, entries, faturas, income, pluggyAccounts, pluggyItems, transactions } from '@/lib/schema';
+import { and, eq, inArray, like } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 
@@ -27,7 +27,6 @@ type SyncResult =
       accountsCreated: number;
       transactionsCreated: number;
       incomeCreated: number;
-      transfersCreated: number;
       skipped: number;
     };
   }
@@ -245,16 +244,6 @@ export async function disconnectPluggyItem(
             like(income.externalId, 'pluggy:%')
           ));
 
-        await tx
-          .delete(transfers)
-          .where(and(
-            eq(transfers.userId, userId),
-            like(transfers.externalId, 'pluggy:%'),
-            or(
-              inArray(transfers.fromAccountId, accountIds),
-              inArray(transfers.toAccountId, accountIds)
-            )
-          ));
       }
 
       await tx
@@ -287,7 +276,6 @@ export async function disconnectPluggyItem(
     revalidatePath('/dashboard');
     revalidatePath('/expenses');
     revalidatePath('/income');
-    revalidatePath('/transfers');
     revalidatePath('/faturas');
     revalidatePath('/settings/accounts');
     revalidatePath('/settings/open-finance');

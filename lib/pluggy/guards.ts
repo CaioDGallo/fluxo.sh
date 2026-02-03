@@ -1,9 +1,9 @@
 import { db } from '@/lib/db';
-import { accounts, income, transactions, transfers } from '@/lib/schema';
+import { accounts, income, transactions } from '@/lib/schema';
 import { t } from '@/lib/i18n/server-errors';
 import { and, eq } from 'drizzle-orm';
 
-export type GuardableEntity = 'account' | 'expense' | 'income' | 'transfer';
+export type GuardableEntity = 'account' | 'expense' | 'income';
 
 /**
  * Throws if the entity is synced from Pluggy and cannot be manually edited/deleted.
@@ -59,19 +59,6 @@ export async function assertNotPluggySynced(
       break;
     }
 
-    case 'transfer': {
-      // Check if transfer has externalId (synced from Pluggy)
-      const [transfer] = await db
-        .select({ externalId: transfers.externalId })
-        .from(transfers)
-        .where(and(eq(transfers.id, entityId), eq(transfers.userId, userId)))
-        .limit(1);
-
-      if (transfer?.externalId) {
-        isSynced = true;
-      }
-      break;
-    }
   }
 
   if (isSynced) {

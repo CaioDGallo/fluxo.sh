@@ -9,7 +9,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
   Analytics01Icon,
-  ArrowLeftRightIcon,
   Calendar03Icon,
   CreditCardIcon,
   FileDownloadIcon,
@@ -35,7 +34,6 @@ const moreItems = [
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
-  { key: 'transfers', href: '/transfers', icon: ArrowLeftRightIcon },
   { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },

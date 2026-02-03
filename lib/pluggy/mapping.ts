@@ -1,14 +1,13 @@
 import type { InstallmentInfo } from '@/lib/import/types';
 import type { Transaction } from 'pluggy-sdk';
 
-export type TransferType = 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal';
-
 export type PluggyTransactionDirection = 'credit' | 'debit';
 
 export type PluggyTransactionClassification = {
   direction: PluggyTransactionDirection;
-  kind: 'payment' | 'transfer' | 'refund' | 'expense' | 'income';
-  transferType?: TransferType;
+  kind: 'payment' | 'refund' | 'expense' | 'income';
+  isFaturaPayment: boolean;
+  isPairCandidate: boolean;
   installmentInfo?: InstallmentInfo;
   normalizedDescription: string;
 };
@@ -88,85 +87,87 @@ export function isPluggyRefundCandidate(transaction: Transaction, direction?: Pl
   return inferredDirection === 'credit' && REFUND_PATTERN.test(normalized);
 }
 
-export function getPluggyTransferType(transaction: Transaction, direction?: PluggyTransactionDirection): TransferType | undefined {
-  const normalized = normalizeDescription(transaction.description);
-  const inferredDirection = direction ?? resolveDirection(transaction);
-  const paymentMethod = transaction.paymentData?.paymentMethod?.toUpperCase();
-  const operationType = transaction.operationType?.toUpperCase();
-
-  if (PAYMENT_PATTERN.test(normalized)) {
-    return 'fatura_payment';
-  }
-
-  if (paymentMethod && TRANSFER_METHODS.has(paymentMethod)) {
-    return 'internal_transfer';
-  }
-
-  if (operationType && TRANSFER_METHODS.has(operationType)) {
-    return 'internal_transfer';
-  }
-
-  if (operationType && DEPOSIT_TYPES.has(operationType) && inferredDirection === 'credit') {
-    return 'deposit';
-  }
-
-  if (operationType && WITHDRAW_TYPES.has(operationType) && inferredDirection === 'debit') {
-    return 'withdrawal';
-  }
-
-  if (DEPOSIT_PATTERN.test(normalized) && inferredDirection === 'credit') {
-    return 'deposit';
-  }
-
-  if (WITHDRAW_PATTERN.test(normalized) && inferredDirection === 'debit') {
-    return 'withdrawal';
-  }
-
-  if (TRANSFER_PATTERN.test(normalized)) {
-    return 'internal_transfer';
-  }
-
-  return undefined;
-}
-
 export function classifyPluggyTransaction(transaction: Transaction): PluggyTransactionClassification {
   const direction = resolveDirection(transaction);
   const normalizedDescription = normalizeDescription(transaction.description);
-  const transferType = getPluggyTransferType(transaction, direction);
   const installmentInfo = extractPluggyInstallmentInfo(transaction);
+  const paymentMethod = transaction.paymentData?.paymentMethod?.toUpperCase();
+  const operationType = transaction.operationType?.toUpperCase();
 
+  // Refunds always take priority
   if (isPluggyRefundCandidate(transaction, direction)) {
     return {
       direction,
       kind: 'refund',
+      isFaturaPayment: false,
+      isPairCandidate: false,
       installmentInfo,
       normalizedDescription,
     };
   }
 
-  if (transferType === 'fatura_payment') {
+  // Fatura payment detection
+  if (PAYMENT_PATTERN.test(normalizedDescription)) {
     return {
       direction,
       kind: 'payment',
-      transferType,
+      isFaturaPayment: true,
+      isPairCandidate: false,
       installmentInfo,
       normalizedDescription,
     };
   }
 
-  if (transferType) {
+  // Deposit: DEPOSITO operation type or description pattern (credit only)
+  if ((operationType && DEPOSIT_TYPES.has(operationType) && direction === 'credit') ||
+      (DEPOSIT_PATTERN.test(normalizedDescription) && direction === 'credit')) {
     return {
       direction,
-      kind: 'transfer',
-      transferType,
+      kind: 'income',
+      isFaturaPayment: false,
+      isPairCandidate: false,
       installmentInfo,
       normalizedDescription,
     };
   }
 
+  // Withdrawal: SAQUE operation type or description pattern (debit only)
+  if ((operationType && WITHDRAW_TYPES.has(operationType) && direction === 'debit') ||
+      (WITHDRAW_PATTERN.test(normalizedDescription) && direction === 'debit')) {
+    return {
+      direction,
+      kind: 'expense',
+      isFaturaPayment: false,
+      isPairCandidate: false,
+      installmentInfo,
+      normalizedDescription,
+    };
+  }
+
+  // PIX/TED/DOC/TRANSFERENCIA: regular expense or income, but flagged as pair candidate
+  // for cross-account internal transfer detection
+  const usesTransferMethod =
+    (paymentMethod && TRANSFER_METHODS.has(paymentMethod)) ||
+    (operationType && TRANSFER_METHODS.has(operationType)) ||
+    TRANSFER_PATTERN.test(normalizedDescription);
+
+  if (usesTransferMethod) {
+    return {
+      direction,
+      kind: direction === 'credit' ? 'income' : 'expense',
+      isFaturaPayment: false,
+      isPairCandidate: true,
+      installmentInfo,
+      normalizedDescription,
+    };
+  }
+
+  // Default: direction-based
   return {
     direction,
     kind: direction === 'credit' ? 'income' : 'expense',
+    isFaturaPayment: false,
+    isPairCandidate: false,
     installmentInfo,
     normalizedDescription,
   };

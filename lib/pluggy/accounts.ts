@@ -99,11 +99,13 @@ function resolveInstitutionName(itemPayload?: Item | null): string | null {
 function resolveAccountInfo(account: {
   id: number;
   type: string;
+  source: string;
   closingDay: number | null;
   paymentDueDay: number | null;
 }): AccountInfo {
   return {
     type: account.type,
+    source: account.source === 'pluggy' ? 'pluggy' : 'manual',
     closingDay: account.closingDay ?? null,
     paymentDueDay: account.paymentDueDay ?? null,
   };
@@ -163,7 +165,7 @@ export async function ensurePluggyAccountMapping({
     existingAccount.source !== 'pluggy';
 
   let accountId = existingAccount?.id ?? 0;
-  let accountInfo = existingAccount ? resolveAccountInfo(existingAccount) : { type, closingDay: null, paymentDueDay: null };
+  let accountInfo = existingAccount ? resolveAccountInfo(existingAccount) : { type, source: 'pluggy' as const, closingDay: null, paymentDueDay: null };
   let created = false;
   let replacedManual = false;
 
@@ -180,6 +182,7 @@ export async function ensurePluggyAccountMapping({
       .returning({
         id: accounts.id,
         type: accounts.type,
+        source: accounts.source,
         closingDay: accounts.closingDay,
         paymentDueDay: accounts.paymentDueDay,
       });

@@ -280,10 +280,12 @@ export const faturas = pgTable(
     dueDate: date('due_date').notNull(), // when payment is due
     paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
     paidFromAccountId: integer('paid_from_account_id').references(() => accounts.id), // which checking account paid it
+    pluggyBillId: text('pluggy_bill_id'), // Links to Pluggy bill for Pluggy-sourced faturas
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => ({
     uniqueAccountMonth: unique().on(table.accountId, table.yearMonth),
+    uniquePluggyBill: unique().on(table.accountId, table.pluggyBillId),
   })
 );
 

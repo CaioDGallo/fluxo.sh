@@ -9,6 +9,7 @@ import { getFaturaMonth, getFaturaPaymentDueDate, getFaturaMonthFromClosingDate,
 
 export type AccountInfo = {
   type: string;
+  source: 'manual' | 'pluggy';
   closingDay: number | null;
   paymentDueDay: number | null;
 };

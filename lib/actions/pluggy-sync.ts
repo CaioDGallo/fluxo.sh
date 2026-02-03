@@ -7,7 +7,7 @@ import { getPluggyClient } from '@/lib/pluggy/sdk';
 import type { Account, Item, Transaction } from 'pluggy-sdk';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
-import { batchEnsureFaturasExist, batchUpdateFaturaTotals } from '@/lib/actions/faturas';
+import { batchEnsureFaturasExist, batchUpdateFaturaTotals, syncPluggyBills } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getFaturaMonth } from '@/lib/fatura-utils';
 import { accounts, categories, entries, faturas, income, pluggyAccounts, pluggyItems, pluggySyncCursors, transactions } from '@/lib/schema';
@@ -279,6 +279,34 @@ async function resolveDefaultCategoryId(userId: string, type: 'expense' | 'incom
   throw new Error(await t('errors.categoryNotFound'));
 }
 
+/**
+ * Resolves fatura month for a Pluggy transaction by looking up the fatura via billId.
+ * Falls back to transaction date's month if no billId or fatura found.
+ */
+async function resolveFaturaMonthFromPluggyBill(
+  transaction: Transaction,
+  accountId: number,
+  userId: string,
+  transactionDate: string
+): Promise<string> {
+  const billId = transaction.creditCardMetadata?.billId;
+  if (billId) {
+    const [fatura] = await db
+      .select({ yearMonth: faturas.yearMonth })
+      .from(faturas)
+      .where(and(
+        eq(faturas.accountId, accountId),
+        eq(faturas.pluggyBillId, billId)
+      ))
+      .limit(1);
+    if (fatura) {
+      return fatura.yearMonth;
+    }
+  }
+  // Fallback: use transaction month
+  return transactionDate.slice(0, 7);
+}
+
 export async function syncPluggyItem(
   pluggyItemId: string,
   userIdOverride?: string
@@ -419,6 +447,11 @@ export async function syncPluggyItem(
       accountsSynced += 1;
       accountInfoMap.set(accountId, accountInfo);
 
+      // Sync bills for credit card accounts from Pluggy
+      if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
+        await syncPluggyBills(accountId, pluggyAccount.id, userId);
+      }
+
       const externalBalanceCents = toCentsMaybe(pluggyAccount.balance);
       const externalCreditLimitCents = toPositiveCentsMaybe(extractCreditLimitValue(pluggyAccount));
       const accountUpdates: Partial<typeof accounts.$inferInsert> = {};
@@ -547,10 +580,17 @@ export async function syncPluggyItem(
 
         if (classification.kind === 'refund' || classification.kind === 'income') {
           let faturaMonth: string | undefined;
-          if (accountInfo.type === 'credit_card' && accountInfo.closingDay && accountInfo.paymentDueDay) {
-            const receivedDate = new Date(date + 'T00:00:00Z');
-            faturaMonth = getFaturaMonth(receivedDate, accountInfo.closingDay);
-            affectedFaturas.add(faturaMonth);
+          if (accountInfo.type === 'credit_card') {
+            if (accountInfo.source === 'pluggy') {
+              // Pluggy CC: resolve from billId or use transaction month
+              faturaMonth = await resolveFaturaMonthFromPluggyBill(normalizedTransaction, accountId, userId, date);
+              affectedFaturas.add(faturaMonth);
+            } else if (accountInfo.closingDay && accountInfo.paymentDueDay) {
+              // Manual CC: use closingDay computation
+              const receivedDate = new Date(date + 'T00:00:00Z');
+              faturaMonth = getFaturaMonth(receivedDate, accountInfo.closingDay);
+              affectedFaturas.add(faturaMonth);
+            }
           }
 
           incomeValues.push({
@@ -615,8 +655,36 @@ export async function syncPluggyItem(
       for (const tx of singleExpenses) {
         const installmentNumber = tx.installmentInfo?.current ?? 1;
         const totalInstallments = tx.installmentInfo?.total ?? 1;
-        const entryDates = computeEntryDates(tx.purchaseDate, installmentNumber, accountInfo);
-        if (accountInfo.type === 'credit_card' && accountInfo.closingDay && accountInfo.paymentDueDay) {
+
+        // For Pluggy CCs, resolve base fatura month from billId if available
+        let overrideBaseFaturaMonth: string | undefined;
+        if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
+          // Find the original transaction to access creditCardMetadata
+          const originalTx = accountTransactions.find(t => namespacedExternalId(t.id!) === tx.externalId);
+          if (originalTx?.creditCardMetadata?.billId) {
+            const [fatura] = await db
+              .select({ yearMonth: faturas.yearMonth })
+              .from(faturas)
+              .where(and(
+                eq(faturas.accountId, accountId),
+                eq(faturas.pluggyBillId, originalTx.creditCardMetadata.billId)
+              ))
+              .limit(1);
+            if (fatura) {
+              overrideBaseFaturaMonth = fatura.yearMonth;
+            }
+          }
+        }
+
+        const entryDates = computeEntryDates(
+          tx.purchaseDate,
+          installmentNumber,
+          accountInfo,
+          undefined,
+          overrideBaseFaturaMonth
+        );
+
+        if (accountInfo.type === 'credit_card') {
           affectedFaturas.add(entryDates.faturaMonth);
         }
 
@@ -651,6 +719,26 @@ export async function syncPluggyItem(
         // Use first entry's externalId as the transaction-level identifier
         const txExternalId = group.entries[0].externalId;
 
+        // For Pluggy CCs, resolve base fatura month from billId of first installment
+        let overrideBaseFaturaMonth: string | undefined;
+        if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
+          const firstEntry = group.entries[0];
+          const originalTx = accountTransactions.find(t => namespacedExternalId(t.id!) === firstEntry.externalId);
+          if (originalTx?.creditCardMetadata?.billId) {
+            const [fatura] = await db
+              .select({ yearMonth: faturas.yearMonth })
+              .from(faturas)
+              .where(and(
+                eq(faturas.accountId, accountId),
+                eq(faturas.pluggyBillId, originalTx.creditCardMetadata.billId)
+              ))
+              .limit(1);
+            if (fatura) {
+              overrideBaseFaturaMonth = fatura.yearMonth;
+            }
+          }
+        }
+
         expenseTransactions.push({
           userId,
           description: group.baseDescription || 'Compra parcelada',
@@ -666,8 +754,15 @@ export async function syncPluggyItem(
         // Don't generate phantom entries for missing installments
         const entryRows: Array<{ amount: number; purchaseDate: string; faturaMonth: string; dueDate: string; installmentNumber: number }> = [];
         for (const entry of group.entries) {
-          const entryDates = computeEntryDates(basePurchaseDate, entry.installmentNumber, accountInfo);
-          if (accountInfo.type === 'credit_card' && accountInfo.closingDay && accountInfo.paymentDueDay) {
+          const entryDates = computeEntryDates(
+            basePurchaseDate,
+            entry.installmentNumber,
+            accountInfo,
+            undefined,
+            overrideBaseFaturaMonth
+          );
+
+          if (accountInfo.type === 'credit_card') {
             affectedFaturas.add(entryDates.faturaMonth);
           }
 
@@ -730,8 +825,8 @@ export async function syncPluggyItem(
 
       if (affectedFaturas.size > 0) {
         const months = Array.from(affectedFaturas);
-        await batchEnsureFaturasExist(accountId, months);
-        await batchUpdateFaturaTotals(accountId, months);
+        await batchEnsureFaturasExist(accountId, months, userId);
+        await batchUpdateFaturaTotals(accountId, months, userId);
       }
 
       transactionsCreated += expenseTransactions.length;
@@ -854,8 +949,8 @@ export async function syncPluggyItem(
       const affected = perAccountAffectedFaturas[acctId];
       if (affected && affected.size > 0) {
         const months = Array.from(affected);
-        await batchEnsureFaturasExist(acctId, months);
-        await batchUpdateFaturaTotals(acctId, months);
+        await batchEnsureFaturasExist(acctId, months, userId);
+        await batchUpdateFaturaTotals(acctId, months, userId);
       }
       await syncAccountBalance(acctId, db, userId);
     }

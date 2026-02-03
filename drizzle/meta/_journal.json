@@ -337,6 +337,13 @@
       "when": 1770140591888,
       "tag": "0047_dusty_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1770150620067,
+      "tag": "0048_sweet_moon_knight",
+      "breakpoints": true
     }
   ]
 }

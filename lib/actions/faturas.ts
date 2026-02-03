@@ -2,7 +2,7 @@
 
 import { getCurrentUserId } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
+import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate, getCurrentYearMonth, addMonths } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, income, transactions, type Fatura } from '@/lib/schema';
@@ -12,6 +12,7 @@ import { cache } from 'react';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackUserActivity } from '@/lib/analytics';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
 
 export type UnpaidFatura = {
   id: number;
@@ -322,11 +323,12 @@ export async function recalculateInstallmentDates(
  */
 export async function batchEnsureFaturasExist(
   accountId: number,
-  months: string[]
+  months: string[],
+  userIdOverride?: string
 ): Promise<void> {
   if (months.length === 0) return;
 
-  const userId = await getCurrentUserId();
+  const userId = userIdOverride ?? await getCurrentUserId();
 
   // Get account to compute dates
   const account = await db
@@ -373,13 +375,17 @@ export async function batchEnsureFaturasExist(
  */
 export async function batchUpdateFaturaTotals(
   accountId: number,
-  months: string[]
+  months: string[],
+  userIdOverride?: string
 ): Promise<void> {
   if (months.length === 0) return;
 
-  const userId = await getCurrentUserId();
+  const userId = userIdOverride ?? await getCurrentUserId();
 
   // Update all fatura totals in a single query using subqueries
+  // Use IN clause instead of ANY for array parameter compatibility
+  const monthsCondition = sql.join(months.map(m => sql`${m}`), sql`, `);
+
   await db.execute(sql`
     UPDATE faturas
     SET total_amount = COALESCE(entries_total, 0) - COALESCE(refunds_total, 0)
@@ -392,7 +398,7 @@ export async function batchUpdateFaturaTotals(
       FROM entries e
       WHERE e.user_id = ${userId}
         AND e.account_id = ${accountId}
-        AND e.fatura_month = ANY(${months})
+        AND e.fatura_month IN (${monthsCondition})
       GROUP BY e.user_id, e.account_id, e.fatura_month
     ) AS entries_agg
     FULL OUTER JOIN (
@@ -404,7 +410,7 @@ export async function batchUpdateFaturaTotals(
       FROM income i
       WHERE i.user_id = ${userId}
         AND i.account_id = ${accountId}
-        AND i.fatura_month = ANY(${months})
+        AND i.fatura_month IN (${monthsCondition})
         AND (i.refund_of_transaction_id IS NOT NULL OR i.is_refund = true)
       GROUP BY i.user_id, i.account_id, i.fatura_month
     ) AS refunds_agg
@@ -466,6 +472,78 @@ export async function batchRecalculateInstallmentDates(
 }
 
 /**
+ * Syncs credit card bills from Pluggy and upserts faturas.
+ * Called during syncPluggyItem for credit card accounts.
+ */
+export async function syncPluggyBills(
+  accountId: number,
+  pluggyAccountId: string,
+  userId: string
+): Promise<void> {
+  const client = getPluggyClient();
+
+  try {
+    const billsResponse = await client.fetchCreditCardBills(pluggyAccountId);
+    const bills = billsResponse.results || [];
+
+    for (const bill of bills) {
+      // Extract yearMonth from bill dueDate
+      const dueDate = bill.dueDate instanceof Date ? bill.dueDate : new Date(bill.dueDate);
+      const yearMonth = dueDate.toISOString().slice(0, 7);
+
+      // Compute closing date (typically dueDate - typical offset, e.g., 7 days)
+      const closingDate = new Date(dueDate);
+      closingDate.setDate(closingDate.getDate() - 7);
+      const closingDateStr = closingDate.toISOString().slice(0, 10);
+
+      const totalAmount = Math.round(Math.abs(bill.totalAmount ?? 0) * 100); // Convert to cents
+
+      await db.insert(faturas).values({
+        userId,
+        accountId,
+        yearMonth,
+        pluggyBillId: bill.id,
+        dueDate: dueDate.toISOString().slice(0, 10),
+        closingDate: closingDateStr,
+        startDate: null,
+        totalAmount,
+      }).onConflictDoUpdate({
+        target: [faturas.accountId, faturas.pluggyBillId],
+        set: {
+          dueDate: dueDate.toISOString().slice(0, 10),
+          totalAmount,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('[faturas] Failed to sync Pluggy bills:', error);
+    // Don't throw - continue with sync even if bills fetch fails
+  }
+}
+
+/**
+ * Ensures recent faturas exist for manual credit card accounts.
+ * Creates empty faturas for current month + next 2 months.
+ */
+export async function ensureRecentFaturasExist(
+  accountId: number,
+  userId: string
+): Promise<void> {
+  const [account] = await db.select().from(accounts)
+    .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+
+  if (!account || account.type !== 'credit_card') return;
+  if (account.source === 'pluggy') return; // Pluggy CCs get faturas from bills sync
+  if (!account.closingDay || !account.paymentDueDay) return;
+
+  // Create faturas for current month + next 2 months
+  const currentMonth = getCurrentYearMonth();
+  const months = [currentMonth, addMonths(currentMonth, 1), addMonths(currentMonth, 2)];
+
+  await batchEnsureFaturasExist(accountId, months, userId);
+}
+
+/**
  * Gets all faturas for a specific account, ordered by month descending.
  */
 export const getFaturasByAccount = cache(async (accountId: number) => {
@@ -486,9 +564,22 @@ export const getFaturasByAccount = cache(async (accountId: number) => {
 
 /**
  * Gets all faturas for a specific month across all credit card accounts.
+ * Auto-creates empty faturas for manual CCs if they don't exist.
  */
 export const getFaturasByMonth = cache(async (yearMonth: string) => {
   const userId = await getCurrentUserId();
+
+  // Ensure recent faturas exist for all manual CCs (on-demand creation)
+  const creditCards = await db.select().from(accounts)
+    .where(and(
+      eq(accounts.userId, userId),
+      eq(accounts.type, 'credit_card'),
+      eq(accounts.source, 'manual')
+    ));
+
+  for (const cc of creditCards) {
+    await ensureRecentFaturasExist(cc.id, userId);
+  }
 
   return unstable_cache(
     async () => {

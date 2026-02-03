@@ -205,3 +205,27 @@ export function computeFaturaWindowStart(yearMonth: string, closingDay: number):
 
   return startDate.toISOString().split('T')[0];
 }
+
+/**
+ * Gets the current month in "YYYY-MM" format.
+ *
+ * @returns Current month in "YYYY-MM" format
+ */
+export function getCurrentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Adds months to a given "YYYY-MM" string.
+ *
+ * @param yearMonth - Month in "YYYY-MM" format
+ * @param monthsToAdd - Number of months to add (can be negative)
+ * @returns New month in "YYYY-MM" format
+ */
+export function addMonths(yearMonth: string, monthsToAdd: number): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, 1));
+  date.setUTCMonth(date.getUTCMonth() + monthsToAdd);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}

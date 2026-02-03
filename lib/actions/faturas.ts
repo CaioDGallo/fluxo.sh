@@ -96,9 +96,22 @@ export async function ensureFaturaExists(
 
 /**
  * Updates the total amount for a fatura by summing all its entries.
+ * CRITICAL: Only updates manual faturas - Pluggy faturas use bank's authoritative amount.
  */
 export async function updateFaturaTotal(accountId: number, yearMonth: string): Promise<void> {
   const userId = await getCurrentUserId();
+
+  // Check if this is a Pluggy fatura - if so, skip recalculation
+  const [fatura] = await db
+    .select({ pluggyBillId: faturas.pluggyBillId })
+    .from(faturas)
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)))
+    .limit(1);
+
+  if (fatura?.pluggyBillId) {
+    // Pluggy fatura - trust bank's amount, don't recalculate
+    return;
+  }
 
   // Sum all entries for this fatura
   const entriesResult = await db
@@ -384,6 +397,7 @@ export async function batchUpdateFaturaTotals(
 
   // Update all fatura totals in a single query using subqueries
   // Use IN clause instead of ANY for array parameter compatibility
+  // CRITICAL: Only update manual faturas - Pluggy faturas use bank's authoritative amount
   const monthsCondition = sql.join(months.map(m => sql`${m}`), sql`, `);
 
   await db.execute(sql`
@@ -420,6 +434,7 @@ export async function batchUpdateFaturaTotals(
     WHERE faturas.user_id = ${userId}
       AND faturas.account_id = ${accountId}
       AND faturas.year_month = COALESCE(entries_agg.year_month, refunds_agg.year_month)
+      AND faturas.pluggy_bill_id IS NULL
   `);
 }
 

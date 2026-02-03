@@ -15,6 +15,7 @@ import { getPostHogClient } from '@/lib/posthog-server';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { getAccountCounts, getUserEntitlements } from '@/lib/plan-entitlements';
+import { assertNotPluggySynced } from '@/lib/pluggy/guards';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -389,6 +390,9 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
       return { success: false, error: await t('errors.invalidAccountId') };
     }
 
+    const userId = await getCurrentUserId();
+    await assertNotPluggySynced('account', id, userId);
+
     const updates = { ...data };
     if (updates.name !== undefined) {
       updates.name = await validateAccountName(updates.name);
@@ -416,8 +420,6 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
     if (updates.type === 'credit_card') {
       await validateCreditLimitRequired(updates.type, updates.creditLimit);
     }
-
-    const userId = await getCurrentUserId();
 
     if (updates.type === 'credit_card') {
       const [currentAccount] = await db
@@ -467,6 +469,7 @@ export async function deleteAccount(id: number) {
 
   try {
     const userId = await getCurrentUserId();
+    await assertNotPluggySynced('account', id, userId);
     await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
 
     // PostHog event tracking

@@ -11,6 +11,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getPostHogClient } from '@/lib/posthog-server';
 import { trackUserActivity } from '@/lib/analytics';
+import { assertNotPluggySynced } from '@/lib/pluggy/guards';
 
 export type CreateTransferData = {
   fromAccountId?: number | null;
@@ -159,6 +160,7 @@ export async function updateTransfer(transferId: number, data: CreateTransferDat
   }
 
   const userId = await getCurrentUserId();
+  await assertNotPluggySynced('transfer', transferId, userId);
 
   await db.transaction(async (tx) => {
     const [existing] = await tx
@@ -230,6 +232,7 @@ export async function deleteTransfer(transferId: number) {
   }
 
   const userId = await getCurrentUserId();
+  await assertNotPluggySynced('transfer', transferId, userId);
 
   await db.transaction(async (tx) => {
     const [existing] = await tx

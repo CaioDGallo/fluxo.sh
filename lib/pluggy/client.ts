@@ -41,6 +41,7 @@ export type PluggyItem = {
   status?: string | null;
   statusDetail?: string | null;
   lastUpdatedAt?: string | null;
+  consentExpiresAt?: string | null;
 };
 
 export type PluggyTransaction = {
@@ -76,6 +77,15 @@ export type PluggyTransactionsPage = {
   totalPages: number;
   page: number;
   results: PluggyTransaction[];
+};
+
+export type PluggyWebhook = {
+  id?: string;
+  event?: string;
+  url?: string;
+  headers?: Record<string, string> | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 const DEFAULT_BASE_URL = 'https://api.pluggy.ai';
@@ -241,7 +251,10 @@ async function getApiKey(): Promise<string> {
   return key;
 }
 
-export async function createPluggyConnectToken(clientUserId: string, options?: { itemId?: string }) {
+export async function createPluggyConnectToken(
+  clientUserId: string,
+  options?: { itemId?: string; webhookUrl?: string }
+) {
   if (!clientUserId) {
     throw new Error('clientUserId is required');
   }
@@ -253,6 +266,7 @@ export async function createPluggyConnectToken(clientUserId: string, options?: {
     body: {
       clientUserId,
       ...(options?.itemId ? { itemId: options.itemId } : {}),
+      ...(options?.webhookUrl ? { webhookUrl: options.webhookUrl } : {}),
     },
   });
 
@@ -288,7 +302,15 @@ function buildQuery(params: Record<string, string | string[] | number | undefine
 export async function listPluggyAccounts(options?: { itemId?: string }) {
   const apiKey = await getApiKey();
   const query = buildQuery({ itemId: options?.itemId });
-  return pluggyRequestWithRetry<PluggyAccount[]>(`/accounts${query}`, { apiKey });
+  const payload = await pluggyRequestWithRetry<PluggyAccount[] | { results?: PluggyAccount[] }>(
+    `/accounts${query}`,
+    { apiKey }
+  );
+  if (Array.isArray(payload)) return payload;
+  if (payload && typeof payload === 'object' && Array.isArray(payload.results)) {
+    return payload.results;
+  }
+  throw new Error('Pluggy accounts response invalid');
 }
 
 export async function listPluggyTransactions(options: {
@@ -312,6 +334,30 @@ export async function listPluggyTransactions(options: {
   });
 
   return pluggyRequestWithRetry<PluggyTransactionsPage>(`/transactions${query}`, { apiKey });
+}
+
+export async function createPluggyWebhook(options: {
+  event: string;
+  url: string;
+  headers?: Record<string, string>;
+}): Promise<PluggyWebhook> {
+  if (!options.event) {
+    throw new Error('event is required');
+  }
+  if (!options.url) {
+    throw new Error('url is required');
+  }
+
+  const apiKey = await getApiKey();
+  return pluggyRequestWithRetry<PluggyWebhook>('/webhooks', {
+    method: 'POST',
+    apiKey,
+    body: {
+      event: options.event,
+      url: options.url,
+      ...(options.headers ? { headers: options.headers } : {}),
+    },
+  });
 }
 
 export async function updatePluggyItem(itemId: string, webhookUrl?: string): Promise<PluggyItem> {

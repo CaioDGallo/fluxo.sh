@@ -16,9 +16,10 @@ type FaturaListProps = {
     paidFromAccountId: number | null;
   }>;
   checkingAccounts: Account[];
+  syncedAccountIds?: number[];
 };
 
-export function FaturaList({ faturas, checkingAccounts }: FaturaListProps) {
+export function FaturaList({ faturas, checkingAccounts, syncedAccountIds = [] }: FaturaListProps) {
   if (faturas.length === 0) {
     return (
       <div className="py-12 text-center">
@@ -49,6 +50,7 @@ export function FaturaList({ faturas, checkingAccounts }: FaturaListProps) {
                 key={fatura.id}
                 fatura={fatura}
                 checkingAccounts={checkingAccounts}
+                isSyncedAccount={syncedAccountIds.includes(fatura.accountId)}
               />
             ))}
           </div>

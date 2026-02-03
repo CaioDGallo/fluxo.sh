@@ -18,6 +18,10 @@ export default async function OpenFinancePage() {
       statusDetail: pluggyItems.statusDetail,
       lastUpdatedAt: pluggyItems.lastUpdatedAt,
       lastSyncedAt: pluggyItems.lastSyncedAt,
+      nextSyncAt: pluggyItems.nextSyncAt,
+      lastError: pluggyItems.lastError,
+      consentExpiresAt: pluggyItems.consentExpiresAt,
+      errorCount: pluggyItems.errorCount,
       createdAt: pluggyItems.createdAt,
     })
     .from(pluggyItems)
@@ -27,11 +31,15 @@ export default async function OpenFinancePage() {
   const mappedAccounts = await db
     .select({
       id: pluggyAccounts.id,
+      itemId: pluggyAccounts.itemId,
+      pluggyItemId: pluggyItems.pluggyItemId,
       pluggyAccountId: pluggyAccounts.pluggyAccountId,
       name: pluggyAccounts.name,
       type: pluggyAccounts.type,
       subtype: pluggyAccounts.subtype,
       currency: pluggyAccounts.currency,
+      mask: pluggyAccounts.mask,
+      institutionName: pluggyAccounts.institutionName,
       accountId: pluggyAccounts.accountId,
       accountName: accounts.name,
       accountType: accounts.type,
@@ -40,6 +48,7 @@ export default async function OpenFinancePage() {
     })
     .from(pluggyAccounts)
     .leftJoin(accounts, eq(pluggyAccounts.accountId, accounts.id))
+    .leftJoin(pluggyItems, eq(pluggyAccounts.itemId, pluggyItems.id))
     .where(eq(pluggyAccounts.userId, userId))
     .orderBy(asc(pluggyAccounts.createdAt));
 
@@ -47,6 +56,8 @@ export default async function OpenFinancePage() {
     ...item,
     lastUpdatedAt: item.lastUpdatedAt?.toISOString() ?? null,
     lastSyncedAt: item.lastSyncedAt?.toISOString() ?? null,
+    nextSyncAt: item.nextSyncAt?.toISOString() ?? null,
+    consentExpiresAt: item.consentExpiresAt?.toISOString() ?? null,
     createdAt: item.createdAt?.toISOString() ?? null,
   }));
 
@@ -59,7 +70,10 @@ export default async function OpenFinancePage() {
     <div>
       <h1 className="text-2xl font-bold mb-2">{t('title')}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t('description')}</p>
-      <OpenFinanceClient items={serializedItems} accounts={serializedAccounts} />
+      <OpenFinanceClient
+        items={serializedItems}
+        pluggyAccounts={serializedAccounts}
+      />
     </div>
   );
 }

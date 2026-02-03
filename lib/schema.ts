@@ -73,6 +73,7 @@ export const pluggyItems = pgTable(
     lastSyncedAt: timestamp('last_synced_at'),
     nextSyncAt: timestamp('next_sync_at'),
     lastError: text('last_error'),
+    errorCount: integer('error_count').notNull().default(0),
     consentExpiresAt: timestamp('consent_expires_at'),
     clientUserId: text('client_user_id'),
     createdAt: timestamp('created_at').defaultNow(),
@@ -128,6 +129,22 @@ export const pluggySyncCursors = pgTable(
   },
   (table) => ({
     uniqueItemScope: unique().on(table.itemId, table.scope),
+  })
+);
+
+// Pluggy webhook events (idempotency)
+export const pluggyWebhookEvents = pgTable(
+  'pluggy_webhook_events',
+  {
+    id: serial('id').primaryKey(),
+    eventId: text('event_id').notNull(),
+    event: text('event').notNull(),
+    itemId: text('item_id'),
+    userId: text('user_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueEvent: unique().on(table.eventId),
   })
 );
 
@@ -585,6 +602,9 @@ export type NewPluggyAccount = typeof pluggyAccounts.$inferInsert;
 
 export type PluggySyncCursor = typeof pluggySyncCursors.$inferSelect;
 export type NewPluggySyncCursor = typeof pluggySyncCursors.$inferInsert;
+
+export type PluggyWebhookEvent = typeof pluggyWebhookEvents.$inferSelect;
+export type NewPluggyWebhookEvent = typeof pluggyWebhookEvents.$inferInsert;
 
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;

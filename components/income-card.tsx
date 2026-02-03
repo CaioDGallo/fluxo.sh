@@ -57,6 +57,7 @@ type IncomeCardBaseProps = {
     accountId: number;
     accountName: string;
     accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+    accountSource: 'manual' | 'pluggy';
     bankLogo: string | null;
     ignored: boolean;
     replenishCategoryId: number | null;
@@ -102,6 +103,9 @@ export function IncomeCard(props: IncomeCardProps) {
   const t = useTranslations('income');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
+  const tSynced = useTranslations('synced');
+
+  const isSynced = income.accountSource === 'pluggy';
 
   const [optimisticCategory, setOptimisticCategory] = useOptimistic(
     { id: income.categoryId, color: income.categoryColor, icon: income.categoryIcon, name: income.categoryName },
@@ -191,12 +195,12 @@ export function IncomeCard(props: IncomeCardProps) {
   };
 
   const swipe = useSwipe({
-    disabled: props.selectionMode || isOptimistic || !isMobile,
+    disabled: props.selectionMode || isOptimistic || isSynced || !isMobile,
     threshold: 50,
     velocityThreshold: 0.15,
   });
 
-  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !swipe.isSwiping && !swipe.isRevealed;
+  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !isSynced && !swipe.isSwiping && !swipe.isRevealed;
   const { hintOffset, isHinting } = useSwipeHint({ enabled: swipeHintEnabled });
 
   // Close revealed actions on click outside
@@ -346,7 +350,9 @@ export function IncomeCard(props: IncomeCardProps) {
 
           {/* Description + mobile date */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm truncate">{income.description}</h3>
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="font-medium text-sm truncate">{income.description}</h3>
+            </div>
             {/* Replenishment indicator */}
             {income.replenishCategoryId && income.replenishCategoryName && (
               <button
@@ -400,6 +406,16 @@ export function IncomeCard(props: IncomeCardProps) {
                 strokeWidth={2}
                 aria-hidden="true"
               />
+              {isSynced && (
+                <span
+                  className="flex items-center justify-center text-blue-600 opacity-80"
+                  title={tSynced('readOnlyBadge')}
+                  aria-label={tSynced('readOnlyBadge')}
+                  role="img"
+                >
+                  <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={12} strokeWidth={2} />
+                </span>
+              )}
               {/* Account icon (bank logo or type icon) */}
               {income.bankLogo ? (
                 <div className="size-4 rounded-full flex items-center border border-gray-300 justify-center bg-white p-0.5" aria-hidden="true">
@@ -464,20 +480,24 @@ export function IncomeCard(props: IncomeCardProps) {
                   <DropdownMenuItem onClick={handleToggleIgnore} onSelect={stopCardGesture} onPointerDown={stopCardGesture}>
                     {income.ignored ? t('showInTotals') : t('hideFromTotals')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setEditOpen(true)}
-                    onSelect={stopCardGesture}
-                    onPointerDown={stopCardGesture}
-                  >
-                    {tCommon('edit')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
-                    onSelect={stopCardGesture}
-                    onPointerDown={stopCardGesture}
-                  >
-                    {t('deleteIncome')}
-                  </DropdownMenuItem>
+                  {!isSynced && (
+                    <DropdownMenuItem
+                      onClick={() => setEditOpen(true)}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {tCommon('edit')}
+                    </DropdownMenuItem>
+                  )}
+                  {!isSynced && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteConfirm(true)}
+                      onSelect={stopCardGesture}
+                      onPointerDown={stopCardGesture}
+                    >
+                      {t('deleteIncome')}
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

@@ -50,12 +50,6 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
   const isCreditCard = account.type === 'credit_card';
   const isSynced = account.source === 'pluggy';
 
-  // For credit cards, display debt and available credit
-  const debt = isCreditCard ? Math.abs(account.currentBalance) : 0;
-  const availableCredit = isCreditCard && account.creditLimit
-    ? account.creditLimit - debt
-    : null;
-
   const externalBalanceCents = typeof account.externalBalanceCents === 'number'
     ? account.externalBalanceCents
     : null;
@@ -65,13 +59,17 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
   const externalBalanceUpdatedAt = account.externalBalanceUpdatedAt
     ? new Date(account.externalBalanceUpdatedAt)
     : null;
-  const externalDebt = externalBalanceCents !== null ? Math.abs(externalBalanceCents) : null;
 
-  const externalBalanceLabel = externalBalanceCents !== null && externalBalanceCents < 0
-    ? 'text-red-600'
-    : 'text-green-600';
-
-  const balanceLabel = account.currentBalance < 0 ? 'text-red-600' : 'text-green-600';
+  const displayBalanceCents = isSynced && externalBalanceCents !== null
+    ? externalBalanceCents
+    : account.currentBalance;
+  const balanceLabel = displayBalanceCents < 0 ? 'text-red-600' : 'text-green-600';
+  const displayDebtCents = isCreditCard
+    ? Math.abs(isSynced && externalBalanceCents !== null ? externalBalanceCents : account.currentBalance)
+    : 0;
+  const availableCredit = !isSynced && isCreditCard && account.creditLimit
+    ? account.creditLimit - displayDebtCents
+    : null;
   const availableCreditLabel = availableCredit !== null && availableCredit < 0
     ? 'text-red-600'
     : 'text-green-600';
@@ -131,10 +129,10 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
             <div className="space-y-1">
               <div>
                 <p className="text-sm font-semibold text-red-600">
-                  {formatCurrency(debt)}
+                  {formatCurrency(displayDebtCents)}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {isSynced ? t('calculatedDebt') : t('currentDebt')}
+                  {t('currentDebt')}
                 </p>
               </div>
               {availableCredit !== null && (
@@ -145,53 +143,31 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
                   <p className="text-xs text-gray-500">{t('availableCredit')}</p>
                 </div>
               )}
+              {isSynced && externalCreditLimitCents !== null && (
+                <div>
+                  <p className="text-sm font-semibold text-green-600">
+                    {formatCurrency(externalCreditLimitCents)}
+                  </p>
+                  <p className="text-xs text-gray-500">{t('externalCreditLimit')}</p>
+                </div>
+              )}
             </div>
-            {isSynced && (externalDebt !== null || externalCreditLimitCents !== null) && (
-              <div className="border-t border-gray-200 pt-2 space-y-1">
-                {externalDebt !== null && (
-                  <div>
-                    <p className="text-sm font-semibold text-red-600">
-                      {formatCurrency(externalDebt)}
-                    </p>
-                    <p className="text-xs text-gray-500">{t('externalDebt')}</p>
-                  </div>
-                )}
-                {externalCreditLimitCents !== null && (
-                  <div>
-                    <p className="text-sm font-semibold text-green-600">
-                      {formatCurrency(externalCreditLimitCents)}
-                    </p>
-                    <p className="text-xs text-gray-500">{t('externalCreditLimit')}</p>
-                  </div>
-                )}
-                {externalUpdatedText && (
-                  <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
-                )}
-              </div>
+            {isSynced && externalUpdatedText && (
+              <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
             )}
           </div>
         ) : (
           <div className="text-right space-y-2">
             <div>
               <p className={`text-sm font-semibold ${balanceLabel}`}>
-                {formatCurrency(account.currentBalance)}
+                {formatCurrency(displayBalanceCents)}
               </p>
               <p className="text-xs text-gray-500">
-                {isSynced ? t('calculatedBalance') : t('currentBalance')}
+                {t('currentBalance')}
               </p>
             </div>
-            {isSynced && externalBalanceCents !== null && (
-              <div className="border-t border-gray-200 pt-2 space-y-1">
-                <div>
-                  <p className={`text-sm font-semibold ${externalBalanceLabel}`}>
-                    {formatCurrency(externalBalanceCents)}
-                  </p>
-                  <p className="text-xs text-gray-500">{t('externalBalance')}</p>
-                </div>
-                {externalUpdatedText && (
-                  <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
-                )}
-              </div>
+            {isSynced && externalUpdatedText && (
+              <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
             )}
           </div>
         )}

@@ -1,9 +1,16 @@
 'use server';
 
 import { getCurrentUserId } from '@/lib/auth';
+import { db } from '@/lib/db';
 import { t } from '@/lib/i18n/server-errors';
-import { createPluggyConnectToken } from '@/lib/pluggy/client';
+import { createPluggyConnectToken, getPluggyItem, listPluggyAccounts } from '@/lib/pluggy/client';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
+import { batchUpdateFaturaTotals } from '@/lib/actions/faturas';
+import { syncAccountBalance } from '@/lib/actions/accounts';
+import { accounts, entries, faturas, income, pluggyAccounts, pluggyItems, transactions, transfers } from '@/lib/schema';
+import { and, eq, inArray, like, or } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 
 type ActionResult =
   | { success: true; token: string }
@@ -25,10 +32,48 @@ type SyncResult =
   }
   | { success: false; error: string };
 
+type DisconnectResult =
+  | { success: true }
+  | { success: false; error: string };
+
+type InitializeAccountsResult =
+  | {
+    success: true;
+    result: {
+      pluggyItemId: string;
+      accountsFound: number;
+      accountsCreated: number;
+      replacedManual: number;
+    };
+  }
+  | { success: false; error: string };
+
+function resolvePluggyWebhookUrl() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  if (!appUrl) return undefined;
+  const trimmed = appUrl.replace(/\/$/, '');
+  const webhookUrl = `${trimmed}/api/webhooks/pluggy`;
+  if (webhookUrl.startsWith('https://') || process.env.ENABLE_HTTP_WEBHOOK === 'true') {
+    return webhookUrl;
+  }
+  return undefined;
+}
+
+function parseIsoDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
 export async function getPluggyConnectToken(itemId?: string): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
-    const { token } = await createPluggyConnectToken(userId, itemId ? { itemId } : undefined);
+    const webhookUrl = resolvePluggyWebhookUrl();
+    const { token } = await createPluggyConnectToken(userId, {
+      ...(itemId ? { itemId } : {}),
+      ...(webhookUrl ? { webhookUrl } : {}),
+    });
     return { success: true, token };
   } catch (error) {
     console.error('[pluggy:connect-token] Failed:', error);
@@ -36,6 +81,222 @@ export async function getPluggyConnectToken(itemId?: string): Promise<ActionResu
       return { success: false, error: error.message };
     }
     return { success: false, error: await t('errors.failedToCreate') };
+  }
+}
+
+export async function initializePluggyItemAccounts(pluggyItemId: string): Promise<InitializeAccountsResult> {
+  try {
+    if (!pluggyItemId || !pluggyItemId.trim()) {
+      return { success: false, error: await t('errors.failedToLoad') };
+    }
+
+    const userId = await getCurrentUserId();
+    const normalizedId = pluggyItemId.trim();
+    const now = new Date();
+
+    let itemPayload: Awaited<ReturnType<typeof getPluggyItem>> | null = null;
+    try {
+      itemPayload = await getPluggyItem(normalizedId);
+    } catch (error) {
+      console.error('[pluggy:init] Failed to fetch item:', error);
+    }
+
+    const lastUpdatedAt = parseIsoDate(itemPayload?.lastUpdatedAt);
+    const consentExpiresAt = parseIsoDate(itemPayload?.consentExpiresAt ?? null);
+
+    const itemValues: Partial<typeof pluggyItems.$inferInsert> = {
+      userId,
+      pluggyItemId: normalizedId,
+      clientUserId: userId,
+      updatedAt: now,
+      ...(itemPayload ? {
+        connectorId: itemPayload.connectorId ?? null,
+        status: itemPayload.status ?? null,
+        statusDetail: itemPayload.statusDetail ?? null,
+        lastUpdatedAt,
+        ...(consentExpiresAt ? { consentExpiresAt } : {}),
+      } : {}),
+    };
+
+    const itemUpdate: Partial<typeof pluggyItems.$inferInsert> = {
+      clientUserId: userId,
+      updatedAt: now,
+      ...(itemPayload ? {
+        connectorId: itemPayload.connectorId ?? null,
+        status: itemPayload.status ?? null,
+        statusDetail: itemPayload.statusDetail ?? null,
+        lastUpdatedAt,
+        ...(consentExpiresAt ? { consentExpiresAt } : {}),
+      } : {}),
+    };
+
+    const [pluggyItemRow] = await db
+      .insert(pluggyItems)
+      .values(itemValues as typeof pluggyItems.$inferInsert)
+      .onConflictDoUpdate({
+        target: [pluggyItems.userId, pluggyItems.pluggyItemId],
+        set: itemUpdate,
+      })
+      .returning({ id: pluggyItems.id });
+
+    if (!pluggyItemRow) {
+      throw new Error(await t('errors.failedToCreate'));
+    }
+
+    const accountList = await listPluggyAccounts({ itemId: normalizedId });
+    let accountsCreated = 0;
+    let replacedManual = 0;
+
+    for (const pluggyAccount of accountList) {
+      const result = await ensurePluggyAccountMapping({
+        userId,
+        pluggyItemRowId: pluggyItemRow.id,
+        pluggyAccount,
+        itemPayload,
+      });
+      if (result.created) accountsCreated += 1;
+      if (result.replacedManual) replacedManual += 1;
+    }
+
+    revalidatePath('/settings/open-finance');
+    revalidatePath('/settings/accounts');
+
+    return {
+      success: true,
+      result: {
+        pluggyItemId: normalizedId,
+        accountsFound: accountList.length,
+        accountsCreated,
+        replacedManual,
+      },
+    };
+  } catch (error) {
+    console.error('[pluggy:init] Failed:', error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: await t('errors.failedToLoad') };
+  }
+}
+
+export async function disconnectPluggyItem(
+  itemId: number,
+  keepData: boolean
+): Promise<DisconnectResult> {
+  try {
+    if (!Number.isInteger(itemId) || itemId <= 0) {
+      return { success: false, error: await t('errors.failedToLoad') };
+    }
+
+    const userId = await getCurrentUserId();
+    const [item] = await db
+      .select({ id: pluggyItems.id })
+      .from(pluggyItems)
+      .where(and(eq(pluggyItems.id, itemId), eq(pluggyItems.userId, userId)))
+      .limit(1);
+
+    if (!item) {
+      return { success: false, error: await t('errors.failedToLoad') };
+    }
+
+    const accountRows = await db
+      .select({ accountId: pluggyAccounts.accountId })
+      .from(pluggyAccounts)
+      .where(and(eq(pluggyAccounts.itemId, itemId), eq(pluggyAccounts.userId, userId)));
+
+    const accountIds = accountRows
+      .map((row) => row.accountId)
+      .filter((id): id is number => Number.isInteger(id));
+
+    await db.transaction(async (tx) => {
+      if (accountIds.length > 0) {
+        await tx
+          .update(accounts)
+          .set({ source: 'manual' })
+          .where(and(eq(accounts.userId, userId), inArray(accounts.id, accountIds)));
+      }
+
+      if (!keepData && accountIds.length > 0) {
+        const transactionRows = await tx
+          .select({ id: transactions.id })
+          .from(transactions)
+          .innerJoin(entries, eq(entries.transactionId, transactions.id))
+          .where(and(
+            eq(transactions.userId, userId),
+            inArray(entries.accountId, accountIds),
+            like(transactions.externalId, 'pluggy:%')
+          ))
+          .groupBy(transactions.id);
+
+        const transactionIds = transactionRows.map((row) => row.id);
+        if (transactionIds.length > 0) {
+          await tx
+            .delete(transactions)
+            .where(inArray(transactions.id, transactionIds));
+        }
+
+        await tx
+          .delete(income)
+          .where(and(
+            eq(income.userId, userId),
+            inArray(income.accountId, accountIds),
+            like(income.externalId, 'pluggy:%')
+          ));
+
+        await tx
+          .delete(transfers)
+          .where(and(
+            eq(transfers.userId, userId),
+            like(transfers.externalId, 'pluggy:%'),
+            or(
+              inArray(transfers.fromAccountId, accountIds),
+              inArray(transfers.toAccountId, accountIds)
+            )
+          ));
+      }
+
+      await tx
+        .delete(pluggyItems)
+        .where(and(eq(pluggyItems.userId, userId), eq(pluggyItems.id, itemId)));
+    });
+
+    if (!keepData && accountIds.length > 0) {
+      const faturaRows = await db
+        .select({ accountId: faturas.accountId, yearMonth: faturas.yearMonth })
+        .from(faturas)
+        .where(inArray(faturas.accountId, accountIds));
+
+      const monthsByAccount = new Map<number, Set<string>>();
+      for (const row of faturaRows) {
+        const set = monthsByAccount.get(row.accountId) ?? new Set();
+        set.add(row.yearMonth);
+        monthsByAccount.set(row.accountId, set);
+      }
+
+      for (const [accountId, months] of monthsByAccount.entries()) {
+        await batchUpdateFaturaTotals(accountId, Array.from(months));
+      }
+    }
+
+    for (const accountId of accountIds) {
+      await syncAccountBalance(accountId, db, userId);
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath('/expenses');
+    revalidatePath('/income');
+    revalidatePath('/transfers');
+    revalidatePath('/faturas');
+    revalidatePath('/settings/accounts');
+    revalidatePath('/settings/open-finance');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[pluggy:disconnect] Failed:', error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: await t('errors.failedToDelete') };
   }
 }
 

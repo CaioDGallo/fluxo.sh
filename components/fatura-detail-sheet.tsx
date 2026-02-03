@@ -24,6 +24,7 @@ type FaturaDetailSheetProps = {
   accountName: string;
   yearMonth: string;
   checkingAccounts: Account[];
+  isSyncedAccount?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -35,6 +36,7 @@ export function FaturaDetailSheet({
   accountName,
   yearMonth,
   checkingAccounts,
+  isSyncedAccount = false,
   open,
   onOpenChange,
 }: FaturaDetailSheetProps) {
@@ -47,6 +49,7 @@ export function FaturaDetailSheet({
   const [isPending, startTransition] = useTransition();
   const t = useTranslations('faturas');
   const tCommon = useTranslations('common');
+  const tSynced = useTranslations('synced');
 
   useEffect(() => {
     if (open) {
@@ -350,7 +353,11 @@ export function FaturaDetailSheet({
 
           {/* Action buttons */}
           <div className="border-t p-4 flex gap-2">
-            {isPaid ? (
+            {isSyncedAccount ? (
+              <p className="text-xs text-muted-foreground w-full text-center py-1">
+                {tSynced('faturaPaymentDisabled')}
+              </p>
+            ) : isPaid ? (
               <Button
                 variant="outline"
                 className="flex-1"

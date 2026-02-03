@@ -25,7 +25,9 @@ type Props = {
   categories: Category[];
 };
 
-export function ImportModal({ accounts, categories }: Props) {
+export function ImportModal({ accounts: allAccounts, categories }: Props) {
+  // Filter out pluggy-synced accounts — manual import targets only
+  const accounts = allAccounts.filter((a) => a.source !== 'pluggy');
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('template');
   const [selectedTemplate, setSelectedTemplate] = useState<ParserKey | null>(null);

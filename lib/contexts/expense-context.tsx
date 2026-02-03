@@ -37,6 +37,7 @@ export type ExpenseEntry = {
   accountId: number;
   accountName: string;
   accountType: 'credit_card' | 'checking' | 'savings' | 'cash';
+  accountSource: 'manual' | 'pluggy';
   bankLogo: string | null;
   ignored: boolean;
   totalAmount: number; // Total amount of the transaction (cents)
@@ -207,6 +208,7 @@ function generateOptimisticEntries(
       accountId: input.accountId,
       accountName: input.accountName,
       accountType: input.accountType,
+      accountSource: 'manual',
       bankLogo: input.bankLogo,
       ignored: false,
       _optimistic: true,

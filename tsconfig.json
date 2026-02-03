@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
+    "nextjs-pluggy-example",
     "drizzle/db-reset.ts",
     "drizzle/seed.ts"
   ]

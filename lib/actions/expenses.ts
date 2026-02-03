@@ -538,6 +538,7 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
           accountId: accounts.id,
           accountName: accounts.name,
           accountType: accounts.type,
+          accountSource: accounts.source,
           bankLogo: accounts.bankLogo,
         })
         .from(entries)

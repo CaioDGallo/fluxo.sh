@@ -286,6 +286,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       accountId: accounts.id,
     accountName: accounts.name,
     accountType: accounts.type,
+    accountSource: accounts.source,
     bankLogo: accounts.bankLogo,
     replenishCategoryId: income.replenishCategoryId,
     replenishCategoryName: sql<string | null>`replenish_cat.name`,

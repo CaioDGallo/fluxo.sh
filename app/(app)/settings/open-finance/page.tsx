@@ -20,7 +20,6 @@ export default async function OpenFinancePage() {
       lastSyncedAt: pluggyItems.lastSyncedAt,
       nextSyncAt: pluggyItems.nextSyncAt,
       lastError: pluggyItems.lastError,
-      consentExpiresAt: pluggyItems.consentExpiresAt,
       errorCount: pluggyItems.errorCount,
       createdAt: pluggyItems.createdAt,
     })
@@ -57,7 +56,6 @@ export default async function OpenFinancePage() {
     lastUpdatedAt: item.lastUpdatedAt?.toISOString() ?? null,
     lastSyncedAt: item.lastSyncedAt?.toISOString() ?? null,
     nextSyncAt: item.nextSyncAt?.toISOString() ?? null,
-    consentExpiresAt: item.consentExpiresAt?.toISOString() ?? null,
     createdAt: item.createdAt?.toISOString() ?? null,
   }));
 

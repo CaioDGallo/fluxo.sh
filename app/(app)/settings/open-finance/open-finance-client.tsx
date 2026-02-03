@@ -26,7 +26,6 @@ type PluggyItemView = {
   lastSyncedAt: string | null;
   nextSyncAt: string | null;
   lastError: string | null;
-  consentExpiresAt: string | null;
   errorCount: number | null;
   createdAt: string | null;
 };
@@ -64,8 +63,6 @@ type OpenFinanceClientProps = {
   items: PluggyItemView[];
   pluggyAccounts: PluggyAccountView[];
 };
-
-const CONSENT_WARNING_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientProps) {
   const t = useTranslations('openFinance');
@@ -113,34 +110,15 @@ export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientPr
     return formatDate(date);
   }
 
-  function getConsentHint(item: PluggyItemView) {
-    if (!item.consentExpiresAt) return null;
-    const expiresAt = new Date(item.consentExpiresAt);
-    if (Number.isNaN(expiresAt.getTime())) return null;
-    const now = Date.now();
-
-    if (expiresAt.getTime() <= now) {
-      return t('consentExpired');
-    }
-
-    if (expiresAt.getTime() - now <= CONSENT_WARNING_MS) {
-      return t('consentExpires', { date: formatDate(expiresAt) });
-    }
-
-    return null;
-  }
-
   function getItemStatus(item: PluggyItemView) {
     const status = item.status?.toLowerCase() ?? '';
     const hasError = Boolean(item.lastError) || status.includes('error');
-    const needsAttention = status.includes('waiting') || status.includes('login');
-    const consentHint = getConsentHint(item);
-    const consentExpired = consentHint === t('consentExpired');
+    const needsAttention = status.includes('waiting') || status.includes('login') || status.includes('outdated');
 
-    if (consentExpired || hasError) {
-      return { label: hasError ? t('statusError') : t('consentExpired'), variant: 'destructive' as const };
+    if (hasError) {
+      return { label: t('statusError'), variant: 'destructive' as const };
     }
-    if (needsAttention || consentHint) {
+    if (needsAttention) {
       return { label: t('statusNeedsAttention'), variant: 'outline' as const };
     }
     return { label: t('statusHealthy'), variant: 'secondary' as const };
@@ -247,7 +225,6 @@ export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientPr
           ) : (
             items.map((item) => {
               const status = getItemStatus(item);
-              const consentHint = getConsentHint(item);
               const canReconnect = status.variant !== 'secondary';
 
               return (
@@ -265,9 +242,6 @@ export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientPr
                     )}
                     {item.lastError && (
                       <p className="text-xs text-destructive">{t('lastError', { error: item.lastError })}</p>
-                    )}
-                    {consentHint && (
-                      <p className="text-xs text-muted-foreground">{consentHint}</p>
                     )}
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span>{t('lastSyncedAt', { date: formatDateTime(item.lastSyncedAt) })}</span>

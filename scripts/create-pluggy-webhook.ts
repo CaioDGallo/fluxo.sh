@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import 'dotenv/config';
-import { createPluggyWebhook } from '@/lib/pluggy/client';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
 
 const DEFAULT_APP_URL = 'https://northstar-personal-finance.vercel.app';
 const WEBHOOK_PATH = '/api/webhooks/pluggy';
@@ -97,6 +97,7 @@ async function run() {
   const webhookUrl = resolveWebhookUrl(args.url);
   const secret = process.env.PLUGGY_WEBHOOK_SECRET;
   const headers = secret ? { 'x-webhook-secret': secret } : undefined;
+  const client = getPluggyClient();
 
   console.log('Creating Pluggy webhooks');
   console.log('URL:', webhookUrl);
@@ -109,11 +110,11 @@ async function run() {
 
   for (const event of args.events) {
     try {
-      const webhook = await createPluggyWebhook({
-        event,
-        url: webhookUrl,
-        headers,
-      });
+      const webhook = await client.createWebhook(
+        event as Parameters<typeof client.createWebhook>[0],
+        webhookUrl,
+        headers
+      );
       console.log(`Created webhook for ${event}:`, webhook.id ?? 'ok');
     } catch (error) {
       failures += 1;

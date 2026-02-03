@@ -3,7 +3,8 @@
 import { getCurrentUserId } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { t } from '@/lib/i18n/server-errors';
-import { createPluggyConnectToken, getPluggyItem, listPluggyAccounts } from '@/lib/pluggy/client';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
+import type { Item } from 'pluggy-sdk';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
 import { batchUpdateFaturaTotals } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
@@ -59,9 +60,9 @@ function resolvePluggyWebhookUrl() {
   return undefined;
 }
 
-function parseIsoDate(value?: string | null): Date | null {
+function parseIsoDate(value?: string | Date | null): Date | null {
   if (!value) return null;
-  const parsed = new Date(value);
+  const parsed = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 }
@@ -70,11 +71,12 @@ export async function getPluggyConnectToken(itemId?: string): Promise<ActionResu
   try {
     const userId = await getCurrentUserId();
     const webhookUrl = resolvePluggyWebhookUrl();
-    const { token } = await createPluggyConnectToken(userId, {
-      ...(itemId ? { itemId } : {}),
+    const client = getPluggyClient();
+    const { accessToken } = await client.createConnectToken(itemId, {
+      clientUserId: userId,
       ...(webhookUrl ? { webhookUrl } : {}),
     });
-    return { success: true, token };
+    return { success: true, token: accessToken };
   } catch (error) {
     console.error('[pluggy:connect-token] Failed:', error);
     if (error instanceof Error) {
@@ -94,15 +96,17 @@ export async function initializePluggyItemAccounts(pluggyItemId: string): Promis
     const normalizedId = pluggyItemId.trim();
     const now = new Date();
 
-    let itemPayload: Awaited<ReturnType<typeof getPluggyItem>> | null = null;
+    const client = getPluggyClient();
+    let itemPayload: Item | null = null;
     try {
-      itemPayload = await getPluggyItem(normalizedId);
+      itemPayload = await client.fetchItem(normalizedId);
     } catch (error) {
       console.error('[pluggy:init] Failed to fetch item:', error);
     }
 
-    const lastUpdatedAt = parseIsoDate(itemPayload?.lastUpdatedAt);
-    const consentExpiresAt = parseIsoDate(itemPayload?.consentExpiresAt ?? null);
+    const lastUpdatedAt = parseIsoDate(itemPayload?.lastUpdatedAt ?? null);
+    const statusDetail = itemPayload?.error?.message ?? itemPayload?.executionStatus ?? null;
+    const connectorId = itemPayload?.connector?.id ? String(itemPayload.connector.id) : null;
 
     const itemValues: Partial<typeof pluggyItems.$inferInsert> = {
       userId,
@@ -110,11 +114,10 @@ export async function initializePluggyItemAccounts(pluggyItemId: string): Promis
       clientUserId: userId,
       updatedAt: now,
       ...(itemPayload ? {
-        connectorId: itemPayload.connectorId ?? null,
+        connectorId,
         status: itemPayload.status ?? null,
-        statusDetail: itemPayload.statusDetail ?? null,
+        statusDetail,
         lastUpdatedAt,
-        ...(consentExpiresAt ? { consentExpiresAt } : {}),
       } : {}),
     };
 
@@ -122,11 +125,10 @@ export async function initializePluggyItemAccounts(pluggyItemId: string): Promis
       clientUserId: userId,
       updatedAt: now,
       ...(itemPayload ? {
-        connectorId: itemPayload.connectorId ?? null,
+        connectorId,
         status: itemPayload.status ?? null,
-        statusDetail: itemPayload.statusDetail ?? null,
+        statusDetail,
         lastUpdatedAt,
-        ...(consentExpiresAt ? { consentExpiresAt } : {}),
       } : {}),
     };
 
@@ -143,7 +145,7 @@ export async function initializePluggyItemAccounts(pluggyItemId: string): Promis
       throw new Error(await t('errors.failedToCreate'));
     }
 
-    const accountList = await listPluggyAccounts({ itemId: normalizedId });
+    const { results: accountList } = await client.fetchAccounts(normalizedId);
     let accountsCreated = 0;
     let replacedManual = 0;
 

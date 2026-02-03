@@ -58,3 +58,4 @@ public/workbox-*.js.map
 *firebase.json
 test-results/
 nextjs-pluggy-example/
+pluggy-node-example/

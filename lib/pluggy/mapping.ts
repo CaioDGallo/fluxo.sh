@@ -1,21 +1,7 @@
 import type { InstallmentInfo } from '@/lib/import/types';
+import type { Transaction } from 'pluggy-sdk';
 
 export type TransferType = 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal';
-
-export type PluggyTransaction = {
-  id?: string | null;
-  description?: string | null;
-  amount?: number | null;
-  type?: string | null;
-  paymentData?: { paymentMethod?: string | null } | null;
-  operationType?: string | null;
-  creditCardMetadata?: {
-    installmentNumber?: number | null;
-    totalInstallments?: number | null;
-  } | null;
-  installment?: { number?: number | null; total?: number | null } | null;
-  installments?: { number?: number | null; total?: number | null } | null;
-};
 
 export type PluggyTransactionDirection = 'credit' | 'debit';
 
@@ -46,11 +32,9 @@ function normalizeDescription(description: string | null | undefined): string {
     .trim();
 }
 
-function resolveDirection(transaction: PluggyTransaction): PluggyTransactionDirection {
-  const type = transaction.type?.toLowerCase();
-  if (type?.includes('credit')) return 'credit';
-  if (type?.includes('debit')) return 'debit';
-
+function resolveDirection(transaction: Transaction): PluggyTransactionDirection {
+  if (transaction.type === 'CREDIT') return 'credit';
+  if (transaction.type === 'DEBIT') return 'debit';
   const amount = transaction.amount ?? 0;
   return amount < 0 ? 'debit' : 'credit';
 }
@@ -68,11 +52,10 @@ function extractInstallmentInfoFromMetadata(metadata?: { number?: number | null;
   };
 }
 
-export function extractPluggyInstallmentInfo(transaction: PluggyTransaction): InstallmentInfo | undefined {
+export function extractPluggyInstallmentInfo(transaction: Transaction): InstallmentInfo | undefined {
   const metadata = transaction.creditCardMetadata
     ? { number: transaction.creditCardMetadata.installmentNumber, total: transaction.creditCardMetadata.totalInstallments }
-    : transaction.installment
-      ?? transaction.installments;
+    : undefined;
 
   const fromMetadata = extractInstallmentInfoFromMetadata(metadata ?? undefined, transaction.description);
   if (fromMetadata) {
@@ -99,13 +82,13 @@ export function extractPluggyInstallmentInfo(transaction: PluggyTransaction): In
   };
 }
 
-export function isPluggyRefundCandidate(transaction: PluggyTransaction, direction?: PluggyTransactionDirection): boolean {
+export function isPluggyRefundCandidate(transaction: Transaction, direction?: PluggyTransactionDirection): boolean {
   const normalized = normalizeDescription(transaction.description);
   const inferredDirection = direction ?? resolveDirection(transaction);
   return inferredDirection === 'credit' && REFUND_PATTERN.test(normalized);
 }
 
-export function getPluggyTransferType(transaction: PluggyTransaction, direction?: PluggyTransactionDirection): TransferType | undefined {
+export function getPluggyTransferType(transaction: Transaction, direction?: PluggyTransactionDirection): TransferType | undefined {
   const normalized = normalizeDescription(transaction.description);
   const inferredDirection = direction ?? resolveDirection(transaction);
   const paymentMethod = transaction.paymentData?.paymentMethod?.toUpperCase();
@@ -146,7 +129,7 @@ export function getPluggyTransferType(transaction: PluggyTransaction, direction?
   return undefined;
 }
 
-export function classifyPluggyTransaction(transaction: PluggyTransaction): PluggyTransactionClassification {
+export function classifyPluggyTransaction(transaction: Transaction): PluggyTransactionClassification {
   const direction = resolveDirection(transaction);
   const normalizedDescription = normalizeDescription(transaction.description);
   const transferType = getPluggyTransferType(transaction, direction);

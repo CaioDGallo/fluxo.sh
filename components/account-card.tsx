@@ -113,14 +113,17 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
         )}
 
         {/* Account name + type */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <h3 className="font-medium text-sm truncate">{account.name}</h3>
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex flex-col items-start gap-1 min-w-0">
             {isSynced && (
               <Badge variant="outline">{t('syncedBadge')}</Badge>
             )}
+            <h3 className="font-medium text-start text-sm truncate w-full">{account.name}</h3>
           </div>
           <p className="text-xs text-gray-500">{tAccountTypes(account.type)}</p>
+          {isSynced && externalUpdatedText && (
+            <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
+          )}
         </div>
 
         {/* Balance / Debt display */}
@@ -152,9 +155,6 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
                 </div>
               )}
             </div>
-            {isSynced && externalUpdatedText && (
-              <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
-            )}
           </div>
         ) : (
           <div className="text-right space-y-2">
@@ -166,9 +166,6 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
                 {t('currentBalance')}
               </p>
             </div>
-            {isSynced && externalUpdatedText && (
-              <p className="text-[10px] text-gray-400">{externalUpdatedText}</p>
-            )}
           </div>
         )}
 

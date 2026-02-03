@@ -3,7 +3,8 @@ import { db } from '@/lib/db';
 import { handleDbError } from '@/lib/db-errors';
 import { t } from '@/lib/i18n/server-errors';
 import { classifyPluggyTransaction, extractPluggyInstallmentInfo } from '@/lib/pluggy/mapping';
-import { getPluggyItem, listPluggyAccounts, listPluggyTransactions, type PluggyAccount as PluggyApiAccount, type PluggyTransaction as PluggyApiTransaction } from '@/lib/pluggy/client';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
+import type { Account, Item, Transaction } from 'pluggy-sdk';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
 import { batchEnsureFaturasExist, batchUpdateFaturaTotals } from '@/lib/actions/faturas';
@@ -33,7 +34,6 @@ type PluggySyncResult =
     error: string;
   };
 
-const DEFAULT_PAGE_SIZE = 500;
 const CURSOR_SCOPE_PREFIX = 'transactions:';
 const CURSOR_BUFFER_MS = 24 * 60 * 60 * 1000;
 const SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
@@ -50,20 +50,21 @@ function resolveErrorBackoffAt(now: Date, errorCount: number): Date {
   return new Date(now.getTime() + delay);
 }
 
-function toDateOnly(value?: string | null): string | null {
+function toDateOnly(value?: string | Date | null): string | null {
   if (!value) return null;
-  const [date] = value.split('T');
-  return date || null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
 }
 
-function parseIsoDate(value?: string | null): Date | null {
+function parseIsoDate(value?: string | Date | null): Date | null {
   if (!value) return null;
-  const parsed = new Date(value);
+  const parsed = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 }
 
-function resolveTransactionAmount(transaction: PluggyApiTransaction): number | null {
+function resolveTransactionAmount(transaction: Transaction): number | null {
   const value = transaction.amountInAccountCurrency ?? transaction.amount;
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return value;
@@ -87,17 +88,12 @@ function toPositiveCentsMaybe(value: unknown): number | null {
   return Math.round(Math.abs(value) * 100);
 }
 
-function extractCreditLimitValue(account: PluggyApiAccount): number | null {
-  if (!account.creditData || typeof account.creditData !== 'object') return null;
-  const creditData = account.creditData as Record<string, unknown>;
-  const candidates = ['creditLimit', 'limit', 'totalLimit', 'totalCreditLimit'];
-  for (const key of candidates) {
-    const value = creditData[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value;
-    }
-  }
-  return null;
+function extractCreditLimitValue(account: Account): number | null {
+  const creditData = account.creditData;
+  if (!creditData) return null;
+  const value = creditData.creditLimit ?? creditData.availableCreditLimit ?? null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return value;
 }
 
 // Namespace external IDs so pluggy-sourced records are distinguishable from OFX/CSV imports
@@ -285,27 +281,6 @@ async function resolveDefaultCategoryId(userId: string, type: 'expense' | 'incom
   throw new Error(await t('errors.categoryNotFound'));
 }
 
-async function fetchAllTransactions(accountId: string, createdAtFrom?: string) {
-  const transactionsList: PluggyApiTransaction[] = [];
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages) {
-    const response = await listPluggyTransactions({
-      accountId,
-      createdAtFrom,
-      page,
-      pageSize: DEFAULT_PAGE_SIZE,
-    });
-
-    transactionsList.push(...response.results);
-    totalPages = Math.max(response.totalPages ?? 1, 1);
-    page += 1;
-  }
-
-  return transactionsList;
-}
-
 export async function syncPluggyItem(
   pluggyItemId: string,
   userIdOverride?: string
@@ -347,22 +322,23 @@ export async function syncPluggyItem(
     isNewItem = !existingItem || !existingItem.lastSyncedAt;
     previousErrorCount = existingItem?.errorCount ?? 0;
 
+    const client = getPluggyClient();
+
     const [expenseCategoryId, incomeCategoryId] = await Promise.all([
       resolveDefaultCategoryId(userId, 'expense'),
       resolveDefaultCategoryId(userId, 'income'),
     ]);
 
-    let itemPayload: Awaited<ReturnType<typeof getPluggyItem>> | null = null;
+    let itemPayload: Item | null = null;
     try {
-      itemPayload = await getPluggyItem(pluggyItemId);
+      itemPayload = await client.fetchItem(pluggyItemId);
     } catch (error) {
       console.error('[pluggy:sync] Failed to fetch item details:', error);
     }
 
     const lastUpdatedAt = itemPayload?.lastUpdatedAt ? parseIsoDate(itemPayload.lastUpdatedAt) : null;
-    const consentExpiresAt = itemPayload?.consentExpiresAt
-      ? parseIsoDate(itemPayload.consentExpiresAt)
-      : null;
+    const statusDetail = itemPayload?.error?.message ?? itemPayload?.executionStatus ?? null;
+    const connectorId = itemPayload?.connector?.id ? String(itemPayload.connector.id) : null;
     const nextSyncAt = resolveNextSyncAt(syncedAt);
     const itemValues = {
       userId,
@@ -372,11 +348,10 @@ export async function syncPluggyItem(
       errorCount: 0,
       updatedAt: syncedAt,
       ...(itemPayload ? {
-        connectorId: itemPayload.connectorId ?? null,
+        connectorId,
         status: itemPayload.status ?? null,
-        statusDetail: itemPayload.statusDetail ?? null,
+        statusDetail,
         lastUpdatedAt,
-        ...(consentExpiresAt ? { consentExpiresAt } : {}),
       } : {}),
     };
 
@@ -387,11 +362,10 @@ export async function syncPluggyItem(
       errorCount: 0,
       updatedAt: syncedAt,
       ...(itemPayload ? {
-        connectorId: itemPayload.connectorId ?? null,
+        connectorId,
         status: itemPayload.status ?? null,
-        statusDetail: itemPayload.statusDetail ?? null,
+        statusDetail,
         lastUpdatedAt,
-        ...(consentExpiresAt ? { consentExpiresAt } : {}),
       } : {}),
     };
 
@@ -408,7 +382,7 @@ export async function syncPluggyItem(
       throw new Error(await t('errors.failedToCreate'));
     }
 
-    const pluggyAccountList = await listPluggyAccounts({ itemId: pluggyItemId });
+    const { results: pluggyAccountList } = await client.fetchAccounts(pluggyItemId);
 
     let accountsSynced = 0;
     let accountsCreated = 0;
@@ -477,7 +451,10 @@ export async function syncPluggyItem(
         ? new Date(cursor.lastSyncedAt.getTime() - CURSOR_BUFFER_MS).toISOString()
         : undefined;
 
-      const accountTransactions = await fetchAllTransactions(pluggyAccount.id, createdAtFrom);
+      const accountTransactions = await client.fetchAllTransactions(
+        pluggyAccount.id,
+        createdAtFrom ? { createdAtFrom } : undefined
+      );
       const externalIds = accountTransactions
         .map((transaction) => transaction.id)
         .filter((id): id is string => !!id)
@@ -917,7 +894,7 @@ export async function syncPluggyItem(
 
     const posthog = getPostHogClient();
     if (posthog) {
-      const connectorId = itemPayload?.connectorId ?? null;
+      const connectorId = itemPayload?.connector?.id ?? null;
       const status = itemPayload?.status ?? null;
 
       posthog.capture({

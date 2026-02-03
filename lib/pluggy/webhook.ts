@@ -1,11 +1,12 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { pluggyItems, pluggyWebhookEvents } from '@/lib/schema';
-import { getPluggyItem } from '@/lib/pluggy/client';
+import { getPluggyClient } from '@/lib/pluggy/sdk';
+import type { Item, WebhookEventPayload } from 'pluggy-sdk';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
 
 export type PluggyWebhookPayload = {
-  event?: string;
+  event?: WebhookEventPayload['event'];
   eventId?: string;
   itemId?: string;
   accountId?: string;
@@ -27,9 +28,9 @@ const TRANSACTION_EVENTS = new Set([
   'transactions/deleted',
 ]);
 
-function parseIsoDate(value?: string | null): Date | null {
+function parseIsoDate(value?: string | Date | null): Date | null {
   if (!value) return null;
-  const parsed = new Date(value);
+  const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -76,19 +77,17 @@ async function handleItemEvent(payload: PluggyWebhookPayload, userId: string) {
   if (!itemId) return;
 
   const now = new Date();
-  let itemPayload: Awaited<ReturnType<typeof getPluggyItem>> | null = null;
+  let itemPayload: Item | null = null;
 
   try {
-    itemPayload = await getPluggyItem(itemId);
+    itemPayload = await getPluggyClient().fetchItem(itemId);
   } catch (error) {
     console.error('[pluggy:webhook] Failed to fetch item:', error);
   }
 
   const lastUpdatedAt = itemPayload?.lastUpdatedAt ? parseIsoDate(itemPayload.lastUpdatedAt) : null;
-  const consentExpiresAt = parseIsoDate(
-    (itemPayload as { consentExpiresAt?: string | null } | null)?.consentExpiresAt ?? null
-  );
-  const statusDetail = itemPayload?.statusDetail ?? null;
+  const statusDetail = itemPayload?.error?.message ?? itemPayload?.executionStatus ?? null;
+  const connectorId = itemPayload?.connector?.id ? String(itemPayload.connector.id) : null;
   const isErrorEvent = payload.event ? ITEM_ERROR_EVENTS.has(payload.event) : false;
 
   const itemValues: Partial<typeof pluggyItems.$inferInsert> = {
@@ -116,19 +115,17 @@ async function handleItemEvent(payload: PluggyWebhookPayload, userId: string) {
 
   if (itemPayload) {
     Object.assign(itemValues, {
-      connectorId: itemPayload.connectorId ?? null,
+      connectorId,
       status: itemPayload.status ?? null,
       statusDetail: statusDetail ?? null,
       lastUpdatedAt,
-      ...(consentExpiresAt ? { consentExpiresAt } : {}),
     });
 
     Object.assign(itemUpdate, {
-      connectorId: itemPayload.connectorId ?? null,
+      connectorId,
       status: itemPayload.status ?? null,
       statusDetail: statusDetail ?? null,
       lastUpdatedAt,
-      ...(consentExpiresAt ? { consentExpiresAt } : {}),
     });
   }
 
@@ -156,7 +153,7 @@ async function handleTransactionsEvent(payload: PluggyWebhookPayload, userId: st
 }
 
 export async function processPluggyWebhook(payload: PluggyWebhookPayload) {
-  const event = payload.event?.trim();
+  const event = payload.event?.trim() as PluggyWebhookPayload['event'] | undefined;
   const eventId = payload.eventId?.trim();
   if (!event || !eventId) {
     throw new Error('Missing event or eventId');

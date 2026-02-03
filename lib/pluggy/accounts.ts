@@ -3,13 +3,13 @@ import { db } from '@/lib/db';
 import { t } from '@/lib/i18n/server-errors';
 import type { AccountInfo } from '@/lib/import-helpers';
 import { accounts, pluggyAccounts } from '@/lib/schema';
-import type { PluggyAccount } from '@/lib/pluggy/client';
+import type { Account, Item } from 'pluggy-sdk';
 
 type EnsurePluggyAccountParams = {
   userId: string;
   pluggyItemRowId: number;
-  pluggyAccount: PluggyAccount;
-  itemPayload?: { connectorId?: string | null } | null;
+  pluggyAccount: Account;
+  itemPayload?: Item | null;
 };
 
 export type EnsurePluggyAccountResult = {
@@ -19,15 +19,11 @@ export type EnsurePluggyAccountResult = {
   replacedManual: boolean;
 };
 
-function resolveAccountType(account: PluggyAccount): 'credit_card' | 'checking' | 'savings' | 'cash' {
-  const type = account.type?.toLowerCase() ?? '';
-  const subtype = account.subtype?.toLowerCase() ?? '';
-
-  if (type.includes('credit') || subtype.includes('credit')) return 'credit_card';
-  if (type.includes('savings') || subtype.includes('savings')) return 'savings';
-  if (type.includes('cash') || subtype.includes('cash')) return 'cash';
-  if (type.includes('checking') || subtype.includes('checking') || subtype.includes('transaction')) return 'checking';
-  if (type.includes('bank')) return 'checking';
+function resolveAccountType(account: Account): 'credit_card' | 'checking' | 'savings' | 'cash' {
+  if (account.type === 'CREDIT' || account.subtype === 'CREDIT_CARD') return 'credit_card';
+  if (account.subtype === 'SAVINGS_ACCOUNT') return 'savings';
+  if (account.subtype === 'CHECKING_ACCOUNT') return 'checking';
+  if (account.type === 'BANK') return 'checking';
   return 'checking';
 }
 
@@ -78,7 +74,7 @@ function isGenericCardName(name: string): boolean {
   return tokens.every((token) => GENERIC_CARD_WORDS.has(token));
 }
 
-function resolveAccountName(account: PluggyAccount, type: string, institutionName: string | null): string {
+function resolveAccountName(account: Account, type: string, institutionName: string | null): string {
   const name = account.marketingName ?? account.name ?? '';
   const trimmedName = name.trim();
   const trimmedInstitution = institutionName?.trim() ?? '';
@@ -95,12 +91,9 @@ function resolveAccountName(account: PluggyAccount, type: string, institutionNam
   return 'Conta Pluggy';
 }
 
-function resolveInstitutionName(account: PluggyAccount): string | null {
-  if (!account.bankData || typeof account.bankData !== 'object') return null;
-  const institution = (account.bankData as Record<string, unknown>).institution;
-  if (!institution || typeof institution !== 'object') return null;
-  const name = (institution as Record<string, unknown>).name;
-  return typeof name === 'string' ? name : null;
+function resolveInstitutionName(itemPayload?: Item | null): string | null {
+  const name = itemPayload?.connector?.name;
+  return name ?? null;
 }
 
 function resolveAccountInfo(account: {
@@ -123,11 +116,11 @@ export async function ensurePluggyAccountMapping({
   itemPayload,
 }: EnsurePluggyAccountParams): Promise<EnsurePluggyAccountResult> {
   const type = resolveAccountType(pluggyAccount);
-  const institutionName = resolveInstitutionName(pluggyAccount);
+  const institutionName = resolveInstitutionName(itemPayload);
   const name = resolveAccountName(pluggyAccount, type, institutionName);
   const currency = pluggyAccount.currencyCode ?? 'BRL';
   const mask = pluggyAccount.number?.slice(-4) ?? null;
-  const institutionId = itemPayload?.connectorId ?? null;
+  const institutionId = itemPayload?.connector?.id ? String(itemPayload.connector.id) : null;
 
   const [existingMapping] = await db
     .select({ id: pluggyAccounts.id, accountId: pluggyAccounts.accountId })

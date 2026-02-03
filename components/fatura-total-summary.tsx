@@ -37,7 +37,7 @@ export function FaturaTotalSummary({
           <span className="font-bold">{formatCurrency(totalAmount)}</span>
         </div>
 
-        <div className='bg-muted p-2'>
+        <div className='shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border border-black p-2'>
           {/* Status breakdown rows */}
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">{t('paidFaturas')} ({paidCount})</span>

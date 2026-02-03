@@ -384,9 +384,9 @@ export function ExpenseCard(props: ExpenseCardProps) {
             </div>
             {/* Mobile only: Category • Account */}
             <div className="flex items-center gap-1 text-xs text-gray-500 md:hidden min-w-0">
-              <span className="truncate">{optimisticCategory.name}</span>
+              <span className="w-fit truncate">{optimisticCategory.name}</span>
               <span className="shrink-0">•</span>
-              <span className="shrink-0">{entry.accountName}</span>
+              <span className="shrink truncate">{entry.accountName}</span>
             </div>
           </div>
 

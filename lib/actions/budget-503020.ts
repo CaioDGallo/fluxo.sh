@@ -8,8 +8,10 @@ import {
   transactions,
   entries,
   budgetConfig,
+  bills,
+  billOccurrences,
 } from '@/lib/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { parseYearMonth } from '@/lib/utils';
@@ -43,6 +45,13 @@ export interface PacingData {
   percentageOfExpected: number; // e.g., 105 means 5% over pace
 }
 
+export interface CommitmentData {
+  necessities: number; // cents committed in necessities
+  wants: number; // cents committed in wants
+  savings: number; // cents committed in savings
+  total: number; // cents total committed
+}
+
 export interface SafeToSpendData {
   buckets: BucketData[];
   wantsSafeToSpend: number; // cents remaining in wants bucket
@@ -51,6 +60,12 @@ export interface SafeToSpendData {
   pacing: PacingData;
   totalBudget: number; // cents
   totalSpent: number; // cents
+  commitments: CommitmentData;
+  effectiveRemaining: {
+    necessities: number; // target - spent - committed
+    wants: number;
+    savings: number;
+  };
 }
 
 /**
@@ -166,6 +181,40 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
       ))
       .groupBy(categories.bucket);
 
+    // Get committed spending from upcoming/pending bill occurrences this month
+    const commitmentRows = await db
+      .select({
+        bucket: categories.bucket,
+        totalCommitted: sql<number>`COALESCE(SUM(${billOccurrences.expectedAmount}), 0)`.as('total_committed'),
+      })
+      .from(billOccurrences)
+      .innerJoin(bills, eq(billOccurrences.billId, bills.id))
+      .leftJoin(categories, eq(bills.categoryId, categories.id))
+      .where(and(
+        eq(billOccurrences.userId, userId),
+        eq(billOccurrences.yearMonth, yearMonth),
+        inArray(billOccurrences.status, ['upcoming', 'pending', 'overdue'])
+      ))
+      .groupBy(categories.bucket);
+
+    const commitmentMap = new Map<BucketType | null, number>();
+    for (const row of commitmentRows) {
+      commitmentMap.set(row.bucket as BucketType | null, Number(row.totalCommitted));
+    }
+
+    // Treat unassigned bill commitments as necessities (bills are typically necessities)
+    const unassignedCommitted = commitmentMap.get(null) ?? 0;
+    const necessitiesCommitted = (commitmentMap.get('necessities') ?? 0) + unassignedCommitted;
+    const wantsCommitted = commitmentMap.get('wants') ?? 0;
+    const savingsCommitted = commitmentMap.get('savings') ?? 0;
+
+    const commitments: CommitmentData = {
+      necessities: necessitiesCommitted,
+      wants: wantsCommitted,
+      savings: savingsCommitted,
+      total: necessitiesCommitted + wantsCommitted + savingsCommitted,
+    };
+
     // Calculate bucket targets and spent
     const bucketMap = new Map<BucketType | null, number>();
     for (const row of spendingRows) {
@@ -185,7 +234,6 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
     const { pacingStatus, pacingPercent, daysRemaining } = calculatePacing(wantsSpent, wantsTarget, yearMonth);
 
     const wantsSafeToSpend = Math.max(0, wantsTarget - wantsSpent);
-    const wantsSafeToSpendDaily = daysRemaining > 0 ? Math.round(wantsSafeToSpend / daysRemaining) : 0;
 
     const buckets: BucketData[] = [
       {
@@ -210,8 +258,8 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
 
     return {
       buckets,
-      wantsSafeToSpend,
-      wantsSafeToSpendDaily,
+      wantsSafeToSpend: Math.max(0, wantsSafeToSpend - wantsCommitted),
+      wantsSafeToSpendDaily: daysRemaining > 0 ? Math.round(Math.max(0, wantsSafeToSpend - wantsCommitted) / daysRemaining) : 0,
       daysRemaining,
       pacing: {
         status: pacingStatus,
@@ -219,6 +267,12 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
       },
       totalBudget,
       totalSpent,
+      commitments,
+      effectiveRemaining: {
+        necessities: Math.max(0, necessitiesTarget - necessitiesSpent - necessitiesCommitted),
+        wants: Math.max(0, wantsTarget - wantsSpent - wantsCommitted),
+        savings: Math.max(0, savingsTarget - savingsSpent - savingsCommitted),
+      },
     };
   } catch (error) {
     logError(
@@ -241,6 +295,8 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
       pacing: { status: 'on_track', percentageOfExpected: 0 },
       totalBudget: 0,
       totalSpent: 0,
+      commitments: { necessities: 0, wants: 0, savings: 0, total: 0 },
+      effectiveRemaining: { necessities: 0, wants: 0, savings: 0 },
     };
   }
 });

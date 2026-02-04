@@ -20,6 +20,10 @@ export const notificationChannelEnum = pgEnum('notification_channel', ['email', 
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);
 export const calendarSourceStatusEnum = pgEnum('calendar_source_status', ['active', 'error', 'disabled']);
 export const billReminderStatusEnum = pgEnum('bill_reminder_status', ['active', 'paused', 'completed']);
+export const billStatusEnum = pgEnum('bill_status', ['active', 'paused', 'archived']);
+export const billOccurrenceStatusEnum = pgEnum('bill_occurrence_status', [
+  'upcoming', 'pending', 'paid', 'overdue', 'skipped'
+]);
 export const billingSubscriptionStatusEnum = pgEnum('billing_subscription_status', [
   'incomplete',
   'incomplete_expired',
@@ -551,6 +555,59 @@ export const billReminders = pgTable('bill_reminders', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Bills table (recurring bill definitions)
+export const bills = pgTable('bills', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  expectedAmount: integer('expected_amount'), // cents, null for variable
+  isVariableAmount: boolean('is_variable_amount').notNull().default(false),
+  recurrenceType: text('recurrence_type').notNull().default('monthly'), // once | weekly | biweekly | monthly | quarterly | yearly
+  dueDay: integer('due_day').notNull(), // 1-31 for monthly, 0-6 for weekly
+  dueTime: text('due_time'), // "HH:mm" or null
+  startMonth: text('start_month').notNull(), // 'YYYY-MM'
+  endMonth: text('end_month'), // 'YYYY-MM' or null (ongoing)
+  preferredAccountId: integer('preferred_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  notify2DaysBefore: boolean('notify_2_days_before').notNull().default(true),
+  notify1DayBefore: boolean('notify_1_day_before').notNull().default(true),
+  notifyOnDueDay: boolean('notify_on_due_day').notNull().default(true),
+  status: billStatusEnum('status').notNull().default('active'),
+  legacyBillReminderId: integer('legacy_bill_reminder_id'), // migration reference
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Bill occurrences table (individual payment instances)
+export const billOccurrences = pgTable(
+  'bill_occurrences',
+  {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    billId: integer('bill_id')
+      .notNull()
+      .references(() => bills.id, { onDelete: 'cascade' }),
+    dueDate: date('due_date').notNull(),
+    expectedAmount: integer('expected_amount'), // cents, inherited or overridden
+    actualAmount: integer('actual_amount'), // cents, filled when paid
+    status: billOccurrenceStatusEnum('status').notNull().default('upcoming'),
+    paidAt: timestamp('paid_at'),
+    paidFromAccountId: integer('paid_from_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    matchedTransactionId: integer('matched_transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+    matchedEntryId: integer('matched_entry_id').references(() => entries.id, { onDelete: 'set null' }),
+    notes: text('notes'),
+    acknowledgedAt: timestamp('acknowledged_at'),
+    yearMonth: text('year_month').notNull(), // 'YYYY-MM' for indexing
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    uniqueBillDue: unique().on(table.billId, table.dueDate),
+    userMonthStatusIdx: sql`CREATE INDEX IF NOT EXISTS bill_occurrences_user_month_status_idx ON bill_occurrences (user_id, year_month, status)`,
+  })
+);
+
 // FCM tokens table
 export const fcmTokens = pgTable('fcm_tokens', {
   id: serial('id').primaryKey(),
@@ -654,6 +711,12 @@ export type NewUsageCounter = typeof usageCounters.$inferInsert;
 
 export type BillReminder = typeof billReminders.$inferSelect;
 export type NewBillReminder = typeof billReminders.$inferInsert;
+
+export type Bill = typeof bills.$inferSelect;
+export type NewBill = typeof bills.$inferInsert;
+
+export type BillOccurrence = typeof billOccurrences.$inferSelect;
+export type NewBillOccurrence = typeof billOccurrences.$inferInsert;
 
 export type FcmToken = typeof fcmTokens.$inferSelect;
 export type NewFcmToken = typeof fcmTokens.$inferInsert;
@@ -794,5 +857,36 @@ export const billRemindersRelations = relations(billReminders, ({ one }) => ({
   category: one(categories, {
     fields: [billReminders.categoryId],
     references: [categories.id],
+  }),
+}));
+
+export const billsRelations = relations(bills, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [bills.categoryId],
+    references: [categories.id],
+  }),
+  preferredAccount: one(accounts, {
+    fields: [bills.preferredAccountId],
+    references: [accounts.id],
+  }),
+  occurrences: many(billOccurrences),
+}));
+
+export const billOccurrencesRelations = relations(billOccurrences, ({ one }) => ({
+  bill: one(bills, {
+    fields: [billOccurrences.billId],
+    references: [bills.id],
+  }),
+  paidFromAccount: one(accounts, {
+    fields: [billOccurrences.paidFromAccountId],
+    references: [accounts.id],
+  }),
+  matchedTransaction: one(transactions, {
+    fields: [billOccurrences.matchedTransactionId],
+    references: [transactions.id],
+  }),
+  matchedEntry: one(entries, {
+    fields: [billOccurrences.matchedEntryId],
+    references: [entries.id],
   }),
 }));

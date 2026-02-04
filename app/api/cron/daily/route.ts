@@ -8,6 +8,7 @@ import { scheduleBillReminderNotifications } from '@/lib/actions/bill-reminder-j
 import { sendAllDailyPushes } from '@/lib/actions/daily-push';
 import { sendRenewalReminders } from '@/lib/actions/renewal-reminders';
 import { runPluggyCronSync } from '@/lib/actions/pluggy-cron';
+import { updateOccurrenceStatuses, generateFutureOccurrences } from '@/lib/actions/bill-cron';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
   const runDailyPush = !jobOverride || jobOverride === 'daily-push' || jobOverride === 'all';
   const runRenewalReminders = !jobOverride || jobOverride === 'renewal-reminders' || jobOverride === 'all';
   const runPluggySync = !jobOverride || jobOverride === 'pluggy-sync' || jobOverride === 'all';
+  const runBillOccurrences = !jobOverride || jobOverride === 'bill-occurrences' || jobOverride === 'all';
 
   try {
     const billReminderResult = runBillReminders ? await scheduleBillReminderNotifications() : null;
@@ -49,6 +51,11 @@ export async function GET(request: Request) {
       runDailyPush ? sendAllDailyPushes() : Promise.resolve(null),
       runRenewalReminders ? sendRenewalReminders() : Promise.resolve(null),
       runPluggySync ? runPluggyCronSync() : Promise.resolve(null),
+      runBillOccurrences ? (async () => {
+        const statuses = await updateOccurrenceStatuses();
+        const generated = await generateFutureOccurrences();
+        return { ...statuses, ...generated };
+      })() : Promise.resolve(null),
     ]);
 
     // Extract values and log failures
@@ -61,7 +68,9 @@ export async function GET(request: Request) {
     const pluggySyncResult = results[6].status === 'fulfilled' ? results[6].value : null;
 
     // Log any failures
-    const jobNames = ['balance-reconciliation', 'status-updates', 'calendar-sync', 'daily-digest', 'daily-push', 'renewal-reminders', 'pluggy-sync'];
+    const billOccurrencesResult = results[7].status === 'fulfilled' ? results[7].value : null;
+
+    const jobNames = ['balance-reconciliation', 'status-updates', 'calendar-sync', 'daily-digest', 'daily-push', 'renewal-reminders', 'pluggy-sync', 'bill-occurrences'];
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         console.error(`[cron:daily] ${jobNames[index]} failed:`, result.reason);
@@ -81,6 +90,7 @@ export async function GET(request: Request) {
       dailyPush: dailyPushResult,
       renewalReminders: renewalRemindersResult,
       pluggySync: pluggySyncResult,
+      billOccurrences: billOccurrencesResult,
     });
   } catch (error) {
     console.error('[cron:daily] Failed:', error);

@@ -111,7 +111,7 @@ async function checkLimit(
   key: string
 ): Promise<RateLimitResult> {
   // Bypass rate limiting in test environment
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test' || process.env.PLAYWRIGHT === 'true') {
     return { allowed: true };
   }
 

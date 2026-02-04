@@ -1,5 +1,6 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '@/test/fixtures';
+import { dismissOnboarding } from './onboarding';
 
 const TEST_EMAIL = 'e2e@example.com';
 const TEST_PASSWORD = 'Password123';
@@ -14,7 +15,8 @@ async function login(page: Page) {
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
   await page.getByLabel('Senha').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeVisible();
+  await dismissOnboarding(page);
+  await expect(page.getByRole('link', { name: 'Meu Fluxo' }).first()).toBeVisible();
 }
 
 async function openFeedbackFromMore(page: Page) {
@@ -50,7 +52,7 @@ test('submit bug feedback successfully', async ({ page }) => {
   const feedbackSheet = await openFeedbackFromMore(page);
 
   // Select Bug type
-  const typeSelect = feedbackSheet.locator('[id^="radix"]').filter({ hasText: 'Tipo' }).locator('..').locator('button').first();
+  const typeSelect = feedbackSheet.getByLabel('Tipo');
   await typeSelect.click();
   await page.locator('[role="option"]', { hasText: 'Bug' }).first().click();
 
@@ -104,7 +106,7 @@ test('feedback form has correct placeholder and types', async ({ page }) => {
   await expect(feedbackSheet.getByPlaceholder('Descreva o problema ou sugestão...')).toBeVisible();
 
   // Open type selector and verify all options
-  const typeSelect = feedbackSheet.locator('button', { hasText: 'Sugestão' }).first();
+  const typeSelect = feedbackSheet.getByLabel('Tipo');
   await typeSelect.click();
 
   // Verify all feedback types are available

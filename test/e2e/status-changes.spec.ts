@@ -1,5 +1,6 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '@/test/fixtures';
+import { dismissOnboarding } from './onboarding';
 
 const TEST_EMAIL = 'e2e@example.com';
 const TEST_PASSWORD = 'Password123';
@@ -9,7 +10,8 @@ async function login(page: Page) {
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
   await page.getByLabel('Senha').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeVisible();
+  await dismissOnboarding(page);
+  await expect(page.getByRole('heading', { name: 'Meu Fluxo' })).toBeVisible();
 }
 
 async function createAccount(
@@ -72,14 +74,29 @@ async function createAccount(
 
 async function createCategory(page: Page, heading: string, name: string) {
   await page.goto('/settings/categories');
-  const section = page.getByRole('heading', { name: heading }).locator('..');
-  await section.getByRole('button', { name: 'Adicionar' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const isIncome = heading.includes('Receita');
+  const tabName = isIncome ? 'Receitas' : 'Despesas';
+  const buttonName = isIncome ? 'Adicionar categoria de receita' : 'Adicionar categoria de despesa';
+  await page.getByRole('tab', { name: tabName }).click();
+  await page.getByRole('button', { name: buttonName }).click();
+  const dialog = page.getByRole('dialog', { name: buttonName });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('heading', { name }).first()).toBeVisible();
+}
+
+async function selectCategory(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Categoria' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
+}
+
+async function selectAccount(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Conta' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
 }
 
 test('mark expense as paid', async ({ page }) => {
@@ -96,15 +113,15 @@ test('mark expense as paid', async ({ page }) => {
   // Create expense (not paid by default)
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').click();
   await dialog.getByLabel('Valor').pressSequentially('100');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await selectCategory(page, CATEGORY_NAME);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
@@ -136,14 +153,14 @@ test('mark expense as pending (unpay)', async ({ page }) => {
   // Create expense
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').pressSequentially('100');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await selectCategory(page, CATEGORY_NAME);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
@@ -180,14 +197,14 @@ test('mark income as received', async ({ page }) => {
   // Create income (not received by default)
   await page.goto('/income');
   await page.getByRole('button', { name: 'Receita' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').pressSequentially('2000');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await selectCategory(page, CATEGORY_NAME);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
@@ -219,14 +236,14 @@ test('mark income as pending (unreceive)', async ({ page }) => {
   // Create income
   await page.goto('/income');
   await page.getByRole('button', { name: 'Receita' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Valor').pressSequentially('1500');
   await dialog.getByLabel('Descrição').fill(DESCRIPTION);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: CATEGORY_NAME }).first().click();
+  await selectCategory(page, CATEGORY_NAME);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await page.waitForTimeout(300);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();

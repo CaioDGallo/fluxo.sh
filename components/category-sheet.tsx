@@ -197,7 +197,7 @@ export function CategorySheet({
               {/* Color */}
               <Field>
                 <FieldLabel>{t('color')}</FieldLabel>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-8 md:flex gap-2">
                   {COLORS.map((c) => (
                     <button
                       key={c}

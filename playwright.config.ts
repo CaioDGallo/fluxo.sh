@@ -13,6 +13,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    extraHTTPHeaders: {
+      'x-playwright': 'true',
+    },
   },
   webServer: {
     command: 'pnpm dev',
@@ -20,6 +23,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       ...process.env,
+      PLAYWRIGHT: 'true',
       NEXT_PUBLIC_TURNSTILE_SITE_KEY:
         process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '1x00000000000000000000AA',
     },

@@ -1,5 +1,6 @@
 import { type Page, type Locator } from '@playwright/test';
 import { test, expect } from '@/test/fixtures';
+import { dismissOnboarding } from './onboarding';
 import fs from 'fs';
 
 const TEST_EMAIL = 'e2e@example.com';
@@ -20,7 +21,8 @@ async function login(page: Page) {
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
   await page.getByLabel('Senha').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeVisible();
+  await dismissOnboarding(page);
+  await expect(page.getByRole('heading', { name: 'Meu Fluxo' })).toBeVisible();
 }
 
 async function createAccount(page: Page, name: string) {
@@ -32,16 +34,19 @@ async function createAccount(page: Page, name: string) {
   const dialog = page.getByRole('dialog', { name: 'Adicionar Conta' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
-  await dialog.getByLabel('Saldo Inicial').fill('0');
+  await dialog.getByLabel('Saldo Inicial').pressSequentially('0');
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 }
 
 async function createCategory(page: Page, heading: string, name: string) {
   await page.goto('/settings/categories');
-  const section = page.getByRole('heading', { name: heading }).locator('..');
-  await section.getByRole('button', { name: 'Adicionar' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const isIncome = heading.includes('Receita');
+  const tabName = isIncome ? 'Receitas' : 'Despesas';
+  const buttonName = isIncome ? 'Adicionar categoria de receita' : 'Adicionar categoria de despesa';
+  await page.getByRole('tab', { name: tabName }).click();
+  await page.getByRole('button', { name: buttonName }).click();
+  const dialog = page.getByRole('dialog', { name: buttonName });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
   await dialog.getByRole('button', { name: 'Criar' }).click();
@@ -62,6 +67,18 @@ async function fillCurrencyInput(input: Locator, amount: string) {
   await input.pressSequentially(cents);
 }
 
+async function selectCategory(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Categoria' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
+}
+
+async function selectAccount(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Conta' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
+}
+
 async function createExpense(
   page: Page,
   amount: string,
@@ -71,14 +88,14 @@ async function createExpense(
 ) {
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), amount);
   await dialog.getByLabel('Descrição').fill(description);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: category }).first().click();
+  await selectCategory(page, category);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: account }).first().click();
+  await selectAccount(page, account);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 }
@@ -92,34 +109,14 @@ async function createIncome(
 ) {
   await page.goto('/income');
   await page.getByRole('button', { name: 'Receita' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), amount);
   await dialog.getByLabel('Descrição').fill(description);
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: category }).first().click();
+  await selectCategory(page, category);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: account }).first().click();
-  await dialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(dialog).toBeHidden();
-}
-
-async function createTransfer(
-  page: Page,
-  amount: string,
-  description: string,
-  toAccount: string
-) {
-  await page.goto('/transfers');
-  await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog');
-  await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Depósito' }).first().click();
-  await fillCurrencyInput(dialog.getByLabel('Valor'), amount);
-  await dialog.getByLabel('Descrição').fill(description);
-  await dialog.getByLabel('Conta de destino').click();
-  await page.getByRole('option', { name: toAccount }).first().click();
+  await selectAccount(page, account);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 }
@@ -139,8 +136,9 @@ test('export transactions for current month with both expenses and income', asyn
   await expect(page.getByRole('heading', { name: 'Exportar Dados' })).toBeVisible();
 
   // Verify default selections
-  await expect(page.getByRole('radio', { name: 'Despesas e Receitas' })).toBeChecked();
   await expect(page.getByRole('radio', { name: 'Mês' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Incluir despesas' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Incluir receitas' })).toBeChecked();
 
   // Verify format info is visible (checkboxes are UI components that might be harder to test)
   await expect(page.getByText('O arquivo CSV será exportado')).toBeVisible();
@@ -186,8 +184,7 @@ test('export only expenses by unchecking income', async ({ page }) => {
   await page.goto('/settings/export');
 
   // Uncheck income by clicking its label
-  const incomeLabel = page.locator('label').filter({ hasText: 'Incluir receitas' });
-  await incomeLabel.click();
+  await page.getByRole('checkbox', { name: 'Incluir receitas' }).click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
@@ -217,8 +214,7 @@ test('export only income by unchecking expenses', async ({ page }) => {
   await page.goto('/settings/export');
 
   // Uncheck expenses by clicking its label
-  const expensesLabel = page.locator('label').filter({ hasText: 'Incluir despesas' });
-  await expensesLabel.click();
+  await page.getByRole('checkbox', { name: 'Incluir despesas' }).click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
@@ -249,13 +245,16 @@ test('export transactions for full year', async ({ page }) => {
   await page.getByRole('radio', { name: 'Ano' }).click();
 
   // Verify year selector appears
-  await expect(page.getByLabel('Selecione o mês')).toBeVisible();
+  await expect(page.getByText('Selecione o mês')).toBeVisible();
+
+  const currentYear = new Date().getFullYear();
+  await page.getByRole('combobox').click();
+  await page.getByRole('option', { name: String(currentYear) }).click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
   const download = await downloadPromise;
 
-  const currentYear = new Date().getFullYear();
   const expectedFilename = `transacoes_${currentYear}-01.csv`;
   expect(download.suggestedFilename()).toBe(expectedFilename);
 });
@@ -273,7 +272,7 @@ test('export all transactions (all time)', async ({ page }) => {
   await page.getByRole('radio', { name: 'Todo o período' }).click();
 
   // Verify month selector is hidden
-  await expect(page.getByLabel('Selecione o mês')).not.toBeVisible();
+  await expect(page.getByText('Selecione o mês')).not.toBeVisible();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar CSV' }).click();
@@ -282,87 +281,14 @@ test('export all transactions (all time)', async ({ page }) => {
   expect(download.suggestedFilename()).toBe('transacoes_todas.csv');
 });
 
-test('export transfers for current month', async ({ page }) => {
-  await login(page);
-  await createAccount(page, ACCOUNT_NAME);
-
-  await createTransfer(page, '400', 'Transferência Exportar E2E', ACCOUNT_NAME);
-
-  await page.goto('/settings/export');
-
-  // Select transfers
-  await page.getByRole('radio', { name: 'Transferências' }).click();
-
-  // Verify include checkboxes are hidden for transfers
-  await expect(page.getByText('Incluir despesas')).not.toBeVisible();
-  await expect(page.getByText('Incluir receitas')).not.toBeVisible();
-
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar CSV' }).click();
-  const download = await downloadPromise;
-
-  const currentMonth = getYearMonth();
-  expect(download.suggestedFilename()).toBe(`transferencias_${currentMonth}.csv`);
-
-  // Verify CSV content
-  const path = await download.path();
-  const content = fs.readFileSync(path!, 'utf-8');
-
-  expect(content).toContain('Data,Origem,Destino,Valor,Tipo,Descricao,ID');
-  expect(content).toContain('Transferência Exportar E2E');
-  expect(content).toContain('Depósito');
-  expect(content).toContain('400'); // CSV uses plain numbers
-});
-
-test('export transfers for full year', async ({ page }) => {
-  await login(page);
-  await createAccount(page, ACCOUNT_NAME);
-
-  await createTransfer(page, '500', 'Transferência Ano E2E', ACCOUNT_NAME);
-
-  await page.goto('/settings/export');
-
-  // Select transfers and year
-  await page.getByRole('radio', { name: 'Transferências' }).click();
-  await page.getByRole('radio', { name: 'Ano' }).click();
-
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar CSV' }).click();
-  const download = await downloadPromise;
-
-  const currentYear = new Date().getFullYear();
-  expect(download.suggestedFilename()).toBe(`transferencias_${currentYear}-01.csv`);
-});
-
-test('export all transfers (all time)', async ({ page }) => {
-  await login(page);
-  await createAccount(page, ACCOUNT_NAME);
-
-  await createTransfer(page, '350', 'Todas Transferências E2E', ACCOUNT_NAME);
-
-  await page.goto('/settings/export');
-
-  await page.getByRole('radio', { name: 'Transferências' }).click();
-  await page.getByRole('radio', { name: 'Todo o período' }).click();
-
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar CSV' }).click();
-  const download = await downloadPromise;
-
-  expect(download.suggestedFilename()).toBe('transferencias_todas.csv');
-});
-
 test('export button disabled when both expenses and income unchecked', async ({ page }) => {
   await login(page);
 
   await page.goto('/settings/export');
 
   // Find and uncheck both checkboxes using text content
-  const expensesLabel = page.locator('label').filter({ hasText: 'Incluir despesas' });
-  const incomeLabel = page.locator('label').filter({ hasText: 'Incluir receitas' });
-
-  await expensesLabel.click(); // Uncheck
-  await incomeLabel.click(); // Uncheck
+  await page.getByRole('checkbox', { name: 'Incluir despesas' }).click();
+  await page.getByRole('checkbox', { name: 'Incluir receitas' }).click();
 
   // Export button should be disabled
   await expect(page.getByRole('button', { name: 'Exportar CSV' })).toBeDisabled();

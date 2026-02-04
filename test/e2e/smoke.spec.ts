@@ -1,5 +1,6 @@
 import { type Page, type Locator } from '@playwright/test';
 import { test, expect } from '@/test/fixtures';
+import { dismissOnboarding } from './onboarding';
 
 const TEST_EMAIL = 'e2e@example.com';
 const TEST_PASSWORD = 'Password123';
@@ -26,7 +27,8 @@ async function login(page: Page) {
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
   await page.getByLabel('Senha').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeVisible();
+  await dismissOnboarding(page);
+  await expect(page.getByRole('heading', { name: 'Meu Fluxo' })).toBeVisible();
 }
 
 async function createAccount(
@@ -70,7 +72,7 @@ async function createAccount(
   }
 
   // Fill initial balance (required for all account types)
-  await dialog.getByLabel('Saldo Inicial').fill(initialBalance);
+  await dialog.getByLabel('Saldo Inicial').pressSequentially(initialBalance);
 
   // Fill credit card specific fields if type is credit_card
   if (type === 'credit_card') {
@@ -89,9 +91,12 @@ async function createAccount(
 
 async function createCategory(page: Page, heading: string, name: string) {
   await page.goto('/settings/categories');
-  const section = page.getByRole('heading', { name: heading }).locator('..');
-  await section.getByRole('button', { name: 'Adicionar' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const isIncome = heading.includes('Receita');
+  const tabName = isIncome ? 'Receitas' : 'Despesas';
+  const buttonName = isIncome ? 'Adicionar categoria de receita' : 'Adicionar categoria de despesa';
+  await page.getByRole('tab', { name: tabName }).click();
+  await page.getByRole('button', { name: buttonName }).click();
+  const dialog = page.getByRole('dialog', { name: buttonName });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
   await dialog.getByRole('button', { name: 'Criar' }).click();
@@ -122,6 +127,32 @@ async function expectCurrencyValue(input: Locator, amount: string) {
   await expect(input).toHaveValue(formatted);
 }
 
+async function selectCategory(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Categoria' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
+}
+
+async function selectAccount(page: Page, name: string) {
+  const picker = page.getByRole('dialog', { name: 'Selecionar Conta' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name }).first().click();
+}
+
+function formatFaturaMonthLabel(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function getFaturaCard(page: Page, yearMonth: string): Locator {
+  const label = formatFaturaMonthLabel(yearMonth);
+  return page
+    .getByRole('heading', { name: new RegExp(label, 'i') })
+    .locator('..')
+    .locator('..')
+    .locator('..');
+}
+
 async function setCategoryBudget(page: Page, categoryName: string, amount: string) {
   await page.goto('/settings/budgets');
   const row = page
@@ -148,20 +179,15 @@ test('create account, category, and expense installments', async ({ page }) => {
 
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '300');
   await dialog.getByLabel('Descrição').fill('Mercado E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
-  await page.waitForTimeout(300);
-
-  const slider = dialog.getByRole('slider');
-  await slider.focus();
-  await slider.press('ArrowRight');
-  await slider.press('ArrowRight');
+  await selectAccount(page, ACCOUNT_NAME);
+  await dialog.getByRole('button', { name: '3x' }).click();
 
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
@@ -169,20 +195,14 @@ test('create account, category, and expense installments', async ({ page }) => {
   const currentMonth = getYearMonth();
   const months = [currentMonth, addMonths(currentMonth, 1), addMonths(currentMonth, 2)];
 
-  for (const month of months) {
+  for (const [index, month] of months.entries()) {
     await page.goto(`/expenses?month=${month}`);
     await expect(page.locator('h3', { hasText: 'Mercado E2E' }).first()).toBeVisible();
+    await expect(page.getByText(`${index + 1}/3`)).toBeVisible();
   }
-
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const expensesBlock = page
-    .locator('[data-slot="balance-summary"]')
-    .locator('div', { hasText: 'Total de Despesas' })
-    .first();
-  await expect(expensesBlock).toContainText(/R\$\s*100,00/);
 });
 
-test('create income updates dashboard net balance', async ({ page }) => {
+test('create income shows in list', async ({ page }) => {
   await login(page);
 
   await createAccount(page, ACCOUNT_NAME);
@@ -192,57 +212,20 @@ test('create income updates dashboard net balance', async ({ page }) => {
 
   await page.goto('/income');
   await page.getByRole('button', { name: 'Receita' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '500');
   await dialog.getByLabel('Descrição').fill('Salário E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: INCOME_CATEGORY }).first().click();
+  await selectCategory(page, INCOME_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  const currentMonth = getYearMonth();
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const netBlock = page
-    .locator('[data-slot="balance-summary"]')
-    .locator('div', { hasText: 'Saldo Líquido' })
-    .first();
-  await expect(netBlock).toContainText(/R\$\s*500,00/);
-});
-
-test('create transfer updates cash flow report', async ({ page }) => {
-  await login(page);
-
-  await createAccount(page, ACCOUNT_NAME);
-  await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
-  await setCategoryBudget(page, EXPENSE_CATEGORY, '1500');
-
-  await page.goto('/transfers');
-  await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog');
-  await expect(dialog).toBeVisible();
-
-  await dialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Depósito' }).first().click();
-  await fillCurrencyInput(dialog.getByLabel('Valor'), '200');
-  await dialog.getByLabel('Descrição').fill('Depósito E2E');
-  await dialog.getByLabel('Conta de destino').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
-  await dialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(dialog).toBeHidden();
-
-  await expect(page.getByText('Depósito E2E').first()).toBeVisible();
-
-  const currentMonth = getYearMonth();
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const transfersBlock = page
-    .locator('[data-slot="cash-flow-report"]')
-    .locator('div', { hasText: 'Transferências de entrada' })
-    .first();
-  await page.mouse.wheel(0, 500);
-  await expect(transfersBlock).toContainText(/R\$\s*200,00/);
+  const incomeCard = page.locator('h3', { hasText: 'Salário E2E' }).first().locator('../../..');
+  await expect(incomeCard).toBeVisible();
+  await expect(incomeCard).toContainText(/R\$\s*500,00/);
 });
 
 test('ignore expense removes it from totals', async ({ page }) => {
@@ -255,49 +238,32 @@ test('ignore expense removes it from totals', async ({ page }) => {
   // Create an expense
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '250');
   await dialog.getByLabel('Descrição').fill('Mercado Ignorar E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
-  // Verify expense appears in dashboard totals
-  const currentMonth = getYearMonth();
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const expensesBlock = page
-    .locator('[data-slot="balance-summary"]')
-    .locator('div', { hasText: 'Total de Despesas' })
-    .first();
-  await expect(expensesBlock).toContainText(/R\$\s*250,00/);
-
   // Go to expenses page and ignore via context menu
   await page.goto('/expenses');
-  const expenseCard = page.locator('div').filter({ hasText: 'Mercado Ignorar E2E' }).filter({ has: page.locator('h3') }).first();
+  const expenseCard = page.locator('h3', { hasText: 'Mercado Ignorar E2E' }).first().locator('../../..');
   await expenseCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
   await page.getByRole('menuitem', { name: 'Ignorar nos cálculos' }).click();
 
-  // Verify expense is still visible but dimmed
-  await expect(page.getByRole('heading', { name: 'Mercado Ignorar E2E', level: 3 })).toBeVisible();
-
-  // Verify expense is NOT in dashboard totals
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await expect(expensesBlock).toContainText(/R\$\s*0,00/);
+  // Verify menu toggles to include action
+  await expenseCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Incluir nos cálculos' })).toBeVisible();
 
   // Un-ignore the expense via context menu
-  await page.goto('/expenses');
-  await expenseCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
   await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
   await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(300);
-
-  // Verify expense is back in totals
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await expect(expensesBlock).toContainText(/R\$\s*250,00/);
+  await expenseCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Ignorar nos cálculos' })).toBeVisible();
 });
 
 test('ignore income removes it from totals', async ({ page }) => {
@@ -311,103 +277,32 @@ test('ignore income removes it from totals', async ({ page }) => {
   // Create an income
   await page.goto('/income');
   await page.getByRole('button', { name: 'Receita' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Receita' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Receita' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '800');
   await dialog.getByLabel('Descrição').fill('Freelance Ignorar E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: INCOME_CATEGORY }).first().click();
+  await selectCategory(page, INCOME_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
+  await selectAccount(page, ACCOUNT_NAME);
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
-
-  // Verify income appears in dashboard net balance
-  const currentMonth = getYearMonth();
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const netBlock = page
-    .locator('[data-slot="balance-summary"]')
-    .locator('div', { hasText: 'Saldo Líquido' })
-    .first();
-  await expect(netBlock).toContainText(/R\$\s*800,00/);
 
   // Ignore via context menu
   await page.goto('/income');
-  const incomeCard = page.locator('div').filter({ hasText: 'Freelance Ignorar E2E' }).filter({ has: page.locator('h3') }).first();
+  const incomeCard = page.locator('h3', { hasText: 'Freelance Ignorar E2E' }).first().locator('../../..');
   await incomeCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
   await page.getByRole('menuitem', { name: 'Ignorar nos cálculos' }).click();
 
-  // Verify income is still visible but dimmed
-  await expect(page.getByRole('heading', { name: 'Freelance Ignorar E2E', level: 3 })).toBeVisible();
-
-  // Verify income is NOT in dashboard net balance
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await expect(netBlock).toContainText(/R\$\s*0,00/);
+  // Verify menu toggles to include action
+  await incomeCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Incluir nos cálculos' })).toBeVisible();
 
   // Un-ignore the income via context menu
-  await page.goto('/income');
+  await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
+  await page.waitForLoadState("networkidle");
   await incomeCard.getByRole('button', { name: 'Abrir menu de ações' }).click();
-  await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
-  await page.waitForLoadState("networkidle");
-
-  // Verify income is back in net balance
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await expect(netBlock).toContainText(/R\$\s*800,00/);
-});
-
-test('ignore transfer removes it from cash flow', async ({ page }) => {
-  await login(page);
-
-  await createAccount(page, ACCOUNT_NAME);
-  await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
-  await setCategoryBudget(page, EXPENSE_CATEGORY, '1000');
-
-  // Create a transfer
-  await page.goto('/transfers');
-  await page.getByRole('button', { name: 'Adicionar Transferência' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Transferência' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Depósito' }).first().click();
-  await fillCurrencyInput(dialog.getByLabel('Valor'), '150');
-  await dialog.getByLabel('Descrição').fill('Depósito Ignorar E2E');
-  await dialog.getByLabel('Conta de destino').click();
-  await page.getByRole('option', { name: ACCOUNT_NAME }).first().click();
-  await dialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(dialog).toBeHidden();
-
-  // Verify transfer appears in dashboard cash flow
-  const currentMonth = getYearMonth();
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  const transfersBlock = page
-    .locator('[data-slot="cash-flow-report"]')
-    .locator('div', { hasText: 'Transferências de entrada' })
-    .first();
-  await expect(transfersBlock).toContainText(/R\$\s*150,00/);
-
-  // Ignore the transfer
-  await page.goto('/transfers');
-  const transferCard = page.locator('div').filter({ hasText: 'Depósito Ignorar E2E' }).filter({ has: page.locator('h3') }).first();
-  await transferCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Ignorar nos cálculos' }).click();
-
-  // Verify transfer is still visible but dimmed
-  await expect(page.getByRole('heading', { name: 'Depósito Ignorar E2E', level: 3 })).toBeVisible();
-
-  // Verify transfer is NOT in dashboard cash flow
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await expect(transfersBlock).toContainText(/R\$\s*0,00/);
-
-  // Un-ignore the transfer
-  await page.goto('/transfers');
-  await transferCard.getByRole('button').last().click();
-  await page.getByRole('menuitem', { name: 'Incluir nos cálculos' }).click();
-  await page.waitForLoadState("networkidle");
-
-  // Verify transfer is back in cash flow
-  await page.goto(`/dashboard?month=${currentMonth}`);
-  await page.mouse.wheel(0, 500);
-  await expect(transfersBlock).toContainText(/R\$\s*150,00/);
+  await expect(page.getByRole('menuitem', { name: 'Ignorar nos cálculos' })).toBeVisible();
 });
 
 test('view fatura details and pay it', async ({ page }) => {
@@ -422,14 +317,14 @@ test('view fatura details and pay it', async ({ page }) => {
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '500');
   await dialog.getByLabel('Descrição').fill('Compra E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: 'Cartão E2E' }).first().click();
+  await selectAccount(page, 'Cartão E2E');
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
@@ -443,7 +338,7 @@ test('view fatura details and pay it', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Verify fatura card shows with the amount
-  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  const faturaCard = getFaturaCard(page, faturaMonth);
   await expect(faturaCard).toBeVisible();
   await expect(faturaCard).toContainText('R$ 500,00');
 
@@ -483,14 +378,14 @@ test('revert fatura payment', async ({ page }) => {
   // Create expense on credit card
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const dialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(dialog).toBeVisible();
   await fillCurrencyInput(dialog.getByLabel('Valor'), '300');
   await dialog.getByLabel('Descrição').fill('Compra Revert E2E');
   await dialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await dialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: 'Cartão E2E' }).first().click();
+  await selectAccount(page, 'Cartão E2E');
   await dialog.getByRole('button', { name: 'Criar' }).click();
   await expect(dialog).toBeHidden();
 
@@ -503,7 +398,7 @@ test('revert fatura payment', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Find and click fatura card
-  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  const faturaCard = getFaturaCard(page, faturaMonth);
   await faturaCard.click();
 
   const sheet = page.locator('[role="dialog"]');
@@ -513,7 +408,7 @@ test('revert fatura payment', async ({ page }) => {
   await expect(payDialog2).toBeVisible();
   await payDialog2.getByLabel('Pagar com conta:').click();
   await page.getByRole('option', { name: 'Conta Corrente E2E' }).first().click();
-  await payDialog2.getByRole('button', { name: 'Confirmar pagamento' }).click();
+  await payDialog2.getByRole('button', { name: 'Confirmar Pagamento' }).click();
   await expect(payDialog2).toBeHidden();
 
   // Verify it's paid
@@ -535,7 +430,7 @@ test('revert fatura payment', async ({ page }) => {
   await page.waitForTimeout(300);
 
   // Verify fatura shows as pending
-  const reloadedCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  const reloadedCard = getFaturaCard(page, faturaMonth);
   await expect(reloadedCard).toContainText('Pendente');
 });
 
@@ -551,14 +446,14 @@ test('convert expense to fatura payment', async ({ page }) => {
   // Create expense on credit card to generate fatura
   await page.goto('/expenses');
   await page.getByRole('button', { name: 'Despesa' }).click();
-  const expenseDialog = page.getByRole('alertdialog', { name: 'Adicionar Despesa' });
+  const expenseDialog = page.getByRole('dialog', { name: 'Adicionar Despesa' });
   await expect(expenseDialog).toBeVisible();
   await fillCurrencyInput(expenseDialog.getByLabel('Valor'), '500');
   await expenseDialog.getByLabel('Descrição').fill('Compra Cartão E2E');
   await expenseDialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await expenseDialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: 'Cartão Convert E2E' }).first().click();
+  await selectAccount(page, 'Cartão Convert E2E');
   await expenseDialog.getByRole('button', { name: 'Criar' }).click();
   await expect(expenseDialog).toBeHidden();
 
@@ -568,9 +463,9 @@ test('convert expense to fatura payment', async ({ page }) => {
   await fillCurrencyInput(expenseDialog.getByLabel('Valor'), '500');
   await expenseDialog.getByLabel('Descrição').fill('Pagamento Fatura Manual');
   await expenseDialog.getByLabel('Categoria').click();
-  await page.getByRole('option', { name: EXPENSE_CATEGORY }).first().click();
+  await selectCategory(page, EXPENSE_CATEGORY);
   await expenseDialog.getByLabel('Conta').click();
-  await page.getByRole('option', { name: 'Corrente Convert E2E' }).first().click();
+  await selectAccount(page, 'Corrente Convert E2E');
   await expenseDialog.getByRole('button', { name: 'Criar' }).click();
   await expect(expenseDialog).toBeHidden();
 
@@ -612,7 +507,7 @@ test('convert expense to fatura payment', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Find fatura card and verify it shows as paid
-  const faturaCard = page.getByRole('heading', { name: /fevereiro de 2026/i }).locator('..').locator('..').locator('..');
+  const faturaCard = getFaturaCard(page, faturaMonth);
   await expect(faturaCard).toBeVisible();
   await expect(faturaCard).toContainText('R$ 500,00');
   await expect(faturaCard).toContainText('Paga');

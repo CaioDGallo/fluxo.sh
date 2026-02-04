@@ -1,14 +1,25 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '@/test/fixtures';
+import { dismissOnboarding } from './onboarding';
 
 const TEST_EMAIL = 'e2e@example.com';
 const TEST_PASSWORD = 'Password123';
+
+function getCategoryMenuButton(page: Page, name: string) {
+  return page
+    .getByRole('heading', { name })
+    .locator('..')
+    .locator('..')
+    .locator('..')
+    .getByRole('button');
+}
 
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByLabel('E-mail').fill(TEST_EMAIL);
   await page.getByLabel('Senha').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
+  await dismissOnboarding(page);
   await expect(page.getByRole('heading', { name: 'Meu Fluxo' })).toBeVisible();
 }
 
@@ -21,9 +32,9 @@ test.describe('Budget Bucket Assignment', () => {
     await page.goto('/settings/categories');
 
     // Click to add new category
-    await page.getByRole('button', { name: 'Adicionar Categoria' }).click();
+    await page.getByRole('button', { name: 'Adicionar categoria de despesa' }).click();
 
-    const dialog = page.getByRole('alertdialog');
+    const dialog = page.getByRole('dialog', { name: 'Adicionar categoria de despesa' });
     await expect(dialog).toBeVisible();
 
     // Check for bucket picker label
@@ -44,17 +55,16 @@ test.describe('Budget Bucket Assignment', () => {
     await page.goto('/settings/categories');
 
     // Add new category
-    await page.getByRole('button', { name: 'Adicionar Categoria' }).click();
+    await page.getByRole('button', { name: 'Adicionar categoria de despesa' }).click();
 
-    const dialog = page.getByRole('alertdialog');
+    const dialog = page.getByRole('dialog', { name: 'Adicionar categoria de despesa' });
     await expect(dialog).toBeVisible();
 
     // Fill category details
     await dialog.getByLabel('Nome').fill('Mercado E2E');
 
     // Select first color
-    const colorButtons = dialog.locator('button[type="button"]').filter({ has: page.locator('div[style*="background"]') });
-    await colorButtons.first().click();
+    await dialog.getByRole('button', { name: /Color/ }).first().click();
 
     // Select bucket - click on "Necessidades" button
     const necessitiesButton = dialog.getByRole('button', { name: /Necessidades/ });
@@ -79,16 +89,16 @@ test.describe('Budget Bucket Assignment', () => {
     await page.goto('/settings/categories');
 
     // Find an existing category (assume "Alimentação" exists from seed data)
-    const alimentacaoCard = page.locator('div', { hasText: 'Alimentacao' }).first();
+    const menuButton = getCategoryMenuButton(page, 'Alimentacao');
 
-    if (await alimentacaoCard.isVisible()) {
+    if (await menuButton.isVisible()) {
       // Click the more options menu
-      await alimentacaoCard.getByRole('button', { name: '' }).click();
+      await menuButton.click();
 
       // Click edit option
       await page.getByRole('menuitem', { name: /Editar/ }).click();
 
-      const dialog = page.getByRole('alertdialog');
+      const dialog = page.getByRole('dialog', { name: 'Editar Categorias' });
       await expect(dialog).toBeVisible();
 
       // Verify current bucket selection (should be Necessidades for Alimentacao)
@@ -114,9 +124,9 @@ test.describe('Budget Bucket Assignment', () => {
     await page.goto('/settings/categories');
 
     // Create a category with bucket first
-    await page.getByRole('button', { name: 'Adicionar Categoria' }).click();
+    await page.getByRole('button', { name: 'Adicionar categoria de despesa' }).click();
 
-    let dialog = page.getByRole('alertdialog');
+    let dialog = page.getByRole('dialog', { name: 'Adicionar categoria de despesa' });
     await dialog.getByLabel('Nome').fill('Teste Remover E2E');
 
     // Select bucket
@@ -129,11 +139,11 @@ test.describe('Budget Bucket Assignment', () => {
     await expect(page.getByText('Teste Remover E2E')).toBeVisible();
 
     // Edit the category
-    const categoryCard = page.locator('div', { hasText: 'Teste Remover E2E' }).first();
-    await categoryCard.getByRole('button', { name: '' }).click();
+    const menuButton = getCategoryMenuButton(page, 'Teste Remover E2E');
+    await menuButton.click();
     await page.getByRole('menuitem', { name: /Editar/ }).click();
 
-    dialog = page.getByRole('alertdialog');
+    dialog = page.getByRole('dialog', { name: 'Editar Categorias' });
     await expect(dialog).toBeVisible();
 
     // Click "Remover categorização" button
@@ -155,12 +165,12 @@ test.describe('Budget Bucket Assignment', () => {
     await page.goto('/settings/categories');
 
     // Switch to income tab
-    await page.getByRole('tab', { name: 'Receita' }).click();
+    await page.getByRole('tab', { name: 'Receitas' }).click();
 
     // Add new income category
-    await page.getByRole('button', { name: 'Adicionar Categoria' }).click();
+    await page.getByRole('button', { name: 'Adicionar categoria de receita' }).click();
 
-    const dialog = page.getByRole('alertdialog');
+    const dialog = page.getByRole('dialog', { name: 'Adicionar categoria de receita' });
     await expect(dialog).toBeVisible();
 
     // Bucket picker should NOT be visible for income categories

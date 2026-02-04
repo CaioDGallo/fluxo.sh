@@ -7,7 +7,7 @@ export type OFXTransaction = {
   date: string; // YYYY-MM-DD
   amount: number; // In cents (signed: negative = expense, positive = income)
   description: string;
-  externalId: string; // Composite ID (FITID + amount) for deduplication
+  externalId: string; // Composite ID (FITID + amount + description) for deduplication
   rawFitId: string; // Original FITID from OFX (for refund matching)
   trnType: 'DEBIT' | 'CREDIT';
 };
@@ -81,9 +81,10 @@ export function parseOFXTransactions(content: string): OFXTransaction[] {
       continue;
     }
 
-    // Create composite externalId to handle Nubank's FITID reuse issue
-    // (IOF charges share FITIDs with their parent transactions)
-    const compositeExternalId = `${rawFitId}-${amountCents}`;
+    // Create composite externalId to handle FITID collisions
+    // Include description to handle cases where FITID + amount alone isn't unique
+    // (e.g., multiple zero-amount adjustments with same FITID)
+    const compositeExternalId = `${rawFitId}-${amountCents}-${description}`;
 
     transactions.push({
       date,

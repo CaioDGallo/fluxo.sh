@@ -27,7 +27,7 @@ describe('nubank-ofx parser', () => {
     expect(firstRow.description).toBe('Supermercado Extra');
     expect(firstRow.amountCents).toBe(15050); // 150.50 in cents
     expect(firstRow.type).toBe('expense');
-    expect(firstRow.externalId).toBe('TXN001--15050'); // composite ID
+    expect(firstRow.externalId).toBe('TXN001--15050-Supermercado Extra'); // composite ID includes description
     expect(firstRow.installmentInfo).toBeUndefined();
   });
 
@@ -86,9 +86,10 @@ describe('nubank-ofx parser', () => {
     const content = loadFixture('nubank-credit-card.ofx');
     const result = nubankOfxParser.parse(content);
 
-    // All external IDs should be in format: FITID-amount (includes negative sign for expenses)
+    // All external IDs should be in format: FITID-amount-description
     result.rows.forEach((row) => {
-      expect(row.externalId).toMatch(/^TXN\d+-?-?\d+$/);
+      expect(row.externalId).toMatch(/^TXN\d+-?-?\d+-.+$/);
+      expect(row.externalId).toContain(row.description);
     });
   });
 });
@@ -110,7 +111,9 @@ describe('nubank-extrato-ofx parser', () => {
     expect(firstRow.description.length).toBeGreaterThan(0);
     expect(firstRow.amountCents).toBe(500000); // 5000.00 in cents
     expect(firstRow.type).toBe('income');
-    expect(firstRow.externalId).toBe('CHK001-500000');
+    // External ID now includes description for uniqueness
+    expect(firstRow.externalId).toContain('CHK001-500000');
+    expect(firstRow.externalId).toContain(firstRow.description);
   });
 
   it('should handle expenses (negative amounts)', () => {

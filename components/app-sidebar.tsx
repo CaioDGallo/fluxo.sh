@@ -49,7 +49,7 @@ const navItems = [
   { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
   { key: 'income', href: '/income', icon: Wallet01Icon },
   { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
-  { key: 'contas', href: '/contas', icon: ReceiptDollarIcon },
+  { key: 'bills', href: '/bills', icon: ReceiptDollarIcon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
 ];

@@ -113,7 +113,7 @@ export async function createBill(
     // Generate initial occurrences (3 months rolling window)
     await generateOccurrencesForBill(bill.id, userId);
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     revalidatePath('/dashboard');
     return { success: true, data: { id: bill.id } };
   } catch (error) {
@@ -152,8 +152,8 @@ export async function updateBill(
       await generateOccurrencesForBill(id, userId);
     }
 
-    revalidatePath('/contas');
-    revalidatePath(`/contas/${id}`);
+    revalidatePath('/bills');
+    revalidatePath(`/bills/${id}`);
     return { success: true };
   } catch (error) {
     console.error('[bills:update] Failed:', error);
@@ -170,7 +170,7 @@ export async function archiveBill(id: number): Promise<ActionResult> {
       .set({ status: 'archived', updatedAt: new Date() })
       .where(and(eq(bills.id, id), eq(bills.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     return { success: true };
   } catch (error) {
     console.error('[bills:archive] Failed:', error);
@@ -201,7 +201,7 @@ export async function deleteBill(id: number): Promise<ActionResult> {
       .delete(bills)
       .where(and(eq(bills.id, id), eq(bills.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     return { success: true };
   } catch (error) {
     console.error('[bills:delete] Failed:', error);

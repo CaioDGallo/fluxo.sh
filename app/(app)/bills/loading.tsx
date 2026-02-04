@@ -1,4 +1,4 @@
-export default function ContasLoading() {
+export default function BillsLoading() {
   return (
     <div className="animate-pulse space-y-6">
       <div className="flex items-center justify-between">

@@ -320,7 +320,7 @@ export async function markOccurrencePaid(
       })
       .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     revalidatePath('/dashboard');
     return { success: true };
   } catch (error) {
@@ -370,7 +370,7 @@ export async function linkOccurrenceToTransaction(
       })
       .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     revalidatePath('/dashboard');
     return { success: true };
   } catch (error) {
@@ -392,7 +392,7 @@ export async function unlinkOccurrence(id: number): Promise<ActionResult> {
       })
       .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     return { success: true };
   } catch (error) {
     console.error('[bill-occurrences:unlink] Failed:', error);
@@ -409,7 +409,7 @@ export async function skipOccurrence(id: number): Promise<ActionResult> {
       .set({ status: 'skipped', updatedAt: new Date() })
       .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     return { success: true };
   } catch (error) {
     console.error('[bill-occurrences:skip] Failed:', error);
@@ -427,7 +427,7 @@ export async function updateOccurrenceAmount(id: number, amount: number): Promis
       .set({ expectedAmount: amount, updatedAt: new Date() })
       .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
 
-    revalidatePath('/contas');
+    revalidatePath('/bills');
     return { success: true };
   } catch (error) {
     console.error('[bill-occurrences:updateAmount] Failed:', error);

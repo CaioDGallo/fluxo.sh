@@ -19,7 +19,8 @@ import {
   Crown03Icon,
   Settings02Icon,
   SparklesIcon,
-  Wallet01Icon
+  Wallet01Icon,
+  ReceiptDollarIcon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
@@ -34,6 +35,7 @@ const moreItems = [
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
+  { key: 'bills', href: '/bills', icon: ReceiptDollarIcon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
   { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },

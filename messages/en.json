@@ -118,7 +118,7 @@
     "calendar": "Calendar",
     "openFinance": "Open Finance",
     "tasks": "Tasks",
-    "contas": "Bills",
+    "bills": "Bills",
     "reminders": "Reminders",
     "preferences": "Preferences",
     "export": "Export",
@@ -1065,7 +1065,7 @@
     "notify1DayBefore": "1 day before",
     "notifyOnDueDay": "On due day"
   },
-  "contas": {
+  "bills": {
     "title": "Bills",
     "addBill": "New Bill",
     "noBillsYet": "No bills yet. Add your first bill to get started!",
@@ -1106,9 +1106,10 @@
     "committed": "Committed",
     "committedLabel": "Committed: {amount}",
     "availableLabel": "Available: {amount}",
-    "spentLabel": "Spent: {amount}"
+    "spentLabel": "Spent: {amount}",
+    "dueDayLabel": "Day {day}"
   },
-  "contasForm": {
+  "billsForm": {
     "name": "Name",
     "namePlaceholder": "Electricity, Internet, Rent...",
     "description": "Description (Optional)",
@@ -1134,7 +1135,16 @@
     "notifications": "Notifications",
     "notify2DaysBefore": "2 days before",
     "notify1DayBefore": "1 day before",
-    "notifyOnDueDay": "On due day"
+    "notifyOnDueDay": "On due day",
+    "weekdays": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    }
   },
   "payBillDialog": {
     "title": "Pay bill",

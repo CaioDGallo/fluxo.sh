@@ -119,7 +119,7 @@
     "calendar": "Calendário",
     "openFinance": "Open Finance",
     "tasks": "Tarefas",
-    "contas": "Contas a Pagar",
+    "bills": "Contas a Pagar",
     "reminders": "Lembretes",
     "preferences": "Preferências",
     "export": "Exportar",
@@ -1108,7 +1108,7 @@
     "notify1DayBefore": "1 dia antes",
     "notifyOnDueDay": "No vencimento"
   },
-  "contas": {
+  "bills": {
     "title": "Contas a Pagar",
     "addBill": "Nova Conta",
     "noBillsYet": "Nenhuma conta ainda. Adicione sua primeira conta para começar!",
@@ -1149,9 +1149,10 @@
     "committed": "Comprometido",
     "committedLabel": "Comprometido: {amount}",
     "availableLabel": "Disponível: {amount}",
-    "spentLabel": "Gasto: {amount}"
+    "spentLabel": "Gasto: {amount}",
+    "dueDayLabel": "Dia {day}"
   },
-  "contasForm": {
+  "billsForm": {
     "name": "Nome",
     "namePlaceholder": "Luz, Internet, Aluguel...",
     "description": "Descrição (Opcional)",
@@ -1177,7 +1178,16 @@
     "notifications": "Notificações",
     "notify2DaysBefore": "2 dias antes",
     "notify1DayBefore": "1 dia antes",
-    "notifyOnDueDay": "No vencimento"
+    "notifyOnDueDay": "No vencimento",
+    "weekdays": {
+      "sunday": "Domingo",
+      "monday": "Segunda",
+      "tuesday": "Terça",
+      "wednesday": "Quarta",
+      "thursday": "Quinta",
+      "friday": "Sexta",
+      "saturday": "Sábado"
+    }
   },
   "payBillDialog": {
     "title": "Pagar conta",

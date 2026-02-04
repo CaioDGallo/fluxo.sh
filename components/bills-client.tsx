@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { BillSheet } from '@/components/bill-sheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,17 +61,9 @@ const STATUS_COLORS: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-600',
 };
 
-const RECURRENCE_LABELS: Record<string, string> = {
-  once: 'Única',
-  weekly: 'Semanal',
-  biweekly: '2 sem.',
-  monthly: 'Mensal',
-  quarterly: 'Trimestral',
-  yearly: 'Anual',
-};
-
-export function BillsClient({ bills }: BillsClientProps) {
-  const t = useTranslations('contas');
+export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
+  const t = useTranslations('bills');
+  const tForm = useTranslations('billsForm');
   const router = useRouter();
   const [deleting, setDeleting] = useState<number | null>(null);
 
@@ -96,12 +88,17 @@ export function BillsClient({ bills }: BillsClientProps) {
     <div className="space-y-6">
       {/* Add button */}
       <div className="flex justify-end">
-        <Button asChild>
-          <Link href="/contas/novo">
-            <HugeiconsIcon icon={Add01Icon} className="mr-2 size-4" />
-            {t('addBill')}
-          </Link>
-        </Button>
+        <BillSheet
+          categories={categories}
+          accounts={accounts}
+          onSuccess={() => router.refresh()}
+          trigger={
+            <Button variant={'popout'}>
+              <HugeiconsIcon icon={Add01Icon} className="mr-2 size-4" />
+              {t('addBill')}
+            </Button>
+          }
+        />
       </div>
 
       {/* Active bills */}
@@ -114,7 +111,7 @@ export function BillsClient({ bills }: BillsClientProps) {
               key={bill.id}
               className="group relative rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
             >
-              <Link href={`/contas/${bill.id}`} className="absolute inset-0 z-10" />
+              <a href={`/bills/${bill.id}`} className="absolute inset-0 z-10" />
 
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -123,7 +120,7 @@ export function BillsClient({ bills }: BillsClientProps) {
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[bill.status]}`}>
                       {t(`status.${bill.status}`)}
                     </span>
-                    <span className="text-xs text-gray-400">{RECURRENCE_LABELS[bill.recurrenceType]}</span>
+                    <span className="text-xs text-gray-400">{tForm(bill.recurrenceType)}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
                     {categoryName && (
@@ -142,7 +139,7 @@ export function BillsClient({ bills }: BillsClientProps) {
                       {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
                     </span>
                   )}
-                  <span className="text-xs text-gray-400">Dia {bill.dueDay}</span>
+                  <span className="text-xs text-gray-400">{t('dueDayLabel', { day: bill.dueDay })}</span>
                 </div>
               </div>
 

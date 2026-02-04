@@ -1,14 +1,16 @@
 import { getTranslations } from 'next-intl/server';
 import { getBill } from '@/lib/actions/bills';
+import { getCategories } from '@/lib/actions/categories';
 import { getAccounts } from '@/lib/actions/accounts';
 import { BillDetailClient } from '@/components/bill-detail-client';
 
 export default async function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const t = await getTranslations('contas');
+  const t = await getTranslations('bills');
 
-  const [billData, accounts] = await Promise.all([
+  const [billData, categories, accounts] = await Promise.all([
     getBill(Number(id)),
+    getCategories('expense'),
     getAccounts(),
   ]);
 
@@ -21,6 +23,6 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
   }
 
   return (
-    <BillDetailClient billData={billData} accounts={accounts} />
+    <BillDetailClient billData={billData} categories={categories} accounts={accounts} />
   );
 }

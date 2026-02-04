@@ -17,7 +17,8 @@ import { formatCentsAsBRL } from '@/lib/utils';
 import { skipOccurrence } from '@/lib/actions/bill-occurrences';
 import { PayBillDialog } from '@/components/pay-bill-dialog';
 import { LinkTransactionDialog } from '@/components/link-transaction-dialog';
-import type { Account } from '@/lib/schema';
+import { BillSheet } from '@/components/bill-sheet';
+import type { Account, Category } from '@/lib/schema';
 
 type OccurrenceRow = {
   id: number;
@@ -55,6 +56,7 @@ type BillDataRow = {
 
 interface BillDetailClientProps {
   billData: BillDataRow;
+  categories: Category[];
   accounts: Account[];
 }
 
@@ -66,21 +68,14 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   skipped: { bg: 'bg-gray-100', text: 'text-gray-600' },
 };
 
-const RECURRENCE_LABELS: Record<string, string> = {
-  once: 'Única',
-  weekly: 'Semanal',
-  biweekly: 'A cada 2 semanas',
-  monthly: 'Mensal',
-  quarterly: 'A cada 3 meses',
-  yearly: 'Anual',
-};
-
-export function BillDetailClient({ billData, accounts }: BillDetailClientProps) {
-  const t = useTranslations('contas');
+export function BillDetailClient({ billData, categories, accounts }: BillDetailClientProps) {
+  const t = useTranslations('bills');
+  const tForm = useTranslations('billsForm');
   const router = useRouter();
   const [payDialogOccurrence, setPayDialogOccurrence] = useState<OccurrenceRow | null>(null);
   const [linkDialogOccurrence, setLinkDialogOccurrence] = useState<OccurrenceRow | null>(null);
   const [skipping, setSkipping] = useState<number | null>(null);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
 
   const { bill, categoryName, categoryColor, occurrences } = billData;
 
@@ -104,7 +99,7 @@ export function BillDetailClient({ billData, accounts }: BillDetailClientProps) 
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/contas">
+          <Link href="/bills">
             <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
           </Link>
         </Button>
@@ -118,16 +113,14 @@ export function BillDetailClient({ billData, accounts }: BillDetailClientProps) 
                 <span>·</span>
               </>
             )}
-            <span>{RECURRENCE_LABELS[bill.recurrenceType]}</span>
+            <span>{tForm(bill.recurrenceType)}</span>
             <span>·</span>
-            <span>Dia {bill.dueDay}</span>
+            <span>{t('dueDayLabel', { day: bill.dueDay })}</span>
           </div>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/contas/novo?edit=${bill.id}`}>
-            <HugeiconsIcon icon={Edit01Icon} className="mr-1.5 size-3.5" />
-            {t('edit')}
-          </Link>
+        <Button variant="outline" size="sm" onClick={() => setEditSheetOpen(true)}>
+          <HugeiconsIcon icon={Edit01Icon} className="mr-1.5 size-3.5" />
+          {t('edit')}
         </Button>
       </div>
 
@@ -252,6 +245,19 @@ export function BillDetailClient({ billData, accounts }: BillDetailClientProps) 
           }}
         />
       )}
+
+      {/* Edit Bill Sheet */}
+      <BillSheet
+        billId={bill.id}
+        categories={categories}
+        accounts={accounts}
+        open={editSheetOpen}
+        onOpenChange={setEditSheetOpen}
+        onSuccess={() => {
+          setEditSheetOpen(false);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

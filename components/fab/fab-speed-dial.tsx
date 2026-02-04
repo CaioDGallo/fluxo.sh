@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Add01Icon,
-  ArrowUpBigIcon,
-  ArrowDownBigIcon,
+  MoneySend02Icon,
+  MoneyReceive02Icon,
   Wallet01Icon,
 } from '@hugeicons/core-free-icons';
 import { TransactionForm } from '@/components/transaction-form';
@@ -93,7 +93,7 @@ export function FABSpeedDial() {
                 isLoading && 'opacity-50 pointer-events-none'
               )}
             >
-              <HugeiconsIcon icon={ArrowUpBigIcon} strokeWidth={2.5} className="size-5" />
+              <HugeiconsIcon icon={MoneyReceive02Icon} strokeWidth={2.5} className="size-5" />
               <span className="text-sm font-semibold">{t('income')}</span>
             </Button>
 
@@ -109,7 +109,7 @@ export function FABSpeedDial() {
                 isLoading && 'opacity-50 pointer-events-none'
               )}
             >
-              <HugeiconsIcon icon={ArrowDownBigIcon} strokeWidth={2.5} className="size-5" />
+              <HugeiconsIcon icon={MoneySend02Icon} strokeWidth={2.5} className="size-5" />
               <span className="text-sm font-semibold">{t('expense')}</span>
             </Button>
           </div>

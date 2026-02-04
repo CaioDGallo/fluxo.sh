@@ -2,11 +2,11 @@
 
 import { cn } from '@/lib/utils';
 import {
-  ArrowDownBigIcon,
-  ArrowUpBigIcon,
+  MoneySend02Icon,
+  MoneyReceive02Icon,
   Home01Icon,
   Invoice03Icon,
-  MoneyReceiveFlow02Icon,
+  ArrowDataTransferHorizontalIcon,
   MoreHorizontalIcon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -23,10 +23,10 @@ type TabItem = {
 };
 
 const tabs: TabItem[] = [
-  { key: 'dashboard', href: '/dashboard', icon: MoneyReceiveFlow02Icon },
+  { key: 'dashboard', href: '/dashboard', icon: ArrowDataTransferHorizontalIcon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
-  { key: 'expenses', href: '/expenses', icon: ArrowDownBigIcon },
-  { key: 'income', href: '/income', icon: ArrowUpBigIcon },
+  { key: 'expenses', href: '/expenses', icon: MoneySend02Icon },
+  { key: 'income', href: '/income', icon: MoneyReceive02Icon },
   { key: 'more', href: null, icon: MoreHorizontalIcon },
 ];
 

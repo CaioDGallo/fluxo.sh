@@ -33,7 +33,10 @@ async function createAccount(
 
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const typeDialog = page.getByRole('dialog', { name: 'Como deseja adicionar?' });
+  await expect(typeDialog).toBeVisible();
+  await typeDialog.getByRole('button', { name: 'Manual' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Conta' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
 
@@ -97,7 +100,7 @@ test('edit account name', async ({ page }) => {
   await editMenuItem.click();
 
   // Edit dialog should open
-  const editDialog = page.getByRole('alertdialog');
+  const editDialog = page.getByRole('dialog', { name: 'Editar Contas' });
   await expect(editDialog).toBeVisible();
   await expect(editDialog.getByLabel('Nome')).toHaveValue(ORIGINAL_NAME);
 

@@ -92,7 +92,7 @@ export function PreferencesStep() {
           <button
             onClick={() => setTheme('light')}
             className={cn(
-              'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
+              'flex flex-col items-center gap-2 p-4 rounded-none border-2 transition-colors',
               theme === 'light'
                 ? 'border-foreground bg-muted'
                 : 'border-border hover:border-muted-foreground'
@@ -104,7 +104,7 @@ export function PreferencesStep() {
           <button
             onClick={() => setTheme('dark')}
             className={cn(
-              'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
+              'flex flex-col items-center gap-2 p-4 rounded-none border-2 transition-colors',
               theme === 'dark'
                 ? 'border-foreground bg-muted'
                 : 'border-border hover:border-muted-foreground'
@@ -116,7 +116,7 @@ export function PreferencesStep() {
           <button
             onClick={() => setTheme('system')}
             className={cn(
-              'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
+              'flex flex-col items-center gap-2 p-4 rounded-none border-2 transition-colors',
               theme === 'system'
                 ? 'border-foreground bg-muted'
                 : 'border-border hover:border-muted-foreground'
@@ -134,7 +134,7 @@ export function PreferencesStep() {
           <label className="text-sm font-medium">{t('notifications.label')}</label>
           <div
             className={cn(
-              'flex items-center gap-3 p-4 rounded-lg border-2',
+              'flex items-center gap-3 p-4 rounded-none border-2',
               isGranted
                 ? 'border-green-500 bg-green-50 dark:bg-green-950'
                 : 'border-border'

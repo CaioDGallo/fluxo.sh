@@ -83,6 +83,9 @@ export function OpenFinanceClient({ items, pluggyAccounts }: OpenFinanceClientPr
       setIsConnecting(false);
       setReconnectingItemId(null);
       toast.success(t('connectSuccess'));
+      void syncPluggyItemById(pluggyItemId).catch((error) => {
+        console.error('[pluggy:sync] Failed to start:', error);
+      });
       await initializeItemAccounts(pluggyItemId);
     },
     onError: (error) => {

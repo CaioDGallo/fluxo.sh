@@ -100,8 +100,8 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
           type="button"
           onClick={() => onChange(name as IconName)}
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-md border dark:hover:bg-neutral-700 hover:bg-neutral-100',
-            value === name && 'border-blue-500 bg-blue-50 ring-2 ring-blue-500'
+            'flex h-10 w-10 items-center justify-center rounded-none border dark:hover:bg-neutral-700 hover:bg-neutral-100',
+            value === name && 'border-blue-500 bg-blue-50 dark:bg-neutral-700 ring-2 ring-blue-500'
           )}
         >
           <HugeiconsIcon icon={Icon} strokeWidth={2} />

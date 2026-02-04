@@ -351,6 +351,13 @@
       "when": 1770203266245,
       "tag": "0049_even_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1770210319971,
+      "tag": "0050_orange_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

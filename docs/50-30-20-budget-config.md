@@ -34,6 +34,7 @@ Users can change from the default `na_risca` preset to:
 Settings button on dashboard will allow switching between:
 - `na_risca` (50/30/20) - Default, balanced approach
 - `entrando_na_linha` (60/30/10) - More conservative, higher necessities
+- `saindo_das_dividas` (70/25/5) - For users paying down debt
 - `custom` - User defines their own percentages (must sum to 100)
 
 ### Via Database (Current Workaround)

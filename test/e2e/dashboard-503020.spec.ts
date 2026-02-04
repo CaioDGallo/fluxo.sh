@@ -83,13 +83,13 @@ test.describe('Dashboard 50/30/20', () => {
 
   test('displays preset selector button', async ({ page }) => {
     // Check for settings button (preset selector)
-    const presetButton = page.getByRole('button', { name: /Na Risca|Entrando na Linha/ });
+    const presetButton = page.getByRole('button', { name: /Na Risca|Entrando na Linha|Saindo das dívidas/ });
     await expect(presetButton).toBeVisible();
   });
 
   test('preset selector dialog opens and displays options', async ({ page }) => {
     // Click preset selector button
-    const presetButton = page.getByRole('button', { name: /Na Risca|Entrando na Linha/ });
+    const presetButton = page.getByRole('button', { name: /Na Risca|Entrando na Linha|Saindo das dívidas/ });
     await presetButton.click();
 
     // Check dialog appears
@@ -102,10 +102,12 @@ test.describe('Dashboard 50/30/20', () => {
     // Check for both preset options
     await expect(dialog.getByText('Na Risca')).toBeVisible();
     await expect(dialog.getByText('Entrando na Linha')).toBeVisible();
+    await expect(dialog.getByText('Saindo das dívidas')).toBeVisible();
 
     // Check for descriptions
     await expect(dialog.getByText('50% Necessidades, 30% Desejos, 20% Poupança')).toBeVisible();
     await expect(dialog.getByText('60% Necessidades, 30% Desejos, 10% Poupança')).toBeVisible();
+    await expect(dialog.getByText('70% Necessidades, 25% Desejos, 5% Poupança')).toBeVisible();
 
     // Close dialog
     await dialog.getByRole('button', { name: 'Cancelar' }).click();

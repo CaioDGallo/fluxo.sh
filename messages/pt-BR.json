@@ -128,10 +128,11 @@
     "logoutConfirmDescription": "Você será desconectado e precisará fazer login novamente para acessar sua conta."
   },
   "fab": {
-    "addTransaction": "Adicionar transação",
+    "addTransaction": "Adicionar",
     "close": "Fechar",
     "expense": "Despesa",
-    "income": "Receita"
+    "income": "Receita",
+    "account": "Conta"
   },
   "dashboard": {
     "title": "Meu Fluxo",
@@ -187,6 +188,9 @@
       "entrandoNaLinha": "Entrando na Linha",
       "entrandoNaLinhaDescription": "60% Necessidades, 30% Desejos, 10% Poupança",
       "entrandoNaLinhaDetail": "Recomendado para quem está começando a organizar as finanças",
+      "saindoDasDividas": "Saindo das dívidas",
+      "saindoDasDividasDescription": "70% Necessidades, 25% Desejos, 5% Poupança",
+      "saindoDasDividasDetail": "Para quem está endividado e quer recuperar o controle",
       "configure": "Configurar Método 50/30/20",
       "chooseModel": "Escolha o modelo de distribuição que melhor se adapta ao seu momento financeiro",
       "updateSuccess": "Método atualizado com sucesso",
@@ -408,6 +412,12 @@
   "accounts": {
     "title": "Contas",
     "addAccount": "Adicionar Conta",
+    "addAccountFlowTitle": "Como deseja adicionar?",
+    "addAccountFlowDescription": "Escolha o tipo de conta para continuar.",
+    "addAccountAutomatic": "Automática",
+    "addAccountAutomaticDescription": "Conecte seu banco via Open Finance e sincronize transações.",
+    "addAccountManual": "Manual",
+    "addAccountManualDescription": "Cadastre e controle tudo manualmente.",
     "recalculateBalances": "Recalcular saldos",
     "creditCards": "Cartões de Crédito",
     "checkingAccounts": "Contas Correntes",
@@ -1518,7 +1528,7 @@
     "methodWantsText": "30% para escolhas do dia a dia: lazer, compras e experiências.",
     "methodSavingsTitle": "Poupança",
     "methodSavingsText": "20% para reserva e futuro: investimentos e metas.",
-    "methodPresets": "Modelos prontos: Na Risca e Entrando na Linha.",
+    "methodPresets": "Modelos prontos: Na Risca, Entrando na Linha e Saindo das dívidas.",
     "flowTitle": "Meu Fluxo: decisão diária, sem planilha",
     "flowSubtitle": "Veja quanto cabe gastar hoje, o ritmo do mês e o avanço dos grupos.",
     "flowCardTitle": "Disponível para gastar hoje",
@@ -1655,11 +1665,18 @@
       "namePlaceholder": "Ex: Alimentação, Transporte",
       "colorLabel": "Cor",
       "iconLabel": "Ícone",
+      "bucketLabel": "Grupo do 50/30/20",
       "skip": "Pular",
       "create": "Criar",
       "creating": "Criando...",
       "nameRequired": "Nome da categoria é obrigatório",
       "categoryCreated": "Categoria criada com sucesso!"
+    },
+    "preset": {
+      "title": "Escolha seu modelo 50/30/20",
+      "description": "Selecione o modelo que reflete seu momento financeiro.",
+      "skip": "Pular",
+      "continue": "Continuar"
     },
     "budget": {
       "title": "Defina um orçamento",

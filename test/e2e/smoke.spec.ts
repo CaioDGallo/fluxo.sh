@@ -50,7 +50,10 @@ async function createAccount(
 
   await page.goto('/settings/accounts');
   await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const dialog = page.getByRole('alertdialog');
+  const typeDialog = page.getByRole('dialog', { name: 'Como deseja adicionar?' });
+  await expect(typeDialog).toBeVisible();
+  await typeDialog.getByRole('button', { name: 'Manual' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Adicionar Conta' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Nome').fill(name);
 
@@ -410,37 +413,8 @@ test('ignore transfer removes it from cash flow', async ({ page }) => {
 test('view fatura details and pay it', async ({ page }) => {
   await login(page);
 
-  // Create credit card account
-  await page.goto('/settings/accounts');
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Cartão E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
-
-  // Wait for billing config fields to appear and set them
-  await expect(accountDialog.getByLabel('Saldo Inicial')).toBeVisible();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await expect(accountDialog.getByLabel('Dia do Fechamento (1-28)')).toBeVisible();
-  await accountDialog.getByLabel('Dia do Fechamento (1-28)').click();
-  await page.getByRole('option', { name: '1' }).first().click();
-  await accountDialog.getByLabel('Dia do Vencimento (1-28)').click();
-  await page.getByRole('option', { name: '10' }).first().click();
-  await accountDialog.getByLabel('Limite de Crédito').pressSequentially('5000');
-
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
-
-  // Create checking account for payment
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Conta Corrente E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
+  await createAccount(page, 'Cartão E2E', { type: 'credit_card' });
+  await createAccount(page, 'Conta Corrente E2E', { type: 'checking' });
 
   // Create expense category
   await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
@@ -500,37 +474,8 @@ test('view fatura details and pay it', async ({ page }) => {
 test('revert fatura payment', async ({ page }) => {
   await login(page);
 
-  // Create credit card account
-  await page.goto('/settings/accounts');
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Cartão E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
-
-  // Wait for billing config fields to appear and set them
-  await expect(accountDialog.getByLabel('Saldo Inicial')).toBeVisible();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await expect(accountDialog.getByLabel('Dia do Fechamento (1-28)')).toBeVisible();
-  await accountDialog.getByLabel('Dia do Fechamento (1-28)').click();
-  await page.getByRole('option', { name: '1' }).first().click();
-  await accountDialog.getByLabel('Dia do Vencimento (1-28)').click();
-  await page.getByRole('option', { name: '10' }).first().click();
-  await accountDialog.getByLabel('Limite de Crédito').pressSequentially('5000');
-
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
-
-  // Create checking account for payment
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Conta Corrente E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
+  await createAccount(page, 'Cartão E2E', { type: 'credit_card' });
+  await createAccount(page, 'Conta Corrente E2E', { type: 'checking' });
 
   // Create expense category
   await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);
@@ -597,37 +542,8 @@ test('revert fatura payment', async ({ page }) => {
 test('convert expense to fatura payment', async ({ page }) => {
   await login(page);
 
-  // Create credit card account
-  await page.goto('/settings/accounts');
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  const accountDialog = page.getByRole('alertdialog', { name: 'Adicionar Conta' });
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Cartão Convert E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Cartão de crédito' }).first().click();
-
-  // Wait for billing config fields to appear and set them
-  await expect(accountDialog.getByLabel('Saldo Inicial')).toBeVisible();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await expect(accountDialog.getByLabel('Dia do Fechamento (1-28)')).toBeVisible();
-  await accountDialog.getByLabel('Dia do Fechamento (1-28)').click();
-  await page.getByRole('option', { name: '1' }).first().click();
-  await accountDialog.getByLabel('Dia do Vencimento (1-28)').click();
-  await page.getByRole('option', { name: '10' }).first().click();
-  await accountDialog.getByLabel('Limite de Crédito').pressSequentially('5000');
-
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
-
-  // Create checking account
-  await page.getByRole('button', { name: 'Adicionar Conta' }).click();
-  await expect(accountDialog).toBeVisible();
-  await accountDialog.getByLabel('Nome').fill('Corrente Convert E2E');
-  await accountDialog.getByLabel('Tipo').click();
-  await page.getByRole('option', { name: 'Conta corrente' }).first().click();
-  await accountDialog.getByLabel('Saldo Inicial').fill('0');
-  await accountDialog.getByRole('button', { name: 'Criar' }).click();
-  await expect(accountDialog).toBeHidden();
+  await createAccount(page, 'Cartão Convert E2E', { type: 'credit_card' });
+  await createAccount(page, 'Corrente Convert E2E', { type: 'checking' });
 
   // Create expense category
   await createCategory(page, 'Categorias de Despesa', EXPENSE_CATEGORY);

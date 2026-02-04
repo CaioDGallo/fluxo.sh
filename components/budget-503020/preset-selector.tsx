@@ -25,12 +25,13 @@ interface PresetSelectorProps {
   currentPreset: PresetType;
 }
 
-const PRESETS = ['na_risca', 'entrando_na_linha'] as const;
+const PRESETS = ['na_risca', 'entrando_na_linha', 'saindo_das_dividas'] as const;
 
 // Map snake_case preset values to camelCase translation keys
 const PRESET_KEY_MAP: Record<PresetType, string> = {
   na_risca: 'naRisca',
   entrando_na_linha: 'entrandoNaLinha',
+  saindo_das_dividas: 'saindoDasDividas',
   custom: 'custom',
 };
 

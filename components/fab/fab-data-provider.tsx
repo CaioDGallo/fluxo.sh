@@ -17,7 +17,7 @@ type FABData = {
 type FABDataContextValue = {
   data: FABData | null;
   isLoading: boolean;
-  fetchData: () => Promise<void>;
+  fetchData: (force?: boolean) => Promise<void>;
 };
 
 const FABDataContext = createContext<FABDataContextValue | undefined>(undefined);
@@ -26,8 +26,8 @@ export function FABDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<FABData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    if (data) return; // Already cached
+  const fetchData = useCallback(async (force = false) => {
+    if (data && !force) return;
 
     setIsLoading(true);
     try {

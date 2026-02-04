@@ -8,8 +8,10 @@ import {
   Add01Icon,
   ArrowUpBigIcon,
   ArrowDownBigIcon,
+  Wallet01Icon,
 } from '@hugeicons/core-free-icons';
 import { TransactionForm } from '@/components/transaction-form';
+import { AccountCreateFlow } from '@/components/account-create-flow';
 import { Button } from '@/components/ui/button';
 import { useFABData } from './fab-data-provider';
 
@@ -18,6 +20,7 @@ export function FABSpeedDial() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [showAccountFlow, setShowAccountFlow] = useState(false);
   const { data, isLoading, fetchData } = useFABData();
 
   // Close on Escape key
@@ -39,12 +42,14 @@ export function FABSpeedDial() {
     setIsExpanded(!isExpanded);
   };
 
-  const handleOptionClick = (type: 'expense' | 'income') => {
+  const handleOptionClick = (type: 'expense' | 'income' | 'account') => {
     setIsExpanded(false);
     if (type === 'expense') {
       setShowExpenseForm(true);
-    } else {
+    } else if (type === 'income') {
       setShowIncomeForm(true);
+    } else {
+      setShowAccountFlow(true);
     }
   };
 
@@ -64,47 +69,49 @@ export function FABSpeedDial() {
         {/* Speed Dial Options */}
         {isExpanded && (
           <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-            {/* Income Button */}
-            <div className="flex items-center gap-3 group">
-              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-none px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                {t('income')}
-              </span>
-              <Button
-                type="button"
-                variant="hollow"
-                size="icon-lg"
-                onClick={() => handleOptionClick('income')}
-                disabled={isLoading}
-                aria-label={t('income')}
-                className={cn(
-                  'rounded-none bg-green-500 text-white hover:bg-green-600 border-2 border-black',
-                  isLoading && 'opacity-50 pointer-events-none'
-                )}
-              >
-                <HugeiconsIcon icon={ArrowUpBigIcon} strokeWidth={2.5} className="size-6" />
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="popout"
+              size="lg"
+              onClick={() => handleOptionClick('account')}
+              aria-label={t('account')}
+              className="h-12 rounded-none bg-blue-600/70 text-white hover:bg-blue-600 border-2 border-black gap-3 px-4"
+            >
+              <HugeiconsIcon icon={Wallet01Icon} strokeWidth={2.5} className="size-5" />
+              <span className="text-sm font-semibold">{t('account')}</span>
+            </Button>
 
-            {/* Expense Button */}
-            <div className="flex items-center gap-3 group">
-              <span className="bg-background/95 backdrop-blur-sm border border-border rounded-none px-3 py-1.5 text-sm font-medium shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                {t('expense')}
-              </span>
-              <Button
-                type="button"
-                variant="hollow"
-                size="icon-lg"
-                onClick={() => handleOptionClick('expense')}
-                disabled={isLoading}
-                aria-label={t('expense')}
-                className={cn(
-                  'rounded-none bg-red-500 text-white hover:bg-red-600 border-2 border-black',
-                  isLoading && 'opacity-50 pointer-events-none'
-                )}
-              >
-                <HugeiconsIcon icon={ArrowDownBigIcon} strokeWidth={2.5} className="size-6" />
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="popout"
+              size="lg"
+              onClick={() => handleOptionClick('income')}
+              disabled={isLoading}
+              aria-label={t('income')}
+              className={cn(
+                'h-12 rounded-none bg-green-600/70 text-white hover:bg-green-600 border-2 border-black gap-3 px-4',
+                isLoading && 'opacity-50 pointer-events-none'
+              )}
+            >
+              <HugeiconsIcon icon={ArrowUpBigIcon} strokeWidth={2.5} className="size-5" />
+              <span className="text-sm font-semibold">{t('income')}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="popout"
+              size="lg"
+              onClick={() => handleOptionClick('expense')}
+              disabled={isLoading}
+              aria-label={t('expense')}
+              className={cn(
+                'h-12 rounded-none bg-red-600/70 text-white hover:bg-red-600 border-2 border-black gap-3 px-4',
+                isLoading && 'opacity-50 pointer-events-none'
+              )}
+            >
+              <HugeiconsIcon icon={ArrowDownBigIcon} strokeWidth={2.5} className="size-5" />
+              <span className="text-sm font-semibold">{t('expense')}</span>
+            </Button>
           </div>
         )}
 
@@ -152,6 +159,14 @@ export function FABSpeedDial() {
           />
         </>
       )}
+
+      <AccountCreateFlow
+        open={showAccountFlow}
+        onOpenChange={setShowAccountFlow}
+        onSuccess={() => {
+          void fetchData(true);
+        }}
+      />
     </>
   );
 }

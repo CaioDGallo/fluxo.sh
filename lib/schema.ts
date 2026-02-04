@@ -33,7 +33,7 @@ export const billingSubscriptionStatusEnum = pgEnum('billing_subscription_status
 
 // Enums for 50/30/20 budget methodology
 export const budgetBucketEnum = pgEnum('budget_bucket', ['necessities', 'wants', 'savings']);
-export const budgetPresetEnum = pgEnum('budget_preset', ['na_risca', 'entrando_na_linha', 'custom']);
+export const budgetPresetEnum = pgEnum('budget_preset', ['na_risca', 'entrando_na_linha', 'saindo_das_dividas', 'custom']);
 
 // Accounts table
 export const accounts = pgTable('accounts', {

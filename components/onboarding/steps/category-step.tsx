@@ -10,6 +10,8 @@ import { useTranslations } from 'next-intl';
 import { createCategory } from '@/lib/actions/categories';
 import { IconPicker, type IconName } from '@/components/icon-picker';
 import { toast } from 'sonner';
+import { CategoryBucketPicker } from '@/components/category-bucket-picker';
+import type { BucketType } from '@/lib/actions/budget-503020';
 
 const PRESET_COLORS = [
   '#ef4444', // red
@@ -28,6 +30,7 @@ export function CategoryStep() {
   const [name, setName] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [icon, setIcon] = useState<IconName | null>(null);
+  const [bucket, setBucket] = useState<BucketType | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async () => {
@@ -41,6 +44,7 @@ export function CategoryStep() {
       name: name.trim(),
       color,
       icon,
+      bucket,
       type: 'expense',
     });
     setIsCreating(false);
@@ -84,7 +88,7 @@ export function CategoryStep() {
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className="size-8 rounded-full border-2 transition-all hover:scale-110"
+                  className="size-8 rounded-none border-2 transition-all hover:scale-110"
                   style={{
                     backgroundColor: c,
                     borderColor: color === c ? 'currentColor' : 'transparent',
@@ -95,9 +99,16 @@ export function CategoryStep() {
             </div>
           </div>
 
-          <div className="space-y-2 pb-4 max-h-32">
-            <Label>{t('iconLabel')}</Label>
-            <IconPicker value={icon} onChange={setIcon} />
+          <Label>{t('iconLabel')}</Label>
+          <div className="overflow-y-auto space-y-2 pb-4 max-h-46">
+            <div className='border border-black p-2'>
+              <IconPicker value={icon} onChange={setIcon} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t('bucketLabel')}</Label>
+            <CategoryBucketPicker value={bucket} onChange={setBucket} />
           </div>
         </div>
       </div>

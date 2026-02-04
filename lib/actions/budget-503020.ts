@@ -25,10 +25,11 @@ type ActionResult<T = void> =
 const PRESETS = {
   na_risca: { necessities: 50, wants: 30, savings: 20 },
   entrando_na_linha: { necessities: 60, wants: 30, savings: 10 },
+  saindo_das_dividas: { necessities: 70, wants: 25, savings: 5 },
 } as const;
 
 export type BucketType = 'necessities' | 'wants' | 'savings';
-export type PresetType = 'na_risca' | 'entrando_na_linha' | 'custom';
+export type PresetType = 'na_risca' | 'entrando_na_linha' | 'saindo_das_dividas' | 'custom';
 
 export interface BucketData {
   bucket: BucketType;

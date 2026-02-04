@@ -1,0 +1,1 @@
+ALTER TYPE "public"."budget_preset" ADD VALUE 'saindo_das_dividas' BEFORE 'custom';

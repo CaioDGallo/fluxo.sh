@@ -4,20 +4,12 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { getAccountsWithBalances } from '@/lib/actions/accounts';
 import type { Account } from '@/lib/schema';
-import { AccountForm } from '@/components/account-form';
+import { AccountCreateFlow } from '@/components/account-create-flow';
 import { AccountCard } from '@/components/account-card';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
 
 export default function AccountsPage() {
-  const [addOpen, setAddOpen] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const t = useTranslations('accounts');
@@ -53,22 +45,10 @@ export default function AccountsPage() {
       <div className="mb-6 flex items-center flex-col md:flex-row space-y-4 md:space-y-0 justify-between">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
         <div className="flex items-center gap-2">
-          <AlertDialog open={addOpen} onOpenChange={setAddOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="hollow">{t('addAccount')}</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent closeOnBackdropClick>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('addAccount')}</AlertDialogTitle>
-              </AlertDialogHeader>
-              <AccountForm
-                onSuccess={async () => {
-                  await handleAccountsChanged();
-                  setAddOpen(false);
-                }}
-              />
-            </AlertDialogContent>
-          </AlertDialog>
+          <AccountCreateFlow
+            onSuccess={handleAccountsChanged}
+            trigger={<Button variant="hollow">{t('addAccount')}</Button>}
+          />
         </div>
       </div>
 

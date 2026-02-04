@@ -4,6 +4,7 @@ import type { BucketType, PresetType } from '@/lib/actions/budget-503020';
 const PRESETS = {
   na_risca: { necessities: 50, wants: 30, savings: 20 },
   entrando_na_linha: { necessities: 60, wants: 30, savings: 10 },
+  saindo_das_dividas: { necessities: 70, wants: 25, savings: 5 },
 } as const;
 
 export type BudgetRow = {

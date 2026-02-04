@@ -13,13 +13,14 @@ import { cn } from '@/lib/utils';
 import { WelcomeStep } from './steps/welcome-step';
 import { AccountStep } from './steps/account-step';
 import { CategoryStep } from './steps/category-step';
+import { PresetStep } from './steps/preset-step';
 import { BudgetStep } from './steps/budget-step';
 import { PreferencesStep } from './steps/preferences-step';
 import { CompletionStep } from './steps/completion-step';
 import { skipOnboarding } from '@/lib/actions/onboarding';
 import { useTranslations } from 'next-intl';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 export function OnboardingWizard() {
   const t = useTranslations('onboarding');
@@ -48,10 +49,12 @@ export function OnboardingWizard() {
       case 2:
         return <CategoryStep />;
       case 3:
-        return <BudgetStep />;
+        return <PresetStep />;
       case 4:
-        return <PreferencesStep />;
+        return <BudgetStep />;
       case 5:
+        return <PreferencesStep />;
+      case 6:
         return <CompletionStep />;
       default:
         return <WelcomeStep />;
@@ -88,7 +91,7 @@ export function OnboardingWizard() {
               <div
                 key={i}
                 className={cn(
-                  'size-2.5 rounded-full transition-colors',
+                  'size-2.5 rounded-none transition-colors',
                   i <= currentStep ? 'bg-foreground' : 'bg-muted'
                 )}
               />

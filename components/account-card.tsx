@@ -191,20 +191,14 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
 
         {!isSynced && (
           <>
-            <AlertDialog open={editOpen} onOpenChange={setEditOpen}>
-              <AlertDialogContent closeOnBackdropClick>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{tCommon('edit')} {t('title')}</AlertDialogTitle>
-                </AlertDialogHeader>
-                <AccountForm
-                  account={account}
-                  onSuccess={async () => {
-                    await onChange?.();
-                    setEditOpen(false);
-                  }}
-                />
-              </AlertDialogContent>
-            </AlertDialog>
+            <AccountForm
+              account={account}
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onSuccess={async () => {
+                await onChange?.();
+              }}
+            />
 
             <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
               <AlertDialogContent>

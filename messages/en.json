@@ -127,10 +127,11 @@
     "logoutConfirmDescription": "You will be signed out and need to log in again to access your account."
   },
   "fab": {
-    "addTransaction": "Add transaction",
+    "addTransaction": "Add",
     "close": "Close",
     "expense": "Expense",
-    "income": "Income"
+    "income": "Income",
+    "account": "Account"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -289,6 +290,9 @@
       "entrandoNaLinha": "Getting Started",
       "entrandoNaLinhaDescription": "60% Necessities, 30% Wants, 10% Savings",
       "entrandoNaLinhaDetail": "Recommended for those beginning to organize their finances",
+      "saindoDasDividas": "Getting out of debt",
+      "saindoDasDividasDescription": "70% Necessities, 25% Wants, 5% Savings",
+      "saindoDasDividasDetail": "For people paying down debt and rebuilding control",
       "configure": "Configure 50/30/20 Method",
       "chooseModel": "Choose the distribution model that best fits your financial moment",
       "updateSuccess": "Method updated successfully",
@@ -394,6 +398,12 @@
   "accounts": {
     "title": "Accounts",
     "addAccount": "Add Account",
+    "addAccountFlowTitle": "How do you want to add?",
+    "addAccountFlowDescription": "Choose the account type to continue.",
+    "addAccountAutomatic": "Automatic",
+    "addAccountAutomaticDescription": "Connect your bank via Open Finance and sync transactions.",
+    "addAccountManual": "Manual",
+    "addAccountManualDescription": "Create and manage everything manually.",
     "recalculateBalances": "Recalculate balances",
     "creditCards": "Credit Cards",
     "checkingAccounts": "Checking Accounts",
@@ -1474,7 +1484,7 @@
     "methodWantsText": "30% for daily choices: leisure, shopping, experiences.",
     "methodSavingsTitle": "Savings",
     "methodSavingsText": "20% for reserves and the future: investments and goals.",
-    "methodPresets": "Ready presets: By the Book and Getting Started.",
+    "methodPresets": "Ready presets: By the Book, Getting Started, and Getting out of debt.",
     "flowTitle": "Meu Fluxo: daily decisions, no spreadsheets",
     "flowSubtitle": "See what you can spend today, your monthly pace, and group progress.",
     "flowCardTitle": "Available to spend today",
@@ -1608,11 +1618,18 @@
       "namePlaceholder": "e.g. Food, Transport",
       "colorLabel": "Color",
       "iconLabel": "Icon",
+      "bucketLabel": "50/30/20 group",
       "skip": "Skip",
       "create": "Create",
       "creating": "Creating...",
       "nameRequired": "Category name is required",
       "categoryCreated": "Category created successfully!"
+    },
+    "preset": {
+      "title": "Choose your 50/30/20 model",
+      "description": "Select the model that matches your current financial moment.",
+      "skip": "Skip",
+      "continue": "Continue"
     },
     "budget": {
       "title": "Set a budget",

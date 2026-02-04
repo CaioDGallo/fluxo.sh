@@ -32,7 +32,6 @@ let waitlistLimiter: Ratelimit | null = null;
 let bulkLimiter: Ratelimit | null = null;
 let crudLimiter: Ratelimit | null = null;
 let destructiveLimiter: Ratelimit | null = null;
-let calendarSyncLimiter: Ratelimit | null = null;
 
 function initializeRateLimiters() {
   if (redis) return; // Already initialized
@@ -87,11 +86,6 @@ function initializeRateLimiters() {
     prefix: 'ratelimit:destructive',
   });
 
-  calendarSyncLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, '60 s'),
-    prefix: 'ratelimit:calendar-sync',
-  });
 }
 
 export async function getClientIP(): Promise<string> {
@@ -170,8 +164,4 @@ export async function checkCrudRateLimit(userId: string): Promise<RateLimitResul
 
 export async function checkDestructiveRateLimit(userId: string): Promise<RateLimitResult> {
   return checkLimit(() => destructiveLimiter, userId);
-}
-
-export async function checkCalendarSyncRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(() => calendarSyncLimiter, userId);
 }

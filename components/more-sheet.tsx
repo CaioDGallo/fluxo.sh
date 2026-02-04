@@ -9,7 +9,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
   Analytics01Icon,
-  Calendar03Icon,
   CreditCardIcon,
   FileDownloadIcon,
   Home01Icon,
@@ -40,7 +39,6 @@ const moreItems = [
   { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
-  { key: 'calendar', href: '/calendar', icon: Calendar03Icon },
   { key: 'settings', href: '/settings', icon: Settings02Icon },
   { key: 'home', href: '/', icon: Home01Icon },
 ];

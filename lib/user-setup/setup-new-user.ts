@@ -109,8 +109,6 @@ export async function setupNewUser(
         locale: 'pt-BR',
         notificationEmail: user.email,
         notificationsEnabled: true,
-        defaultEventOffsetMinutes: 60,
-        defaultTaskOffsetMinutes: 60,
       });
     } catch (error) {
       console.error('[setup-new-user] User settings creation failed (non-critical):', error);

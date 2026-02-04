@@ -84,27 +84,12 @@ export async function updateUserSettings(data: Partial<Omit<NewUserSettings, 'id
       return { success: false, error: await t('errors.invalidLocale') };
     }
 
-    // Validate default event offset minutes (0-10080 = 1 week)
-    if (data.defaultEventOffsetMinutes !== undefined && data.defaultEventOffsetMinutes !== null) {
-      if (data.defaultEventOffsetMinutes < 0 || data.defaultEventOffsetMinutes > 10080) {
-        return { success: false, error: await t('errors.invalidOffsetMinutes') };
-      }
-    }
-
-    // Validate default task offset minutes (0-10080 = 1 week)
-    if (data.defaultTaskOffsetMinutes !== undefined && data.defaultTaskOffsetMinutes !== null) {
-      if (data.defaultTaskOffsetMinutes < 0 || data.defaultTaskOffsetMinutes > 10080) {
-        return { success: false, error: await t('errors.invalidOffsetMinutes') };
-      }
-    }
-
     await db
       .update(userSettings)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(userSettings.userId, userId));
 
     revalidatePath('/settings');
-    revalidatePath('/calendar');
     return { success: true };
   } catch (error) {
     console.error('[user-settings:update] Failed:', error);

@@ -93,14 +93,6 @@ describe('User Settings Actions', () => {
     expect(result).toEqual({ success: false, error: 'errors.invalidEmail' });
   });
 
-  it('validates offset minutes', async () => {
-    const result1 = await updateUserSettings({ defaultEventOffsetMinutes: -1 });
-    expect(result1).toEqual({ success: false, error: 'errors.invalidOffsetMinutes' });
-
-    const result2 = await updateUserSettings({ defaultTaskOffsetMinutes: 10081 });
-    expect(result2).toEqual({ success: false, error: 'errors.invalidOffsetMinutes' });
-  });
-
   it('updates settings and revalidates paths', async () => {
     await db.insert(schema.userSettings).values({ userId: TEST_USER_ID });
 
@@ -108,7 +100,6 @@ describe('User Settings Actions', () => {
       timezone: 'America/Sao_Paulo',
       notificationEmail: 'new@example.com',
       notificationsEnabled: false,
-      defaultEventOffsetMinutes: 30,
     });
 
     expect(result).toEqual({ success: true });
@@ -122,10 +113,8 @@ describe('User Settings Actions', () => {
       timezone: 'America/Sao_Paulo',
       notificationEmail: 'new@example.com',
       notificationsEnabled: false,
-      defaultEventOffsetMinutes: 30,
     });
 
     expect(revalidatePathMock).toHaveBeenCalledWith('/settings');
-    expect(revalidatePathMock).toHaveBeenCalledWith('/calendar');
   });
 });

@@ -83,7 +83,6 @@
     "invalidTimezone": "Invalid timezone identifier",
     "invalidLocale": "Invalid locale",
     "invalidEmail": "Invalid email address format",
-    "invalidOffsetMinutes": "Notification offset must be between 0 and 10080 minutes (1 week)",
     "duplicateEntry": "This entry already exists",
     "relatedRecordNotFound": "Related record not found or access denied",
     "requiredFieldMissing": "Required field is missing",
@@ -114,10 +113,7 @@
     "plan": "Plan",
     "accounts": "Accounts",
     "categories": "Categories",
-    "calendars": "Calendars",
-    "calendar": "Calendar",
     "openFinance": "Open Finance",
-    "tasks": "Tasks",
     "bills": "Bills",
     "reminders": "Reminders",
     "preferences": "Preferences",
@@ -235,8 +231,6 @@
     "categoriesDescription": "Manage expense categories",
     "budgets": "Budgets",
     "budgetsDescription": "Set monthly budgets per category",
-    "calendars": "Calendars",
-    "calendarsDescription": "Sync external calendars (Google, Outlook, Apple)",
     "openFinance": "Open Finance",
     "openFinanceDescription": "Connect banks and track sync status",
     "data": "Settings",
@@ -734,106 +728,6 @@
     "failedToRead": "Failed to read file",
     "dragAndDropText": "Drag and drop file here, or click to select"
   },
-  "calendar": {
-    "title": "Calendar",
-    "events": "Events",
-    "tasks": "Tasks",
-    "type": "Type",
-    "statusLabel": "Status",
-    "priorityLabel": "Priority",
-    "allTypes": "Types",
-    "allStatus": "Status",
-    "allPriorities": "Priorities",
-    "legend": "Legend",
-    "addEvent": "Add Event",
-    "addTask": "Add Task",
-    "editEvent": "Edit Event",
-    "editTask": "Edit Task",
-    "deleteEventTitle": "Delete event?",
-    "deleteTaskTitle": "Delete task?",
-    "loading": "Loading…",
-    "edit": "Edit",
-    "delete": "Delete",
-    "filter": {
-      "events": "Events",
-      "tasks": "Tasks",
-      "billReminders": "Bills",
-      "hideCompleted": "Hide Completed",
-      "showCompleted": "Show Completed"
-    },
-    "status": {
-      "scheduled": "Scheduled",
-      "pending": "Pending",
-      "inProgress": "In Progress",
-      "completed": "Completed",
-      "cancelled": "Cancelled"
-    },
-    "priority": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "critical": "Critical"
-    },
-    "detail": {
-      "sheetDescription": "{type} details",
-      "typeNames": {
-        "event": "Event",
-        "task": "Task"
-      },
-      "toLabel": "to",
-      "durationLabel": "Duration",
-      "allDayLabel": "All day",
-      "daysLabel": "{count} days"
-    }
-  },
-  "eventForm": {
-    "title": "Title",
-    "titlePlaceholder": "Meeting with team",
-    "description": "Description",
-    "descriptionPlaceholder": "Add details about the event...",
-    "location": "Location",
-    "locationPlaceholder": "Conference room A",
-    "allDay": "All Day",
-    "yes": "Yes",
-    "no": "No",
-    "startDate": "Start Date",
-    "endDate": "End Date",
-    "startTime": "Start Time",
-    "endTime": "End Time",
-    "priority": "Priority",
-    "priorityLow": "Low",
-    "priorityMedium": "Medium",
-    "priorityHigh": "High",
-    "priorityCritical": "Critical",
-    "invalidDateTime": "End date/time must be after start date/time"
-  },
-  "taskForm": {
-    "title": "Title",
-    "titlePlaceholder": "Complete project report",
-    "description": "Description",
-    "descriptionPlaceholder": "Add details about the task...",
-    "location": "Location",
-    "locationPlaceholder": "Office",
-    "dueDate": "Due Date",
-    "dueTime": "Due Time",
-    "hasTime": "Has Start Time",
-    "yes": "Yes",
-    "no": "No",
-    "startTime": "Start Time",
-    "duration": "Duration (minutes)",
-    "priority": "Priority",
-    "priorityLow": "Low",
-    "priorityMedium": "Medium",
-    "priorityHigh": "High",
-    "priorityCritical": "Critical",
-    "status": "Status",
-    "statusPending": "Pending",
-    "statusInProgress": "In Progress",
-    "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled",
-    "statusOverdue": "Overdue",
-    "invalidDateTime": "Start time must be before due time"
-  },
   "preferences": {
     "title": "Preferences",
     "timezone": "Timezone",
@@ -841,8 +735,6 @@
     "notificationEmailPlaceholder": "your@email.com",
     "notificationsEnabled": "Enable Notifications",
     "digestScheduleNote": "Daily digest emails are sent at 9:00 AM in your selected timezone",
-    "defaultEventOffset": "Default Event Notification Offset",
-    "defaultTaskOffset": "Default Task Notification Offset",
     "push": {
       "label": "Push Notifications",
       "description": "Receive alerts on your device",
@@ -871,12 +763,6 @@
     "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "push": {
-    "event": {
-      "title": "Event Reminder"
-    },
-    "task": {
-      "title": "Task Reminder"
-    },
     "billReminder": {
       "todayTitle": "Bill due today!",
       "tomorrowTitle": "Bill due tomorrow",
@@ -907,22 +793,6 @@
       "enabling": "Enabling...",
       "dismiss": "Not now"
     }
-  },
-  "quickAdd": {
-    "placeholder": "e.g., Dentist tomorrow at 9 for 30m p1"
-  },
-  "recurrence": {
-    "repeat": "Repeat",
-    "never": "Never",
-    "daily": "Daily",
-    "weekly": "Weekly",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
-    "ends": "Ends",
-    "endsNever": "Never",
-    "endsAfter": "After",
-    "endsOn": "On date",
-    "occurrences": "occurrences"
   },
   "parsers": {
     "nubank": {
@@ -962,34 +832,6 @@
       }
     }
   },
-  "calendarSources": {
-    "title": "Calendar Subscriptions",
-    "description": "Sync events from external calendars",
-    "addCalendar": "Add Calendar",
-    "editCalendar": "Edit Calendar",
-    "deleteCalendar": "Delete Calendar",
-    "deleteWarning": "All synced events from this calendar will be removed.",
-    "noCalendarsYet": "No calendars yet. Add your first calendar subscription.",
-    "lastSynced": "Last synced",
-    "syncFailed": "Sync failed",
-    "enable": "Enable",
-    "disable": "Disable",
-    "status": {
-      "active": "Active",
-      "error": "Error",
-      "disabled": "Disabled"
-    }
-  },
-  "calendarSourceForm": {
-    "name": "Name",
-    "namePlaceholder": "Work Calendar",
-    "url": "Calendar URL (iCal)",
-    "color": "Color",
-    "test": "Test",
-    "testing": "Testing...",
-    "testSuccess": "Found {count} events in \"{name}\"",
-    "testFailed": "Failed to fetch or parse calendar"
-  },
   "billReminders": {
     "title": "Bill Reminders",
     "activeReminders": "Active Reminders",
@@ -1019,7 +861,6 @@
       "atTime": "at {time}",
       "recurrenceLabel": "Recurrence",
       "ends": "Ends {endMonth}",
-      "infoNote": "Bill reminders are view-only from the calendar. To edit this reminder, visit the Reminders page.",
       "status": {
         "active": "Active",
         "paused": "Paused",

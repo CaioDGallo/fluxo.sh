@@ -1,4 +1,4 @@
-import { boolean, date, integer, pgEnum, pgTable, serial, text, timestamp, unique, check } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgEnum, pgTable, serial, text, timestamp, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Export Auth.js schema tables
@@ -11,14 +11,10 @@ export const accountSourceEnum = pgEnum('account_source', ['manual', 'pluggy']);
 // Enum for category types
 export const categoryTypeEnum = pgEnum('category_type', ['expense', 'income']);
 
-// Enums for events and tasks
-export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'critical']);
-export const eventStatusEnum = pgEnum('event_status', ['scheduled', 'cancelled', 'completed']);
-export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', 'completed', 'cancelled', 'overdue']);
-export const itemTypeEnum = pgEnum('item_type', ['event', 'task', 'bill_reminder']);
+// Enums for notifications
+export const itemTypeEnum = pgEnum('item_type', ['bill_reminder']);
 export const notificationChannelEnum = pgEnum('notification_channel', ['email', 'push']);
 export const notificationStatusEnum = pgEnum('notification_status', ['pending', 'sent', 'failed', 'cancelled']);
-export const calendarSourceStatusEnum = pgEnum('calendar_source_status', ['active', 'error', 'disabled']);
 export const billReminderStatusEnum = pgEnum('bill_reminder_status', ['active', 'paused', 'completed']);
 export const billStatusEnum = pgEnum('bill_status', ['active', 'paused', 'archived']);
 export const billOccurrenceStatusEnum = pgEnum('bill_occurrence_status', [
@@ -346,95 +342,11 @@ export const categoryFrequency = pgTable(
   })
 );
 
-// Calendar sources table (external iCal subscriptions)
-export const calendarSources = pgTable('calendar_sources', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  name: text('name').notNull(),
-  url: text('url').notNull(),
-  status: calendarSourceStatusEnum('status').notNull().default('active'),
-  color: text('color').default('#3b82f6'),
-  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
-  lastError: text('last_error'),
-  syncToken: text('sync_token'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  uniqueUserUrl: unique().on(table.userId, table.url),
-}));
-
-// Events table
-export const events = pgTable('events', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  title: text('title').notNull(),
-  description: text('description'),
-  location: text('location'),
-  startAt: timestamp('start_at', { withTimezone: true }).notNull(),
-  endAt: timestamp('end_at', { withTimezone: true }).notNull(),
-  isAllDay: boolean('is_all_day').notNull().default(false),
-  priority: priorityEnum('priority').notNull().default('medium'),
-  status: eventStatusEnum('status').notNull().default('scheduled'),
-  externalId: text('external_id'),
-  calendarSourceId: integer('calendar_source_id').references(() => calendarSources.id, { onDelete: 'cascade' }),
-  externalUpdatedAt: timestamp('external_updated_at', { withTimezone: true }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  startBeforeEnd: check('start_before_end', sql`${table.startAt} < ${table.endAt}`),
-}));
-
-// Tasks table
-export const tasks = pgTable('tasks', {
-  id: serial('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  title: text('title').notNull(),
-  description: text('description'),
-  location: text('location'),
-  dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
-  startAt: timestamp('start_at', { withTimezone: true }),
-  durationMinutes: integer('duration_minutes'),
-  priority: priorityEnum('priority').notNull().default('medium'),
-  status: taskStatusEnum('status').notNull().default('pending'),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  startBeforeDue: check('start_before_due', sql`${table.startAt} IS NULL OR ${table.startAt} <= ${table.dueAt}`),
-  durationPositive: check('duration_positive', sql`${table.durationMinutes} IS NULL OR ${table.durationMinutes} > 0`),
-  completedAtStatusInvariant: check('completed_at_status_invariant', sql`
-    (${table.status} = 'completed' AND ${table.completedAt} IS NOT NULL) OR
-    (${table.status} != 'completed' AND ${table.completedAt} IS NULL)
-  `),
-}));
-
-// Recurrence rules table
-export const recurrenceRules = pgTable('recurrence_rules', {
-  id: serial('id').primaryKey(),
-  itemType: itemTypeEnum('item_type').notNull(),
-  itemId: integer('item_id').notNull(),
-  rrule: text('rrule').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// Notifications table
-export const notifications = pgTable('notifications', {
-  id: serial('id').primaryKey(),
-  itemType: itemTypeEnum('item_type').notNull(),
-  itemId: integer('item_id').notNull(),
-  channel: notificationChannelEnum('channel').notNull(),
-  offsetMinutes: integer('offset_minutes').notNull(),
-  enabled: boolean('enabled').notNull().default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
 // Notification jobs table
 export const notificationJobs = pgTable('notification_jobs', {
   id: serial('id').primaryKey(),
   itemType: itemTypeEnum('item_type').notNull(),
   itemId: integer('item_id').notNull(),
-  notificationId: integer('notification_id').references(() => notifications.id, { onDelete: 'cascade' }),
   channel: notificationChannelEnum('channel').notNull(),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
   status: notificationStatusEnum('status').notNull().default('pending'),
@@ -457,8 +369,6 @@ export const userSettings = pgTable(
     notificationsEnabled: boolean('notifications_enabled').default(true),
     pushNotificationsEnabled: boolean('push_notifications_enabled').default(false),
     pushNotificationPromptedAt: timestamp('push_notification_prompted_at'),
-    defaultEventOffsetMinutes: integer('default_event_offset_minutes').default(60),
-    defaultTaskOffsetMinutes: integer('default_task_offset_minutes').default(60),
     onboardingCompletedAt: timestamp('onboarding_completed_at'),
     onboardingSkippedAt: timestamp('onboarding_skipped_at'),
     hintsViewed: text('hints_viewed'), // JSON array: ["dashboard", "expenses", ...]
@@ -676,23 +586,8 @@ export type NewIncome = typeof income.$inferInsert;
 export type CategoryFrequency = typeof categoryFrequency.$inferSelect;
 export type NewCategoryFrequency = typeof categoryFrequency.$inferInsert;
 
-export type CalendarSource = typeof calendarSources.$inferSelect;
-export type NewCalendarSource = typeof calendarSources.$inferInsert;
-
 export type Fatura = typeof faturas.$inferSelect;
 export type NewFatura = typeof faturas.$inferInsert;
-
-export type Event = typeof events.$inferSelect;
-export type NewEvent = typeof events.$inferInsert;
-
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
-
-export type RecurrenceRule = typeof recurrenceRules.$inferSelect;
-export type NewRecurrenceRule = typeof recurrenceRules.$inferInsert;
-
-export type Notification = typeof notifications.$inferSelect;
-export type NewNotification = typeof notifications.$inferInsert;
 
 export type NotificationJob = typeof notificationJobs.$inferSelect;
 export type NewNotificationJob = typeof notificationJobs.$inferInsert;
@@ -821,34 +716,6 @@ export const faturasRelations = relations(faturas, ({ one, many }) => ({
     references: [accounts.id],
   }),
   entries: many(entries),
-}));
-
-export const calendarSourcesRelations = relations(calendarSources, ({ many }) => ({
-  events: many(events),
-}));
-
-export const eventsRelations = relations(events, ({ many, one }) => ({
-  recurrenceRules: many(recurrenceRules),
-  notifications: many(notifications),
-  notificationJobs: many(notificationJobs),
-  calendarSource: one(calendarSources, {
-    fields: [events.calendarSourceId],
-    references: [calendarSources.id],
-  }),
-}));
-
-export const tasksRelations = relations(tasks, ({ many }) => ({
-  recurrenceRules: many(recurrenceRules),
-  notifications: many(notifications),
-  notificationJobs: many(notificationJobs),
-}));
-
-export const recurrenceRulesRelations = relations(recurrenceRules, ({ many }) => ({
-  notificationJobs: many(notificationJobs),
-}));
-
-export const notificationsRelations = relations(notifications, ({ many }) => ({
-  notificationJobs: many(notificationJobs),
 }));
 
 export const userSettingsRelations = relations(userSettings, () => ({}));

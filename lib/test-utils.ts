@@ -33,8 +33,6 @@ export async function resetDatabase() {
       timezone: 'America/Sao_Paulo',
       locale: 'pt-BR',
       notificationsEnabled: true,
-      defaultEventOffsetMinutes: 60,
-      defaultTaskOffsetMinutes: 60,
     })
     .onConflictDoNothing();
 }

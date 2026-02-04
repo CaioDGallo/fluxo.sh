@@ -18,7 +18,7 @@ interface ErrorContext {
  * @param context - Additional context data (optional)
  *
  * @example
- * logError('EVENT_CREATE_FAILED', 'Failed to create event', error, { eventId: 123, userId: 'abc' });
+ * logError('DB_WRITE_FAILED', 'Failed to save record', error, { recordId: 123, userId: 'abc' });
  */
 export function logError(
   errorId: ErrorId,
@@ -56,12 +56,12 @@ export function logError(
  * Use this for diagnostic logging that helps debug issues
  * These logs are visible in development but should not trigger alerts
  *
- * @param context - Context tag (e.g., 'events:get', 'tasks:update')
+ * @param context - Context tag (e.g., 'budgets:get', 'accounts:update')
  * @param message - Debug message
  * @param data - Additional data to log (optional)
  *
  * @example
- * logForDebugging('events:get', 'Fetching events for user', { userId: 'abc' });
+ * logForDebugging('budgets:get', 'Fetching budgets for user', { userId: 'abc' });
  */
 export function logForDebugging(
   context: string,
@@ -80,11 +80,11 @@ export function logForDebugging(
  * Log analytics event for tracking user behavior and feature usage
  * Use this for product analytics, metrics, and telemetry
  *
- * @param eventName - Event name (e.g., 'event_created', 'budget_updated')
+ * @param eventName - Event name (e.g., 'budget_created', 'budget_updated')
  * @param properties - Event properties for analytics (optional)
  *
  * @example
- * logEvent('event_created', { eventType: 'meeting', hasRecurrence: true });
+ * logEvent('budget_created', { budgetType: 'monthly', hasAlerts: true });
  */
 export function logEvent(
   eventName: string,

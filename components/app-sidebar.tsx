@@ -24,7 +24,6 @@ import {
 import {
   Analytics01Icon,
   ArrowRight01Icon,
-  CalendarIcon,
   CreditCardIcon,
   Crown03Icon,
   FileDownloadIcon,
@@ -55,7 +54,6 @@ const navItems = [
 ];
 
 const settingsItems = [
-  { key: 'calendar', href: '/calendar', icon: CalendarIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },

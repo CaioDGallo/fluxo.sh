@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { processPendingNotificationJobs } from '@/lib/actions/notification-jobs';
 import { reconcileAllAccountBalances } from '@/lib/actions/accounts';
-import { updatePastItemStatuses } from '@/lib/actions/status-updates';
-import { syncAllUsersCalendars } from '@/lib/actions/calendar-sync';
 import { sendAllDailyDigests } from '@/lib/actions/daily-digest';
 import { scheduleBillReminderNotifications } from '@/lib/actions/bill-reminder-jobs';
 import { sendAllDailyPushes } from '@/lib/actions/daily-push';
@@ -31,8 +29,6 @@ export async function GET(request: Request) {
   const runNotifications = !jobOverride || jobOverride === 'notifications' || jobOverride === 'all';
   const runBillReminders = !jobOverride || jobOverride === 'bill-reminders' || jobOverride === 'all';
   const runBalanceReconciliation = !jobOverride || jobOverride === 'balance-reconciliation' || jobOverride === 'all';
-  const runStatusUpdates = !jobOverride || jobOverride === 'status-updates' || jobOverride === 'all';
-  const runCalendarSync = !jobOverride || jobOverride === 'calendar-sync' || jobOverride === 'all';
   const runDailyDigest = !jobOverride || jobOverride === 'daily-digest' || jobOverride === 'all';
   const runDailyPush = !jobOverride || jobOverride === 'daily-push' || jobOverride === 'all';
   const runRenewalReminders = !jobOverride || jobOverride === 'renewal-reminders' || jobOverride === 'all';
@@ -45,8 +41,6 @@ export async function GET(request: Request) {
 
     const results = await Promise.allSettled([
       runBalanceReconciliation ? reconcileAllAccountBalances() : Promise.resolve(null),
-      runStatusUpdates ? updatePastItemStatuses() : Promise.resolve(null),
-      runCalendarSync ? syncAllUsersCalendars() : Promise.resolve(null),
       runDailyDigest ? sendAllDailyDigests() : Promise.resolve(null),
       runDailyPush ? sendAllDailyPushes() : Promise.resolve(null),
       runRenewalReminders ? sendRenewalReminders() : Promise.resolve(null),
@@ -60,17 +54,15 @@ export async function GET(request: Request) {
 
     // Extract values and log failures
     const balanceResult = results[0].status === 'fulfilled' ? results[0].value : null;
-    const statusResult = results[1].status === 'fulfilled' ? results[1].value : null;
-    const calendarSyncResult = results[2].status === 'fulfilled' ? results[2].value : null;
-    const dailyDigestResult = results[3].status === 'fulfilled' ? results[3].value : null;
-    const dailyPushResult = results[4].status === 'fulfilled' ? results[4].value : null;
-    const renewalRemindersResult = results[5].status === 'fulfilled' ? results[5].value : null;
-    const pluggySyncResult = results[6].status === 'fulfilled' ? results[6].value : null;
+    const dailyDigestResult = results[1].status === 'fulfilled' ? results[1].value : null;
+    const dailyPushResult = results[2].status === 'fulfilled' ? results[2].value : null;
+    const renewalRemindersResult = results[3].status === 'fulfilled' ? results[3].value : null;
+    const pluggySyncResult = results[4].status === 'fulfilled' ? results[4].value : null;
 
     // Log any failures
-    const billOccurrencesResult = results[7].status === 'fulfilled' ? results[7].value : null;
+    const billOccurrencesResult = results[5].status === 'fulfilled' ? results[5].value : null;
 
-    const jobNames = ['balance-reconciliation', 'status-updates', 'calendar-sync', 'daily-digest', 'daily-push', 'renewal-reminders', 'pluggy-sync', 'bill-occurrences'];
+    const jobNames = ['balance-reconciliation', 'daily-digest', 'daily-push', 'renewal-reminders', 'pluggy-sync', 'bill-occurrences'];
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         console.error(`[cron:daily] ${jobNames[index]} failed:`, result.reason);
@@ -84,8 +76,6 @@ export async function GET(request: Request) {
       notifications: notificationResult,
       billReminders: billReminderResult,
       balanceReconciliation: balanceResult,
-      statusUpdates: statusResult,
-      calendarSync: calendarSyncResult,
       dailyDigest: dailyDigestResult,
       dailyPush: dailyPushResult,
       renewalReminders: renewalRemindersResult,

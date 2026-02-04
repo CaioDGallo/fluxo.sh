@@ -41,18 +41,13 @@ export async function clearAllTables() {
   await db.delete(schema.notificationJobs);
   await db.delete(schema.budgetAlerts);
   await db.delete(schema.billReminders);
-  await db.delete(schema.notifications);
   await db.delete(schema.userSettings);
-  await db.delete(schema.recurrenceRules);
   await db.delete(schema.income);
   await db.delete(schema.entries);
   await db.delete(schema.faturas);
   await db.delete(schema.transactions);
   await db.delete(schema.budgets);
   await db.delete(schema.monthlyBudgets);
-  await db.delete(schema.tasks);
-  await db.delete(schema.events);
-  await db.delete(schema.calendarSources);
   await db.delete(schema.categories);
   await db.delete(schema.pluggyWebhookEvents);
   await db.delete(schema.pluggySyncCursors);

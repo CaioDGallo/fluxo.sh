@@ -83,7 +83,6 @@
     "invalidTimezone": "Identificador de fuso horário inválido",
     "invalidLocale": "Idioma inválido",
     "invalidEmail": "Formato de endereço de e-mail inválido",
-    "invalidOffsetMinutes": "O intervalo de notificação deve estar entre 0 e 10080 minutos (1 semana)",
     "duplicateEntry": "Esta entrada já existe",
     "relatedRecordNotFound": "Registro relacionado não encontrado ou acesso negado",
     "requiredFieldMissing": "Campo obrigatório está faltando",
@@ -115,10 +114,7 @@
     "plan": "Plano",
     "accounts": "Contas",
     "categories": "Categorias",
-    "calendars": "Calendários",
-    "calendar": "Calendário",
     "openFinance": "Open Finance",
-    "tasks": "Tarefas",
     "bills": "Contas a Pagar",
     "reminders": "Lembretes",
     "preferences": "Preferências",
@@ -303,8 +299,6 @@
     "categoriesDescription": "Gerenciar categorias de despesas",
     "budgets": "Orçamentos",
     "budgetsDescription": "Definir orçamentos mensais por categoria",
-    "calendars": "Calendários",
-    "calendarsDescription": "Sincronizar calendários externos (Google, Outlook, Apple)",
     "openFinance": "Open Finance",
     "openFinanceDescription": "Conectar bancos e acompanhar sincronizações",
     "data": "Configurações",
@@ -751,106 +745,6 @@
     "failedToRead": "Falha ao ler arquivo",
     "dragAndDropText": "Arraste e solte o arquivo aqui, ou clique para selecionar"
   },
-  "calendar": {
-    "title": "Calendário",
-    "events": "Eventos",
-    "tasks": "Tarefas",
-    "type": "Tipo",
-    "statusLabel": "Status",
-    "priorityLabel": "Prioridade",
-    "allTypes": "Tipos",
-    "allStatus": "Status",
-    "allPriorities": "Prioridades",
-    "legend": "Legenda",
-    "addEvent": "Adicionar Evento",
-    "addTask": "Adicionar Tarefa",
-    "editEvent": "Editar Evento",
-    "editTask": "Editar Tarefa",
-    "deleteEventTitle": "Excluir evento?",
-    "deleteTaskTitle": "Excluir tarefa?",
-    "loading": "Carregando…",
-    "edit": "Editar",
-    "delete": "Excluir",
-    "filter": {
-      "events": "Eventos",
-      "tasks": "Tarefas",
-      "billReminders": "Contas",
-      "hideCompleted": "Ocultar concluídas",
-      "showCompleted": "Mostrar concluídas"
-    },
-    "status": {
-      "scheduled": "Agendado",
-      "pending": "Pendente",
-      "inProgress": "Em Progresso",
-      "completed": "Concluído",
-      "cancelled": "Cancelado"
-    },
-    "priority": {
-      "low": "Baixa",
-      "medium": "Média",
-      "high": "Alta",
-      "critical": "Crítica"
-    },
-    "detail": {
-      "sheetDescription": "Detalhes de {type}",
-      "typeNames": {
-        "event": "Evento",
-        "task": "Tarefa"
-      },
-      "toLabel": "até",
-      "durationLabel": "Duração",
-      "allDayLabel": "Dia todo",
-      "daysLabel": "{count} dias"
-    }
-  },
-  "eventForm": {
-    "title": "Título",
-    "titlePlaceholder": "Reunião com a equipe",
-    "description": "Descrição",
-    "descriptionPlaceholder": "Adicione detalhes sobre o evento...",
-    "location": "Local",
-    "locationPlaceholder": "Sala de reunião A",
-    "allDay": "Dia Todo",
-    "yes": "Sim",
-    "no": "Não",
-    "startDate": "Data de Início",
-    "endDate": "Data de Fim",
-    "startTime": "Horário de Início",
-    "endTime": "Horário de Fim",
-    "priority": "Prioridade",
-    "priorityLow": "Baixa",
-    "priorityMedium": "Média",
-    "priorityHigh": "Alta",
-    "priorityCritical": "Crítica",
-    "invalidDateTime": "Data/hora de fim deve ser após data/hora de início"
-  },
-  "taskForm": {
-    "title": "Título",
-    "titlePlaceholder": "Completar relatório do projeto",
-    "description": "Descrição",
-    "descriptionPlaceholder": "Adicione detalhes sobre a tarefa...",
-    "location": "Local",
-    "locationPlaceholder": "Escritório",
-    "dueDate": "Data de Vencimento",
-    "dueTime": "Horário de Vencimento",
-    "hasTime": "Tem Horário de Início",
-    "yes": "Sim",
-    "no": "Não",
-    "startTime": "Horário de Início",
-    "duration": "Duração (minutos)",
-    "priority": "Prioridade",
-    "priorityLow": "Baixa",
-    "priorityMedium": "Média",
-    "priorityHigh": "Alta",
-    "priorityCritical": "Crítica",
-    "status": "Status",
-    "statusPending": "Pendente",
-    "statusInProgress": "Em Progresso",
-    "statusCompleted": "Concluído",
-    "statusCancelled": "Cancelado",
-    "statusOverdue": "Atrasado",
-    "invalidDateTime": "O horário de início deve ser antes do vencimento"
-  },
   "preferences": {
     "title": "Preferências",
     "timezone": "Fuso Horário",
@@ -858,8 +752,6 @@
     "notificationEmailPlaceholder": "seu@email.com",
     "notificationsEnabled": "Habilitar Notificações",
     "digestScheduleNote": "Emails de resumo diário são enviados às 9:00 no fuso horário selecionado",
-    "defaultEventOffset": "Offset Padrão para Eventos",
-    "defaultTaskOffset": "Offset Padrão para Tarefas",
     "push": {
       "label": "Notificações Push",
       "description": "Receba alertas no seu dispositivo",
@@ -888,12 +780,6 @@
     "unexpectedError": "Ocorreu um erro inesperado. Por favor, tente novamente."
   },
   "push": {
-    "event": {
-      "title": "Lembrete de Evento"
-    },
-    "task": {
-      "title": "Lembrete de Tarefa"
-    },
     "billReminder": {
       "todayTitle": "Conta vence hoje!",
       "tomorrowTitle": "Conta vence amanhã",
@@ -951,22 +837,6 @@
       "dismiss": "Agora não"
     }
   },
-  "quickAdd": {
-    "placeholder": "ex.: Dentista amanhã às 9 por 30m p1"
-  },
-  "recurrence": {
-    "repeat": "Repetir",
-    "never": "Nunca",
-    "daily": "Diariamente",
-    "weekly": "Semanalmente",
-    "monthly": "Mensalmente",
-    "yearly": "Anualmente",
-    "ends": "Termina",
-    "endsNever": "Nunca",
-    "endsAfter": "Após",
-    "endsOn": "Em",
-    "occurrences": "ocorrências"
-  },
   "parsers": {
     "nubank": {
       "name": "Nubank Cartão de Crédito",
@@ -1005,34 +875,6 @@
       }
     }
   },
-  "calendarSources": {
-    "title": "Assinaturas de Calendário",
-    "description": "Sincronizar eventos de calendários externos",
-    "addCalendar": "Adicionar Calendário",
-    "editCalendar": "Editar Calendário",
-    "deleteCalendar": "Excluir Calendário",
-    "deleteWarning": "Todos os eventos sincronizados deste calendário serão removidos.",
-    "noCalendarsYet": "Nenhum calendário ainda. Adicione sua primeira assinatura de calendário.",
-    "lastSynced": "Última sincronização",
-    "syncFailed": "Falha na sincronização",
-    "enable": "Ativar",
-    "disable": "Desativar",
-    "status": {
-      "active": "Ativo",
-      "error": "Erro",
-      "disabled": "Desativado"
-    }
-  },
-  "calendarSourceForm": {
-    "name": "Nome",
-    "namePlaceholder": "Calendário do Trabalho",
-    "url": "URL do Calendário (iCal)",
-    "color": "Cor",
-    "test": "Testar",
-    "testing": "Testando...",
-    "testSuccess": "Encontrados {count} eventos em \"{name}\"",
-    "testFailed": "Falha ao buscar ou analisar calendário"
-  },
   "billReminders": {
     "title": "Lembretes de Contas",
     "activeReminders": "Lembretes Ativos",
@@ -1062,7 +904,6 @@
       "atTime": "às {time}",
       "recurrenceLabel": "Recorrência",
       "ends": "Termina em {endMonth}",
-      "infoNote": "Lembretes de contas são somente leitura no calendário. Para editar este lembrete, visite a página de Lembretes.",
       "status": {
         "active": "Ativo",
         "paused": "Pausado",

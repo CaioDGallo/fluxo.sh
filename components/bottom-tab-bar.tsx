@@ -77,7 +77,6 @@ export function BottomTabBar() {
 
   const isActive = (href: string | null) => href ? pathname === href : false;
   const isMoreActive =
-    pathname.startsWith('/calendar') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/faturas') ||
     pathname.startsWith('/reminders');

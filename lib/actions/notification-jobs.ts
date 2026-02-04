@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { notificationJobs, events, tasks, userSettings, billReminders, categories } from '@/lib/schema';
+import { notificationJobs, userSettings, billReminders, categories } from '@/lib/schema';
 import { eq, and, lte, inArray } from 'drizzle-orm';
 import { generateBillReminderHtml, generateBillReminderText } from '@/lib/email/bill-reminder-template';
 import { generateGroupedBillRemindersHtml, generateGroupedBillRemindersText } from '@/lib/email/bill-reminders-grouped-template';
@@ -16,24 +16,7 @@ interface ProcessNotificationJobResult {
 }
 
 type NotificationJob = typeof notificationJobs.$inferSelect;
-type EventItem = typeof events.$inferSelect;
-type TaskItem = typeof tasks.$inferSelect;
 type BillReminderItem = typeof billReminders.$inferSelect;
-
-function formatDateTimeForUser(date: Date, timeZone?: string | null): string {
-  const resolvedTimeZone = timeZone || 'UTC';
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'full',
-      timeStyle: 'short',
-      timeZone: resolvedTimeZone,
-      timeZoneName: 'short',
-    }).format(date);
-  } catch {
-    return date.toLocaleString();
-  }
-}
 
 export async function processPendingNotificationJobs(): Promise<ProcessNotificationJobResult> {
   let processed = 0;
@@ -76,27 +59,18 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
   for (const { job } of otherJobs) {
     try {
       let isValid = false;
-      let itemData: EventItem | TaskItem | BillReminderItem | null = null;
+      let itemData: BillReminderItem | null = null;
       let userId: string | null = null;
 
-      if (job.itemType === 'event') {
+      if (job.itemType === 'bill_reminder') {
         const result = await db
           .select()
-          .from(events)
-          .where(eq(events.id, job.itemId))
+          .from(billReminders)
+          .where(eq(billReminders.id, job.itemId))
           .limit(1);
         itemData = result[0] || null;
         userId = itemData?.userId || null;
-        isValid = itemData !== null && itemData.status === 'scheduled';
-      } else if (job.itemType === 'task') {
-        const result = await db
-          .select()
-          .from(tasks)
-          .where(eq(tasks.id, job.itemId))
-          .limit(1);
-        itemData = result[0] || null;
-        userId = itemData?.userId || null;
-        isValid = itemData !== null && (itemData.status === 'pending' || itemData.status === 'in_progress' || itemData.status === 'overdue');
+        isValid = itemData !== null && itemData.status === 'active';
       }
 
       if (!isValid || !userId) {
@@ -489,7 +463,7 @@ async function sendGroupedBillReminderEmail(params: {
   }
 }
 
-async function sendNotification(job: NotificationJob, itemData: EventItem | TaskItem | BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
+async function sendNotification(job: NotificationJob, itemData: BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
   if (job.channel === 'email') {
     return await sendEmailNotification(job, itemData);
   }
@@ -501,9 +475,9 @@ async function sendNotification(job: NotificationJob, itemData: EventItem | Task
   return { success: false, error: 'Unsupported channel' };
 }
 
-async function sendPushNotification(job: NotificationJob, itemData: EventItem | TaskItem | BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
+async function sendPushNotification(job: NotificationJob, itemData: BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!itemData) {
+    if (!itemData || job.itemType !== 'bill_reminder') {
       throw new Error('Item data not found');
     }
 
@@ -521,71 +495,31 @@ async function sendPushNotification(job: NotificationJob, itemData: EventItem | 
     const timeZone = settings.timezone || 'UTC';
     const locale: Locale = (settings.locale as Locale) || defaultLocale;
 
+    const nextDue = calculateNextDueDate(itemData, { timeZone });
+    const now = new Date();
+    const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    const dueDate = new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    }).format(nextDue);
+
     let title = '';
-    let body = '';
-    let url = '/dashboard';
-    let tag = 'default';
-    const type = job.itemType;
-
-    if (job.itemType === 'event' && 'startAt' in itemData) {
-      const eventItem = itemData as EventItem;
-      const eventTime = new Intl.DateTimeFormat(locale, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        timeZone,
-      }).format(new Date(eventItem.startAt));
-
-      title = translateWithLocale(locale, 'push.event.title');
-      body = `${eventItem.title} - ${eventTime}`;
-      url = '/calendar';
-      tag = `event-${eventItem.id}`;
-    } else if (job.itemType === 'task' && 'dueAt' in itemData) {
-      const taskItem = itemData as TaskItem;
-      const dueTime = new Intl.DateTimeFormat(locale, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        timeZone,
-      }).format(new Date(taskItem.dueAt));
-
-      title = translateWithLocale(locale, 'push.task.title');
-      body = `${taskItem.title} - ${dueTime}`;
-      url = '/calendar';
-      tag = `task-${taskItem.id}`;
-    } else if (job.itemType === 'bill_reminder' && 'dueDay' in itemData) {
-      const reminderItem = itemData as BillReminderItem;
-      const nextDue = calculateNextDueDate(reminderItem, { timeZone });
-      const now = new Date();
-      const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-      const dueDate = new Intl.DateTimeFormat(locale, {
-        month: 'short',
-        day: 'numeric',
-        timeZone,
-      }).format(nextDue);
-
-      if (daysUntil === 0) {
-        title = translateWithLocale(locale, 'push.billReminder.todayTitle');
-      } else if (daysUntil === 1) {
-        title = translateWithLocale(locale, 'push.billReminder.tomorrowTitle');
-      } else {
-        title = translateWithLocale(locale, 'push.billReminder.upcomingTitle', { days: daysUntil });
-      }
-
-      body = `${reminderItem.name} - ${dueDate}`;
-      url = '/dashboard';
-      tag = `bill-reminder-${reminderItem.id}`;
+    if (daysUntil === 0) {
+      title = translateWithLocale(locale, 'push.billReminder.todayTitle');
+    } else if (daysUntil === 1) {
+      title = translateWithLocale(locale, 'push.billReminder.tomorrowTitle');
+    } else {
+      title = translateWithLocale(locale, 'push.billReminder.upcomingTitle', { days: daysUntil });
     }
 
     const result = await sendPushToUser(itemData.userId, {
       title,
-      body,
-      url,
-      tag,
-      type,
+      body: `${itemData.name} - ${dueDate}`,
+      url: '/dashboard',
+      tag: `bill-reminder-${itemData.id}`,
+      type: job.itemType,
     });
 
     if (result.sent > 0) {
@@ -601,7 +535,7 @@ async function sendPushNotification(job: NotificationJob, itemData: EventItem | 
   }
 }
 
-async function sendEmailNotification(job: NotificationJob, itemData: EventItem | TaskItem | BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
+async function sendEmailNotification(job: NotificationJob, itemData: BillReminderItem | null): Promise<{ success: boolean; error?: string }> {
   try {
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
@@ -609,7 +543,7 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
       throw new Error('RESEND_API_KEY not configured');
     }
 
-    if (!itemData) {
+    if (!itemData || job.itemType !== 'bill_reminder') {
       throw new Error('Item data not found');
     }
 
@@ -628,77 +562,41 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
     const timeZone = settings.timezone || 'UTC';
     const locale: Locale = (settings.locale as Locale) || defaultLocale;
 
-    let subject = '';
-    let body = '';
-    let html: string | undefined = undefined;
+    const nextDue = calculateNextDueDate(itemData, { timeZone });
+    const now = new Date();
+    const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (job.itemType === 'event' && itemData && 'startAt' in itemData) {
-      const eventItem = itemData as EventItem;
-      const eventTime = formatDateTimeForUser(new Date(eventItem.startAt), timeZone);
-      subject = `Event Reminder: ${eventItem.title}`;
-      body = `You have an upcoming event: ${eventItem.title}\n\nTime: ${eventTime}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh'}/calendar`;
-    } else if (job.itemType === 'task' && itemData && 'dueAt' in itemData) {
-      const taskItem = itemData as TaskItem;
-      const dueDate = taskItem.dueAt
-        ? formatDateTimeForUser(new Date(taskItem.dueAt), timeZone)
-        : 'N/A';
-      subject = `Task Reminder: ${taskItem.title}`;
-      body = `You have a task due: ${taskItem.title}\n\nDue: ${dueDate}\n\nView your calendar at ${process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh'}/calendar`;
-    } else if (job.itemType === 'bill_reminder' && itemData && 'dueDay' in itemData) {
-      const reminderItem = itemData as BillReminderItem;
-      const nextDue = calculateNextDueDate(reminderItem, { timeZone });
-      const now = new Date();
-      const daysUntil = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-      // Get category if exists
-      let category = null;
-      if (reminderItem.categoryId) {
-        const [cat] = await db
-          .select()
-          .from(categories)
-          .where(eq(categories.id, reminderItem.categoryId))
-          .limit(1);
-        category = cat || null;
-      }
-
-      const emailData = {
-        reminderName: reminderItem.name,
-        amount: reminderItem.amount,
-        categoryName: category?.name || null,
-        categoryColor: category?.color || null,
-        dueDate: new Intl.DateTimeFormat(locale, {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          timeZone,
-        }).format(nextDue),
-        dueTime: reminderItem.dueTime,
-        daysUntilDue: daysUntil,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh',
-        locale,
-      };
-
-      subject = translateWithLocale(locale, 'emails.billReminder.subject', { name: reminderItem.name });
-      body = generateBillReminderText(emailData);
-      html = generateBillReminderHtml(emailData);
+    // Get category if exists
+    let category = null;
+    if (itemData.categoryId) {
+      const [cat] = await db
+        .select()
+        .from(categories)
+        .where(eq(categories.id, itemData.categoryId))
+        .limit(1);
+      category = cat || null;
     }
 
-    const emailPayload: {
-      from: string;
-      to: string;
-      subject: string;
-      text: string;
-      html?: string;
-    } = {
-      from: fromEmail,
-      to: toEmail,
-      subject,
-      text: body,
+    const emailData = {
+      reminderName: itemData.name,
+      amount: itemData.amount,
+      categoryName: category?.name || null,
+      categoryColor: category?.color || null,
+      dueDate: new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone,
+      }).format(nextDue),
+      dueTime: itemData.dueTime,
+      daysUntilDue: daysUntil,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh',
+      locale,
     };
 
-    if (html) {
-      emailPayload.html = html;
-    }
+    const subject = translateWithLocale(locale, 'emails.billReminder.subject', { name: itemData.name });
+    const textBody = generateBillReminderText(emailData);
+    const htmlBody = generateBillReminderHtml(emailData);
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -706,7 +604,13 @@ async function sendEmailNotification(job: NotificationJob, itemData: EventItem |
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(emailPayload),
+      body: JSON.stringify({
+        from: fromEmail,
+        to: toEmail,
+        subject,
+        text: textBody,
+        html: htmlBody,
+      }),
     });
 
     if (!response.ok) {

@@ -8,19 +8,14 @@ import {
   billingSubscriptions,
   budgetAlerts,
   budgets,
-  calendarSources,
   categoryFrequency,
   categories,
   entries,
-  events,
   faturas,
   fcmTokens,
   income,
   monthlyBudgets,
   notificationJobs,
-  notifications,
-  recurrenceRules,
-  tasks,
   transactions,
   usageCounters,
   userSettings,
@@ -52,24 +47,12 @@ type StripeErrorLike = {
   param?: string;
 };
 
-async function deleteItemMetadata(
-  tx: DbTransaction,
-  itemType: 'event' | 'task' | 'bill_reminder',
-  itemIds: number[]
-) {
-  if (itemIds.length === 0) return;
+async function deleteReminderJobs(tx: DbTransaction, reminderIds: number[]) {
+  if (reminderIds.length === 0) return;
 
   await tx
     .delete(notificationJobs)
-    .where(and(eq(notificationJobs.itemType, itemType), inArray(notificationJobs.itemId, itemIds)));
-
-  await tx
-    .delete(notifications)
-    .where(and(eq(notifications.itemType, itemType), inArray(notifications.itemId, itemIds)));
-
-  await tx
-    .delete(recurrenceRules)
-    .where(and(eq(recurrenceRules.itemType, itemType), inArray(recurrenceRules.itemId, itemIds)));
+    .where(and(eq(notificationJobs.itemType, 'bill_reminder'), inArray(notificationJobs.itemId, reminderIds)));
 }
 
 function isMissingStripeSubscription(error: unknown) {
@@ -137,25 +120,17 @@ export async function deleteAccount(): Promise<DeleteAccountResult> {
       );
     }
 
-    const [eventRows, taskRows, reminderRows] = await Promise.all([
-      db.select({ id: events.id }).from(events).where(eq(events.userId, userId)),
-      db.select({ id: tasks.id }).from(tasks).where(eq(tasks.userId, userId)),
-      db.select({ id: billReminders.id }).from(billReminders).where(eq(billReminders.userId, userId)),
-    ]);
+    const reminderRows = await db
+      .select({ id: billReminders.id })
+      .from(billReminders)
+      .where(eq(billReminders.userId, userId));
 
-    const eventIds = eventRows.map((row) => row.id);
-    const taskIds = taskRows.map((row) => row.id);
     const reminderIds = reminderRows.map((row) => row.id);
 
     await db.transaction(async (tx) => {
-      await deleteItemMetadata(tx, 'event', eventIds);
-      await deleteItemMetadata(tx, 'task', taskIds);
-      await deleteItemMetadata(tx, 'bill_reminder', reminderIds);
+      await deleteReminderJobs(tx, reminderIds);
 
       await tx.delete(billReminders).where(eq(billReminders.userId, userId));
-      await tx.delete(tasks).where(eq(tasks.userId, userId));
-      await tx.delete(events).where(eq(events.userId, userId));
-      await tx.delete(calendarSources).where(eq(calendarSources.userId, userId));
 
       await tx.delete(fcmTokens).where(eq(fcmTokens.userId, userId));
       await tx.delete(usageCounters).where(eq(usageCounters.userId, userId));

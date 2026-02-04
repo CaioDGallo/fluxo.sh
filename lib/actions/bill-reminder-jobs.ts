@@ -88,7 +88,6 @@ export async function scheduleBillReminderNotifications(): Promise<{
         await db.insert(notificationJobs).values({
           itemType: 'bill_reminder',
           itemId: reminder.id,
-          notificationId: null,
           channel: 'email',
           scheduledAt: notification.scheduledAt,
           status: 'pending',

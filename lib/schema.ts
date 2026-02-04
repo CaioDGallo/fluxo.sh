@@ -255,9 +255,10 @@ export const entries = pgTable('entries', {
   accountId: integer('account_id')
     .notNull()
     .references(() => accounts.id),
+  faturaId: integer('fatura_id').references(() => faturas.id), // explicit FK to fatura (nullable for migration)
   amount: integer('amount').notNull(), // cents
   purchaseDate: date('purchase_date').notNull(), // When expense occurred (budget impact)
-  faturaMonth: text('fatura_month').notNull(), // "YYYY-MM" format - which statement it belongs to
+  faturaMonth: text('fatura_month').notNull(), // "YYYY-MM" format - denormalized for quick filtering
   dueDate: date('due_date').notNull(), // When fatura payment is due (cash flow impact)
   paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
   installmentNumber: integer('installment_number').notNull().default(1),
@@ -681,6 +682,10 @@ export const entriesRelations = relations(entries, ({ one }) => ({
     fields: [entries.accountId],
     references: [accounts.id],
   }),
+  fatura: one(faturas, {
+    fields: [entries.faturaId],
+    references: [faturas.id],
+  }),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -743,7 +748,7 @@ export const categoryFrequencyRelations = relations(categoryFrequency, ({ one })
   }),
 }));
 
-export const faturasRelations = relations(faturas, ({ one }) => ({
+export const faturasRelations = relations(faturas, ({ one, many }) => ({
   account: one(accounts, {
     fields: [faturas.accountId],
     references: [accounts.id],
@@ -752,6 +757,7 @@ export const faturasRelations = relations(faturas, ({ one }) => ({
     fields: [faturas.paidFromAccountId],
     references: [accounts.id],
   }),
+  entries: many(entries),
 }));
 
 export const calendarSourcesRelations = relations(calendarSources, ({ many }) => ({

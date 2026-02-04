@@ -439,7 +439,18 @@ export async function updateAccount(id: number, data: Partial<Omit<NewAccount, '
       }
     }
 
+    // Check if billing cycle config changed - if so, we need to reassign entries
+    const billingConfigChanged = updates.closingDay !== undefined || updates.paymentDueDay !== undefined;
+
     await db.update(accounts).set(updates).where(and(eq(accounts.id, id), eq(accounts.userId, userId)));
+
+    // If billing config changed, cascade updates to faturas and entries
+    if (billingConfigChanged) {
+      // Import here to avoid circular dependency
+      const { reassignEntriesToFaturas } = await import('@/lib/actions/faturas');
+      await reassignEntriesToFaturas(id, undefined, userId);
+    }
+
     revalidatePath('/settings/accounts');
     revalidateTag(`user-${userId}`, {});
     return { success: true };

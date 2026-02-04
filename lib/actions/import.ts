@@ -255,61 +255,66 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
     // Track affected fatura months for credit card accounts
     const affectedFaturas = new Set<string>();
 
-    // Use transaction for atomicity
-    await db.transaction(async (tx) => {
-      // Pre-calculate all transaction and entry values
-      const transactionValues: Array<{
-        userId: string;
-        description: string;
-        totalAmount: number;
-        totalInstallments: number;
-        categoryId: number;
-      }> = [];
-      const entryMetadata: Array<{
-        amountCents: number;
-        purchaseDate: string;
-        faturaMonth: string;
-        dueDate: string;
-      }> = [];
+    // Pre-calculate all transaction and entry values BEFORE transaction
+    const transactionValues: Array<{
+      userId: string;
+      description: string;
+      totalAmount: number;
+      totalInstallments: number;
+      categoryId: number;
+    }> = [];
+    const entryMetadata: Array<{
+      amountCents: number;
+      purchaseDate: string;
+      faturaMonth: string;
+      dueDate: string;
+    }> = [];
 
-      for (const row of rows) {
-        // Apply date offset if enabled (for credit card async processing)
-        const purchaseDateStr = dateOffset
-          ? new Date(new Date(row.date + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          : row.date;
+    for (const row of rows) {
+      // Apply date offset if enabled (for credit card async processing)
+      const purchaseDateStr = dateOffset
+        ? new Date(new Date(row.date + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        : row.date;
 
-        // Calculate fatura month and due date based on account type
-        let faturaMonth: string;
-        let dueDate: string;
+      // Calculate fatura month and due date based on account type
+      let faturaMonth: string;
+      let dueDate: string;
 
-        if (hasBillingConfig) {
-          // Credit card with billing config: compute fatura month and due date
-          const purchaseDate = new Date(purchaseDateStr + 'T00:00:00Z');
-          faturaMonth = getFaturaMonth(purchaseDate, account[0].closingDay!);
-          dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
-          affectedFaturas.add(faturaMonth);
-        } else {
-          // Non-credit card or card without config: fatura = purchase month
-          faturaMonth = purchaseDateStr.slice(0, 7);
-          dueDate = purchaseDateStr;
-        }
-
-        transactionValues.push({
-          userId,
-          description: row.description,
-          totalAmount: row.amountCents,
-          totalInstallments: 1,
-          categoryId,
-        });
-
-        entryMetadata.push({
-          amountCents: row.amountCents,
-          purchaseDate: purchaseDateStr,
-          faturaMonth,
-          dueDate,
-        });
+      if (hasBillingConfig) {
+        // Credit card with billing config: compute fatura month and due date
+        const purchaseDate = new Date(purchaseDateStr + 'T00:00:00Z');
+        faturaMonth = getFaturaMonth(purchaseDate, account[0].closingDay!);
+        dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
+        affectedFaturas.add(faturaMonth);
+      } else {
+        // Non-credit card or card without config: fatura = purchase month
+        faturaMonth = purchaseDateStr.slice(0, 7);
+        dueDate = purchaseDateStr;
       }
 
+      transactionValues.push({
+        userId,
+        description: row.description,
+        totalAmount: row.amountCents,
+        totalInstallments: 1,
+        categoryId,
+      });
+
+      entryMetadata.push({
+        amountCents: row.amountCents,
+        purchaseDate: purchaseDateStr,
+        faturaMonth,
+        dueDate,
+      });
+    }
+
+    // Ensure faturas exist and get their IDs (before transaction)
+    const faturaIdMap = hasBillingConfig && affectedFaturas.size > 0
+      ? await batchEnsureFaturasExist(accountId, Array.from(affectedFaturas))
+      : new Map<string, number>();
+
+    // Use transaction for atomicity
+    await db.transaction(async (tx) => {
       // Bulk insert transactions with returning (PostgreSQL guarantees order)
       const insertedTxs = await tx
         .insert(transactions)
@@ -321,6 +326,7 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
         userId,
         transactionId: tx.id,
         accountId,
+        faturaId: hasBillingConfig ? faturaIdMap.get(entryMetadata[i].faturaMonth) : undefined,
         amount: entryMetadata[i].amountCents,
         purchaseDate: entryMetadata[i].purchaseDate,
         faturaMonth: entryMetadata[i].faturaMonth,
@@ -333,10 +339,9 @@ export async function importExpenses(data: ImportExpenseData): Promise<ImportRes
       await tx.insert(entries).values(entryValues);
     });
 
-    // Ensure faturas exist and update totals for credit cards
+    // Update fatura totals for credit cards
     if (hasBillingConfig && affectedFaturas.size > 0) {
       const months = Array.from(affectedFaturas);
-      await batchEnsureFaturasExist(accountId, months);
       await batchUpdateFaturaTotals(accountId, months);
     }
 

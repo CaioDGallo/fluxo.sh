@@ -344,6 +344,13 @@
       "when": 1770150620067,
       "tag": "0048_sweet_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1770203266245,
+      "tag": "0049_even_wiccan",
+      "breakpoints": true
     }
   ]
 }

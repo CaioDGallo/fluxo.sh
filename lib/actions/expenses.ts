@@ -99,6 +99,17 @@ export async function createExpense(data: CreateExpenseData) {
       ? getFaturaMonth(basePurchaseDate, account[0].closingDay!)
       : basePurchaseDate.toISOString().slice(0, 7);
 
+    // 4. Ensure faturas exist FIRST (needed to get faturaId for entries)
+    const faturaIdMap = new Map<string, number>();
+    if (hasBillingConfig) {
+      for (let i = 0; i < data.installments; i++) {
+        const faturaMonth = addMonths(baseFaturaMonth, i);
+        const fatura = await ensureFaturaExists(data.accountId, faturaMonth);
+        faturaIdMap.set(faturaMonth, fatura.id);
+        affectedFaturas.add(faturaMonth);
+      }
+    }
+
     for (let i = 0; i < data.installments; i++) {
       // Adjust for last installment (rounding differences)
       const amount =
@@ -109,13 +120,14 @@ export async function createExpense(data: CreateExpenseData) {
       let faturaMonth: string;
       let dueDate: string;
       let purchaseDate: string;
+      let faturaId: number | undefined;
 
       if (hasBillingConfig) {
         // Credit card with billing config: compute fatura month and due date
         // Fatura month is calculated by adding months to the base fatura month
         faturaMonth = addMonths(baseFaturaMonth, i);
         dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
-        affectedFaturas.add(faturaMonth);
+        faturaId = faturaIdMap.get(faturaMonth);
 
         if (i === 0) {
           // First installment: use actual purchase date
@@ -132,12 +144,14 @@ export async function createExpense(data: CreateExpenseData) {
         purchaseDate = installmentPurchaseDate.toISOString().split('T')[0];
         faturaMonth = purchaseDate.slice(0, 7); // YYYY-MM
         dueDate = purchaseDate;
+        faturaId = undefined; // Non-CC accounts don't have faturas
       }
 
       entriesToInsert.push({
         userId,
         transactionId: transaction.id,
         accountId: data.accountId,
+        faturaId,
         amount,
         purchaseDate,
         faturaMonth,
@@ -149,10 +163,9 @@ export async function createExpense(data: CreateExpenseData) {
 
     await db.insert(entries).values(entriesToInsert);
 
-    // 4. Ensure faturas exist and update totals for credit cards
+    // 5. Update fatura totals for credit cards
     if (hasBillingConfig) {
       for (const month of affectedFaturas) {
-        await ensureFaturaExists(data.accountId, month);
         await updateFaturaTotal(data.accountId, month);
       }
     }
@@ -317,6 +330,17 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       ? getFaturaMonth(basePurchaseDate, account[0].closingDay!)
       : basePurchaseDate.toISOString().slice(0, 7);
 
+    // Ensure faturas exist FIRST (needed to get faturaId for entries)
+    const faturaIdMap = new Map<string, number>();
+    if (hasBillingConfig) {
+      for (let i = 0; i < data.installments; i++) {
+        const faturaMonth = addMonths(baseFaturaMonth, i);
+        const fatura = await ensureFaturaExists(data.accountId, faturaMonth);
+        faturaIdMap.set(faturaMonth, fatura.id);
+        newFaturas.add(faturaMonth);
+      }
+    }
+
     for (let i = 0; i < data.installments; i++) {
       const amount =
         i === data.installments - 1
@@ -326,12 +350,13 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       let faturaMonth: string;
       let dueDate: string;
       let purchaseDate: string;
+      let faturaId: number | undefined;
 
       if (hasBillingConfig) {
         // Fatura month is calculated by adding months to the base fatura month
         faturaMonth = addMonths(baseFaturaMonth, i);
         dueDate = getFaturaPaymentDueDate(faturaMonth, account[0].paymentDueDay!, account[0].closingDay!);
-        newFaturas.add(faturaMonth);
+        faturaId = faturaIdMap.get(faturaMonth);
 
         if (i === 0) {
           // First installment: use actual purchase date
@@ -346,12 +371,14 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
         purchaseDate = installmentPurchaseDate.toISOString().split('T')[0];
         faturaMonth = purchaseDate.slice(0, 7);
         dueDate = purchaseDate;
+        faturaId = undefined; // Non-CC accounts don't have faturas
       }
 
       entriesToInsert.push({
         userId,
         transactionId,
         accountId: data.accountId,
+        faturaId,
         amount,
         purchaseDate,
         faturaMonth,
@@ -372,7 +399,6 @@ export async function updateExpense(transactionId: number, data: CreateExpenseDa
       }
 
       for (const month of allAffectedFaturas) {
-        await ensureFaturaExists(data.accountId, month);
         await updateFaturaTotal(data.accountId, month);
       }
     }

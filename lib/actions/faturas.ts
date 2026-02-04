@@ -2,7 +2,7 @@
 
 import { getCurrentUserId } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate, getCurrentYearMonth, addMonths } from '@/lib/fatura-utils';
+import { computeClosingDate, computeFaturaWindowStart, getFaturaPaymentDueDate, getCurrentYearMonth, addMonths, getFaturaMonth } from '@/lib/fatura-utils';
 import { t } from '@/lib/i18n/server-errors';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, income, transactions, type Fatura } from '@/lib/schema';
@@ -97,45 +97,73 @@ export async function ensureFaturaExists(
 /**
  * Updates the total amount for a fatura by summing all its entries.
  * CRITICAL: Only updates manual faturas - Pluggy faturas use bank's authoritative amount.
+ *
+ * @param accountIdOrFaturaId - Either accountId (number) + yearMonth OR faturaId alone
+ * @param yearMonth - Optional yearMonth if first param is accountId
  */
-export async function updateFaturaTotal(accountId: number, yearMonth: string): Promise<void> {
+export async function updateFaturaTotal(accountIdOrFaturaId: number, yearMonth?: string): Promise<void> {
   const userId = await getCurrentUserId();
 
-  // Check if this is a Pluggy fatura - if so, skip recalculation
-  const [fatura] = await db
-    .select({ pluggyBillId: faturas.pluggyBillId })
-    .from(faturas)
-    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)))
-    .limit(1);
+  // Support both calling patterns: (accountId, yearMonth) OR (faturaId)
+  let faturaId: number;
+  if (yearMonth !== undefined) {
+    // Old pattern: (accountId, yearMonth)
+    const [fatura] = await db
+      .select({ id: faturas.id, pluggyBillId: faturas.pluggyBillId })
+      .from(faturas)
+      .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountIdOrFaturaId), eq(faturas.yearMonth, yearMonth)))
+      .limit(1);
 
-  if (fatura?.pluggyBillId) {
-    // Pluggy fatura - trust bank's amount, don't recalculate
-    return;
+    if (!fatura) return;
+    if (fatura.pluggyBillId) return; // Pluggy fatura - trust bank's amount
+
+    faturaId = fatura.id;
+  } else {
+    // New pattern: (faturaId)
+    faturaId = accountIdOrFaturaId;
+
+    const [fatura] = await db
+      .select({ pluggyBillId: faturas.pluggyBillId })
+      .from(faturas)
+      .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
+      .limit(1);
+
+    if (!fatura) return;
+    if (fatura.pluggyBillId) return; // Pluggy fatura - trust bank's amount
   }
 
-  // Sum all entries for this fatura
+  // Sum all entries for this fatura using faturaId
   const entriesResult = await db
     .select({ total: sql<number>`COALESCE(SUM(${entries.amount}), 0)` })
     .from(entries)
-    .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId), eq(entries.faturaMonth, yearMonth)));
+    .where(and(eq(entries.userId, userId), eq(entries.faturaId, faturaId)));
 
   const entriesTotal = entriesResult[0]?.total || 0;
 
-  // Sum all refunds for this fatura (income with refundOfTransactionId OR isRefund flag)
-  // Refunds are stored with the month they credit the fatura
-  const refundsResult = await db
-    .select({ total: sql<number>`COALESCE(SUM(${income.amount}), 0)` })
-    .from(income)
-    .where(
-      and(
-        eq(income.userId, userId),
-        eq(income.accountId, accountId),
-        eq(income.faturaMonth, yearMonth),
-        sql`(${income.refundOfTransactionId} IS NOT NULL OR ${income.isRefund} = true)`
-      )
-    );
+  // Sum all refunds for this fatura (income records linked via faturaId)
+  // Note: income table doesn't have faturaId yet, so we still use (accountId, faturaMonth) for refunds
+  const [fatura] = await db
+    .select({ accountId: faturas.accountId, yearMonth: faturas.yearMonth })
+    .from(faturas)
+    .where(eq(faturas.id, faturaId))
+    .limit(1);
 
-  const refundsTotal = refundsResult[0]?.total || 0;
+  let refundsTotal = 0;
+  if (fatura) {
+    const refundsResult = await db
+      .select({ total: sql<number>`COALESCE(SUM(${income.amount}), 0)` })
+      .from(income)
+      .where(
+        and(
+          eq(income.userId, userId),
+          eq(income.accountId, fatura.accountId),
+          eq(income.faturaMonth, fatura.yearMonth),
+          sql`(${income.refundOfTransactionId} IS NOT NULL OR ${income.isRefund} = true)`
+        )
+      );
+
+    refundsTotal = refundsResult[0]?.total || 0;
+  }
 
   // Net total = entries - refunds
   const totalAmount = entriesTotal - refundsTotal;
@@ -143,7 +171,7 @@ export async function updateFaturaTotal(accountId: number, yearMonth: string): P
   await db
     .update(faturas)
     .set({ totalAmount })
-    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), eq(faturas.yearMonth, yearMonth)));
+    .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 }
 
 /**
@@ -240,6 +268,11 @@ export async function updateFaturaDates(
     throw new Error(await t('errors.faturaNotFound'));
   }
 
+  // Guard: prevent modifying paid faturas
+  if (fatura[0].paidAt) {
+    throw new Error('Cannot modify dates on a paid fatura');
+  }
+
   // Update dates
   const updates: { closingDate?: string; dueDate?: string; startDate?: string | null } = {};
   if (data.closingDate) updates.closingDate = data.closingDate;
@@ -250,6 +283,12 @@ export async function updateFaturaDates(
     .update(faturas)
     .set(updates)
     .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
+
+  // When closingDate or startDate changes, entries may need to move between faturas
+  // Reassign entries on THIS account to ensure they're in the correct fatura
+  if (data.closingDate || data.startDate !== undefined) {
+    await reassignEntriesToFaturas(fatura[0].accountId, undefined, userId);
+  }
 
   // Recalculate installment dates for entries in this fatura
   // This is needed when startDate changes
@@ -333,13 +372,14 @@ export async function recalculateInstallmentDates(
 /**
  * Batch ensures faturas exist for multiple months.
  * Creates missing faturas for the given account and months.
+ * Returns a map of yearMonth → faturaId for all requested months.
  */
 export async function batchEnsureFaturasExist(
   accountId: number,
   months: string[],
   userIdOverride?: string
-): Promise<void> {
-  if (months.length === 0) return;
+): Promise<Map<string, number>> {
+  if (months.length === 0) return new Map();
 
   const userId = userIdOverride ?? await getCurrentUserId();
 
@@ -359,27 +399,34 @@ export async function batchEnsureFaturasExist(
 
   // Check which faturas already exist
   const existingFaturas = await db
-    .select({ yearMonth: faturas.yearMonth })
+    .select({ id: faturas.id, yearMonth: faturas.yearMonth })
     .from(faturas)
     .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId), inArray(faturas.yearMonth, months)));
 
-  const existingMonths = new Set(existingFaturas.map((f) => f.yearMonth));
-  const missingMonths = months.filter((m) => !existingMonths.has(m));
+  const faturaMap = new Map(existingFaturas.map(f => [f.yearMonth, f.id]));
+  const missingMonths = months.filter((m) => !faturaMap.has(m));
 
-  if (missingMonths.length === 0) return;
+  if (missingMonths.length > 0) {
+    // Bulk insert missing faturas
+    const faturaValues = missingMonths.map((yearMonth) => ({
+      userId,
+      accountId,
+      yearMonth,
+      closingDate: computeClosingDate(yearMonth, closingDay),
+      startDate: null,
+      totalAmount: 0,
+      dueDate: getFaturaPaymentDueDate(yearMonth, paymentDueDay, closingDay),
+    }));
 
-  // Bulk insert missing faturas
-  const faturaValues = missingMonths.map((yearMonth) => ({
-    userId,
-    accountId,
-    yearMonth,
-    closingDate: computeClosingDate(yearMonth, closingDay),
-    startDate: null,
-    totalAmount: 0,
-    dueDate: getFaturaPaymentDueDate(yearMonth, paymentDueDay, closingDay),
-  }));
+    const newFaturas = await db.insert(faturas).values(faturaValues).returning({ id: faturas.id, yearMonth: faturas.yearMonth });
 
-  await db.insert(faturas).values(faturaValues);
+    // Add new faturas to map
+    for (const fatura of newFaturas) {
+      faturaMap.set(fatura.yearMonth, fatura.id);
+    }
+  }
+
+  return faturaMap;
 }
 
 /**
@@ -405,35 +452,31 @@ export async function batchUpdateFaturaTotals(
     SET total_amount = COALESCE(entries_total, 0) - COALESCE(refunds_total, 0)
     FROM (
       SELECT
-        e.user_id,
-        e.account_id,
-        e.fatura_month AS year_month,
+        f.id AS fatura_id,
         SUM(e.amount) AS entries_total
-      FROM entries e
-      WHERE e.user_id = ${userId}
-        AND e.account_id = ${accountId}
-        AND e.fatura_month IN (${monthsCondition})
-      GROUP BY e.user_id, e.account_id, e.fatura_month
+      FROM faturas f
+      LEFT JOIN entries e ON e.fatura_id = f.id AND e.user_id = f.user_id
+      WHERE f.user_id = ${userId}
+        AND f.account_id = ${accountId}
+        AND f.year_month IN (${monthsCondition})
+      GROUP BY f.id
     ) AS entries_agg
     FULL OUTER JOIN (
       SELECT
-        i.user_id,
-        i.account_id,
-        i.fatura_month AS year_month,
+        f.id AS fatura_id,
         SUM(i.amount) AS refunds_total
-      FROM income i
-      WHERE i.user_id = ${userId}
-        AND i.account_id = ${accountId}
-        AND i.fatura_month IN (${monthsCondition})
+      FROM faturas f
+      LEFT JOIN income i ON i.account_id = f.account_id
+        AND i.fatura_month = f.year_month
+        AND i.user_id = f.user_id
         AND (i.refund_of_transaction_id IS NOT NULL OR i.is_refund = true)
-      GROUP BY i.user_id, i.account_id, i.fatura_month
+      WHERE f.user_id = ${userId}
+        AND f.account_id = ${accountId}
+        AND f.year_month IN (${monthsCondition})
+      GROUP BY f.id
     ) AS refunds_agg
-    ON entries_agg.user_id = refunds_agg.user_id
-      AND entries_agg.account_id = refunds_agg.account_id
-      AND entries_agg.year_month = refunds_agg.year_month
-    WHERE faturas.user_id = ${userId}
-      AND faturas.account_id = ${accountId}
-      AND faturas.year_month = COALESCE(entries_agg.year_month, refunds_agg.year_month)
+    ON entries_agg.fatura_id = refunds_agg.fatura_id
+    WHERE faturas.id = COALESCE(entries_agg.fatura_id, refunds_agg.fatura_id)
       AND faturas.pluggy_bill_id IS NULL
   `);
 }
@@ -644,6 +687,7 @@ export const getFaturaWithEntries = cache(async (faturaId: number) => {
     return null;
   }
 
+  // Fetch entries using faturaId FK
   const faturaEntries = await db
     .select({
       id: entries.id,
@@ -663,16 +707,10 @@ export const getFaturaWithEntries = cache(async (faturaId: number) => {
     .from(entries)
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(
-      and(
-        eq(entries.userId, userId),
-        eq(entries.accountId, fatura[0].accountId),
-        eq(entries.faturaMonth, fatura[0].yearMonth)
-      )
-    )
+    .where(and(eq(entries.userId, userId), eq(entries.faturaId, faturaId)))
     .orderBy(desc(entries.purchaseDate));
 
-  // Get refunds for this fatura (all income records for this account and month)
+  // Get refunds for this fatura (income records still use accountId + faturaMonth)
   const faturaRefunds = await db
     .select({
       id: income.id,
@@ -802,17 +840,11 @@ export async function payFatura(faturaId: number, fromAccountId: number): Promis
         })
         .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 
-      // 5. Mark all entries in this fatura as paid
+      // 5. Mark all entries in this fatura as paid (using faturaId)
       await tx
         .update(entries)
         .set({ paidAt: now })
-        .where(
-          and(
-            eq(entries.userId, userId),
-            eq(entries.accountId, fatura[0].accountId),
-            eq(entries.faturaMonth, fatura[0].yearMonth)
-          )
-        );
+        .where(and(eq(entries.userId, userId), eq(entries.faturaId, faturaId)));
 
       await syncAccountBalance(fromAccountId, tx, userId);
       await syncAccountBalance(fatura[0].accountId, tx, userId);
@@ -882,17 +914,11 @@ export async function markFaturaUnpaid(faturaId: number): Promise<void> {
         })
         .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 
-      // Mark all entries in this fatura as unpaid
+      // Mark all entries in this fatura as unpaid (using faturaId)
       await tx
         .update(entries)
         .set({ paidAt: null })
-        .where(
-          and(
-            eq(entries.userId, userId),
-            eq(entries.accountId, fatura[0].accountId),
-            eq(entries.faturaMonth, fatura[0].yearMonth)
-          )
-        );
+        .where(and(eq(entries.userId, userId), eq(entries.faturaId, faturaId)));
 
       // Delete the fatura payment transaction (ignored expense on paying account)
       if (paidFromAccountId) {
@@ -1040,17 +1066,11 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
         })
         .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)));
 
-      // 6. Mark all fatura entries as paid
+      // 6. Mark all fatura entries as paid (using faturaId)
       await tx
         .update(entries)
         .set({ paidAt: paymentTimestamp })
-        .where(
-          and(
-            eq(entries.userId, userId),
-            eq(entries.accountId, fatura[0].accountId),
-            eq(entries.faturaMonth, fatura[0].yearMonth)
-          )
-        );
+        .where(and(eq(entries.userId, userId), eq(entries.faturaId, faturaId)));
 
       // 7. Sync both account balances
       await syncAccountBalance(entry[0].accountId, tx, userId);
@@ -1066,6 +1086,143 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
   } catch (error) {
     console.error('Failed to convert expense to fatura payment:', { entryId, faturaId, error });
     throw error instanceof Error ? error : new Error(await t('errors.failedToUpdate'));
+  }
+}
+
+/**
+ * Reassigns all entries for an account to the correct faturas based on purchase dates.
+ *
+ * This function recalculates which fatura each entry should belong to based on:
+ * - The entry's purchaseDate
+ * - The account's current closingDay
+ * - Existing fatura window dates (closingDate, startDate)
+ *
+ * Key rules:
+ * - Entries in PAID faturas are FROZEN - never reassigned
+ * - Multi-installment transactions move together as a unit
+ * - Pluggy fatura entries CAN be reassigned (membership is local, amount is bank's)
+ * - After reassignment, faturaMonth is always synced with faturas.yearMonth via faturaId
+ *
+ * @param accountId - The credit card account to reassign entries for
+ * @param txOverride - Optional transaction context (for use within existing transaction)
+ * @param userIdOverride - Optional userId (for use within existing transaction)
+ */
+export async function reassignEntriesToFaturas(
+  accountId: number,
+  txOverride?: typeof db,
+  userIdOverride?: string
+): Promise<void> {
+  const userId = userIdOverride ?? await getCurrentUserId();
+  const dbCtx = txOverride ?? db;
+
+  // Get account billing config
+  const [account] = await dbCtx
+    .select({ closingDay: accounts.closingDay, paymentDueDay: accounts.paymentDueDay })
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), eq(accounts.id, accountId)))
+    .limit(1);
+
+  if (!account?.closingDay || !account?.paymentDueDay) {
+    // Non-credit card or no billing config - nothing to reassign
+    return;
+  }
+
+  const { closingDay, paymentDueDay } = account;
+
+  // Get all faturas for this account, keyed by yearMonth
+  const faturasForAccount = await dbCtx
+    .select()
+    .from(faturas)
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId)));
+
+  const faturaMap = new Map(faturasForAccount.map(f => [f.yearMonth, f]));
+  const paidFaturaMonths = new Set(
+    faturasForAccount.filter(f => f.paidAt).map(f => f.yearMonth)
+  );
+
+  // Get all entries for this account, grouped by transactionId
+  const allEntries = await dbCtx
+    .select({
+      entryId: entries.id,
+      transactionId: entries.transactionId,
+      purchaseDate: entries.purchaseDate,
+      currentFaturaMonth: entries.faturaMonth,
+      installmentNumber: entries.installmentNumber,
+      amount: entries.amount,
+      totalInstallments: transactions.totalInstallments,
+    })
+    .from(entries)
+    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+    .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId)))
+    .orderBy(entries.transactionId, entries.installmentNumber);
+
+  // Group entries by transaction
+  const entriesByTransaction = new Map<number, typeof allEntries>();
+  for (const entry of allEntries) {
+    const group = entriesByTransaction.get(entry.transactionId) ?? [];
+    group.push(entry);
+    entriesByTransaction.set(entry.transactionId, group);
+  }
+
+  const affectedFaturaMonths = new Set<string>();
+
+  // Process each transaction
+  for (const transactionEntries of entriesByTransaction.values()) {
+    // Skip if ANY entry is in a paid fatura (entire transaction is frozen)
+    if (transactionEntries.some(e => paidFaturaMonths.has(e.currentFaturaMonth))) {
+      continue;
+    }
+
+    // Find installment 1 (the base purchase)
+    const firstInstallment = transactionEntries.find(e => e.installmentNumber === 1);
+    if (!firstInstallment) {
+      console.warn(`Transaction ${transactionEntries[0].transactionId} missing installment 1`);
+      continue;
+    }
+
+    // Compute base fatura month from installment 1's purchase date
+    const purchaseDate = new Date(firstInstallment.purchaseDate + 'T00:00:00Z');
+    const baseFaturaMonth = getFaturaMonth(purchaseDate, closingDay);
+
+    // For each installment, calculate its new fatura month
+    for (const entry of transactionEntries) {
+      const installmentIndex = entry.installmentNumber - 1;
+      const newFaturaMonth = addMonths(baseFaturaMonth, installmentIndex);
+
+      // Track old fatura month for recalculation
+      affectedFaturaMonths.add(entry.currentFaturaMonth);
+      affectedFaturaMonths.add(newFaturaMonth);
+
+      // Skip if already in correct fatura
+      if (entry.currentFaturaMonth === newFaturaMonth) {
+        continue;
+      }
+
+      // Ensure fatura exists for new month
+      let newFatura = faturaMap.get(newFaturaMonth);
+      if (!newFatura) {
+        newFatura = await ensureFaturaExists(accountId, newFaturaMonth);
+        faturaMap.set(newFaturaMonth, newFatura);
+      }
+
+      // Compute new dueDate based on new fatura
+      const newDueDate = getFaturaPaymentDueDate(newFaturaMonth, paymentDueDay, closingDay);
+
+      // Update entry: move to new fatura
+      await dbCtx
+        .update(entries)
+        .set({
+          faturaMonth: newFaturaMonth,
+          faturaId: newFatura.id,
+          dueDate: newDueDate,
+        })
+        .where(eq(entries.id, entry.entryId));
+    }
+  }
+
+  // Recalculate totals for all affected faturas (both old and new)
+  for (const faturaMonth of affectedFaturaMonths) {
+    await updateFaturaTotal(accountId, faturaMonth);
   }
 }
 

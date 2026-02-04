@@ -1094,8 +1094,8 @@ export async function convertExpenseToFaturaPayment(entryId: number, faturaId: n
  *
  * This function recalculates which fatura each entry should belong to based on:
  * - The entry's purchaseDate
- * - The account's current closingDay
- * - Existing fatura window dates (closingDate, startDate)
+ * - The actual fatura window dates (startDate, closingDate)
+ * - Account's default closingDay (as fallback)
  *
  * Key rules:
  * - Entries in PAID faturas are FROZEN - never reassigned
@@ -1129,16 +1129,75 @@ export async function reassignEntriesToFaturas(
 
   const { closingDay, paymentDueDay } = account;
 
-  // Get all faturas for this account, keyed by yearMonth
+  // Get all faturas for this account, sorted by yearMonth
   const faturasForAccount = await dbCtx
     .select()
     .from(faturas)
-    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId)));
+    .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountId)))
+    .orderBy(faturas.yearMonth);
 
   const faturaMap = new Map(faturasForAccount.map(f => [f.yearMonth, f]));
   const paidFaturaMonths = new Set(
     faturasForAccount.filter(f => f.paidAt).map(f => f.yearMonth)
   );
+
+  // Build fatura windows with actual dates
+  // Each fatura has a window: [startDate, closingDate]
+  type FaturaWindow = {
+    yearMonth: string;
+    startDate: Date;
+    closingDate: Date;
+    fatura: typeof faturasForAccount[0];
+  };
+
+  const faturaWindows: FaturaWindow[] = [];
+  for (const fatura of faturasForAccount) {
+    // Get window start: use explicit startDate or calculate from previous fatura
+    let startDate: Date;
+    if (fatura.startDate) {
+      startDate = new Date(fatura.startDate + 'T00:00:00Z');
+    } else {
+      // Calculate from previous fatura's closing date + 1 day
+      const windowStart = await getFaturaWindowStart(accountId, fatura.yearMonth, closingDay);
+      startDate = new Date(windowStart + 'T00:00:00Z');
+    }
+
+    const closingDate = new Date(fatura.closingDate + 'T00:00:00Z');
+
+    faturaWindows.push({
+      yearMonth: fatura.yearMonth,
+      startDate,
+      closingDate,
+      fatura,
+    });
+  }
+
+  /**
+   * Determines which fatura a purchase date belongs to based on actual fatura windows.
+   * Returns the yearMonth of the matching fatura, or null if no match.
+   */
+  const findFaturaForPurchase = (purchaseDate: Date): string | null => {
+    console.log('[reassignEntriesToFaturas] Finding fatura for purchase date:', purchaseDate.toISOString().split('T')[0]);
+    console.log('[reassignEntriesToFaturas] Available windows:', faturaWindows.map(w => ({
+      month: w.yearMonth,
+      start: w.startDate.toISOString().split('T')[0],
+      close: w.closingDate.toISOString().split('T')[0],
+    })));
+
+    // Find the fatura window that contains this purchase date
+    for (const window of faturaWindows) {
+      // Purchase must be after or on startDate and on or before closingDate
+      if (purchaseDate >= window.startDate && purchaseDate <= window.closingDate) {
+        console.log('[reassignEntriesToFaturas] Match found:', window.yearMonth);
+        return window.yearMonth;
+      }
+    }
+
+    // No existing window found - compute using default logic
+    const fallback = getFaturaMonth(purchaseDate, closingDay);
+    console.log('[reassignEntriesToFaturas] No window match, using fallback:', fallback);
+    return fallback;
+  };
 
   // Get all entries for this account, grouped by transactionId
   const allEntries = await dbCtx
@@ -1180,14 +1239,23 @@ export async function reassignEntriesToFaturas(
       continue;
     }
 
-    // Compute base fatura month from installment 1's purchase date
+    // Determine which fatura the first installment belongs to using actual windows
     const purchaseDate = new Date(firstInstallment.purchaseDate + 'T00:00:00Z');
-    const baseFaturaMonth = getFaturaMonth(purchaseDate, closingDay);
+    console.log('[reassignEntriesToFaturas] Processing transaction', transactionEntries[0].transactionId, 'with', transactionEntries.length, 'installments');
+    console.log('[reassignEntriesToFaturas] First installment purchase date:', firstInstallment.purchaseDate);
+    const baseFaturaMonth = findFaturaForPurchase(purchaseDate);
+
+    if (!baseFaturaMonth) {
+      console.warn(`Could not determine fatura for purchase on ${firstInstallment.purchaseDate}`);
+      continue;
+    }
 
     // For each installment, calculate its new fatura month
     for (const entry of transactionEntries) {
       const installmentIndex = entry.installmentNumber - 1;
       const newFaturaMonth = addMonths(baseFaturaMonth, installmentIndex);
+
+      console.log(`[reassignEntriesToFaturas] Entry ${entry.entryId}: installment ${entry.installmentNumber}/${entry.totalInstallments}, currently in ${entry.currentFaturaMonth}, should be in ${newFaturaMonth}`);
 
       // Track old fatura month for recalculation
       affectedFaturaMonths.add(entry.currentFaturaMonth);
@@ -1195,8 +1263,11 @@ export async function reassignEntriesToFaturas(
 
       // Skip if already in correct fatura
       if (entry.currentFaturaMonth === newFaturaMonth) {
+        console.log(`[reassignEntriesToFaturas] Entry ${entry.entryId}: already in correct fatura, skipping`);
         continue;
       }
+
+      console.log(`[reassignEntriesToFaturas] Entry ${entry.entryId}: moving from ${entry.currentFaturaMonth} to ${newFaturaMonth}`);
 
       // Ensure fatura exists for new month
       let newFatura = faturaMap.get(newFaturaMonth);

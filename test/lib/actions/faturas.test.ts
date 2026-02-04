@@ -1062,4 +1062,184 @@ describe('Fatura Actions', () => {
       });
     });
   });
+
+  describe('fatura date changes and recalculation', () => {
+    it('recalculates amount correctly when closing date changed forward then back', async () => {
+      // Setup: Create credit card account
+      const account = await seedAccount({
+        ...testAccounts.creditCard,
+        closingDay: 15,
+        paymentDueDay: 25,
+      });
+      const category = await seedCategory();
+
+      // Create faturas first
+      const janFatura = await ensureFaturaExists(account.id, '2025-01');
+      const febFatura = await ensureFaturaExists(account.id, '2025-02');
+
+      // Create entries that fall in different date ranges
+      // Entry 1: Jan 10 (before closing day 15) → should be in Jan fatura
+      const [tx1] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Purchase 1',
+          totalAmount: 10000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: tx1.id,
+        accountId: account.id,
+        amount: 10000,
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        faturaId: janFatura.id,
+        dueDate: '2025-02-25',
+        installmentNumber: 1,
+      });
+
+      // Entry 2: Jan 20 (after closing day 15) → should be in Feb fatura initially
+      const [tx2] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Purchase 2',
+          totalAmount: 20000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: tx2.id,
+        accountId: account.id,
+        amount: 20000,
+        purchaseDate: '2025-01-20',
+        faturaMonth: '2025-02',
+        faturaId: febFatura.id,
+        dueDate: '2025-03-25',
+        installmentNumber: 1,
+      });
+
+      // Update totals
+      await updateFaturaTotal(janFatura.id);
+      await updateFaturaTotal(febFatura.id);
+
+      // Check initial amounts
+      const initialJan = await getFaturaWithEntries(janFatura.id);
+      const initialFeb = await getFaturaWithEntries(febFatura.id);
+
+      expect(initialJan?.totalAmount).toBe(10000); // Only Purchase 1
+      expect(initialFeb?.totalAmount).toBe(20000); // Only Purchase 2
+
+      // Step 1: Change Jan fatura closing date to Jan 25 (future date)
+      // This should include Purchase 2 (Jan 20) in Jan fatura now
+      await updateFaturaDates(janFatura.id, {
+        closingDate: '2025-01-25',
+      });
+
+      const afterForwardJan = await getFaturaWithEntries(janFatura.id);
+      const afterForwardFeb = await getFaturaWithEntries(febFatura.id);
+
+      // Jan should now include both purchases
+      expect(afterForwardJan?.totalAmount).toBe(30000); // Purchase 1 + Purchase 2
+      expect(afterForwardFeb?.totalAmount).toBe(0); // Purchase 2 moved out
+
+      // Step 2: Change Jan fatura closing date BACK to original Jan 15
+      // This should move Purchase 2 back to Feb fatura
+      await updateFaturaDates(janFatura.id, {
+        closingDate: '2025-01-15',
+      });
+
+      const afterBackJan = await getFaturaWithEntries(janFatura.id);
+      const afterBackFeb = await getFaturaWithEntries(febFatura.id);
+
+      // Amounts should return to original values
+      expect(afterBackJan?.totalAmount).toBe(10000); // Only Purchase 1 again
+      expect(afterBackFeb?.totalAmount).toBe(20000); // Purchase 2 moved back
+    });
+
+    it('handles entries correctly when closing date spans entry purchase dates', async () => {
+      const account = await seedAccount({
+        ...testAccounts.creditCard,
+        closingDay: 15,
+        paymentDueDay: 25,
+      });
+      const category = await seedCategory();
+
+      // Create faturas first
+      const janFatura = await ensureFaturaExists(account.id, '2025-01');
+      const febFatura = await ensureFaturaExists(account.id, '2025-02');
+
+      // Create multiple entries around the closing date
+      const entries = [
+        { date: '2025-01-05', amount: 5000 },
+        { date: '2025-01-14', amount: 7000 },
+        { date: '2025-01-16', amount: 9000 },
+        { date: '2025-01-25', amount: 11000 },
+      ];
+
+      for (const entry of entries) {
+        const [tx] = await db
+          .insert(schema.transactions)
+          .values({
+            userId: TEST_USER_ID,
+            description: `Purchase ${entry.date}`,
+            totalAmount: entry.amount,
+            totalInstallments: 1,
+            categoryId: category.id,
+          })
+          .returning();
+
+        const faturaMonth = new Date(entry.date) <= new Date('2025-01-15') ? '2025-01' : '2025-02';
+        const faturaId = faturaMonth === '2025-01' ? janFatura.id : febFatura.id;
+
+        await db.insert(schema.entries).values({
+          userId: TEST_USER_ID,
+          transactionId: tx.id,
+          accountId: account.id,
+          amount: entry.amount,
+          purchaseDate: entry.date,
+          faturaMonth,
+          faturaId,
+          dueDate: faturaMonth === '2025-01' ? '2025-02-25' : '2025-03-25',
+          installmentNumber: 1,
+        });
+      }
+
+      await updateFaturaTotal(janFatura.id);
+      await updateFaturaTotal(febFatura.id);
+
+      // Initial: Jan should have 5000 + 7000 = 12000, Feb should have 9000 + 11000 = 20000
+      const initialJan = await getFaturaWithEntries(janFatura.id);
+      const initialFeb = await getFaturaWithEntries(febFatura.id);
+      expect(initialJan?.totalAmount).toBe(12000);
+      expect(initialFeb?.totalAmount).toBe(20000);
+
+      // Change Jan closing date to Jan 20 → should capture the Jan 16 entry too
+      await updateFaturaDates(janFatura.id, {
+        closingDate: '2025-01-20',
+      });
+
+      const midJan = await getFaturaWithEntries(janFatura.id);
+      const midFeb = await getFaturaWithEntries(febFatura.id);
+      expect(midJan?.totalAmount).toBe(21000); // 5000 + 7000 + 9000
+      expect(midFeb?.totalAmount).toBe(11000); // Only 11000 left
+
+      // Change back to Jan 15
+      await updateFaturaDates(janFatura.id, {
+        closingDate: '2025-01-15',
+      });
+
+      const finalJan = await getFaturaWithEntries(janFatura.id);
+      const finalFeb = await getFaturaWithEntries(febFatura.id);
+      expect(finalJan?.totalAmount).toBe(12000);
+      expect(finalFeb?.totalAmount).toBe(20000);
+    });
+  });
 });

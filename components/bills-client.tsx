@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { BillSheet } from '@/components/bill-sheet';
 import {
   AlertDialog,
@@ -14,19 +17,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Add01Icon,
   ArrowDown01Icon,
-  Archive01Icon,
-  Delete02Icon,
+  MoreVerticalIcon,
 } from '@hugeicons/core-free-icons';
 import { formatCentsAsBRL } from '@/lib/utils';
 import { archiveBill, deleteBill } from '@/lib/actions/bills';
@@ -55,17 +62,13 @@ interface BillsClientProps {
   accounts: Account[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-100 text-emerald-700',
-  paused: 'bg-amber-100 text-amber-700',
-  archived: 'bg-gray-100 text-gray-600',
-};
-
 export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
   const t = useTranslations('bills');
   const tForm = useTranslations('billsForm');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleteBillId, setDeleteBillId] = useState<number | null>(null);
 
   const activeBills = bills.filter(b => b.bill.status !== 'archived');
   const archivedBills = bills.filter(b => b.bill.status === 'archived');
@@ -103,115 +106,136 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
 
       {/* Active bills */}
       {activeBills.length === 0 ? (
-        <p className="text-center text-sm text-gray-500 py-12">{t('noBillsYet')}</p>
+        <p className="text-center text-sm text-muted-foreground py-12">{t('noBillsYet')}</p>
       ) : (
         <div className="space-y-3">
-          {activeBills.map(({ bill, categoryName, categoryColor, accountName }) => (
-            <div
-              key={bill.id}
-              className="group relative rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <a href={`/bills/${bill.id}`} className="absolute inset-0 z-10" />
+          {activeBills.map(({ bill, categoryName, categoryColor, accountName }) => {
+            const statusVariant = bill.status === 'active' ? 'secondary' : bill.status === 'paused' ? 'outline' : 'ghost';
 
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900 truncate">{bill.name}</h3>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[bill.status]}`}>
-                      {t(`status.${bill.status}`)}
-                    </span>
-                    <span className="text-xs text-gray-400">{tForm(bill.recurrenceType)}</span>
+            return (
+              <Card key={bill.id} className="py-0 relative overflow-hidden group">
+                <Link href={`/bills/${bill.id}`} className="absolute inset-0 z-10" />
+
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground truncate">{bill.name}</h3>
+                        <Badge variant={statusVariant}>
+                          {t(`status.${bill.status}`)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{tForm(bill.recurrenceType)}</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                        {categoryName && (
+                          <span className="flex items-center gap-1">
+                            <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
+                            {categoryName}
+                          </span>
+                        )}
+                        {accountName && <span>· {accountName}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end gap-1">
+                        {bill.expectedAmount != null && (
+                          <span className="font-semibold text-foreground">
+                            {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{t('dueDayLabel', { day: bill.dueDay })}</span>
+                      </div>
+
+                      {/* Action menu (z-20 to be above link) */}
+                      <div className="z-20 relative">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8" aria-label={t('actions')}>
+                              <HugeiconsIcon icon={MoreVerticalIcon} size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchive(bill.id);
+                            }}>
+                              {t('archive')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteBillId(bill.id);
+                            }}>
+                              {t('delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-                    {categoryName && (
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
-                        {categoryName}
-                      </span>
-                    )}
-                    {accountName && <span>· {accountName}</span>}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-1">
-                  {bill.expectedAmount != null && (
-                    <span className="font-semibold text-gray-900">
-                      {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
-                    </span>
-                  )}
-                  <span className="text-xs text-gray-400">{t('dueDayLabel', { day: bill.dueDay })}</span>
-                </div>
-              </div>
-
-              {/* Action buttons (visible on hover, z-20 to be above link) */}
-              <div className="absolute right-3 top-3 z-20 hidden group-hover:flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => handleArchive(bill.id)}
-                  title={t('archive')}
-                >
-                  <HugeiconsIcon icon={Archive01Icon} className="size-3.5 text-gray-400" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title={t('delete')}>
-                      <HugeiconsIcon icon={Delete02Icon} className="size-3.5 text-gray-400 hover:text-red-500" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('deleteBillTitle')}</AlertDialogTitle>
-                      <AlertDialogDescription>{t('deleteBillDescription')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel />
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => handleDelete(bill.id)}
-                        disabled={deleting === bill.id}
-                      >
-                        {deleting === bill.id ? '...' : t('delete')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* Archived bills (collapsible) */}
       {archivedBills.length > 0 && (
         <Collapsible>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
             {t('archivedBills')} ({archivedBills.length})
             <HugeiconsIcon icon={ArrowDown01Icon} className="size-4 transition-transform [[data-state=open]_&]:rotate-180" />
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 space-y-2">
             {archivedBills.map(({ bill, categoryName, categoryColor }) => (
-              <div key={bill.id} className="rounded-lg border bg-gray-50 p-3 opacity-60">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">{bill.name}</span>
-                    {categoryName && (
-                      <span className="ml-2 text-xs text-gray-400">
-                        <span className="inline-block size-2 rounded-full mr-1" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
-                        {categoryName}
-                      </span>
+              <Card key={bill.id} className="py-0 opacity-60">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{bill.name}</span>
+                      {categoryName && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="inline-block size-2 rounded-full mr-1" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
+                          {categoryName}
+                        </span>
+                      )}
+                    </div>
+                    {bill.expectedAmount != null && (
+                      <span className="text-sm text-muted-foreground">{formatCentsAsBRL(bill.expectedAmount)}</span>
                     )}
                   </div>
-                  {bill.expectedAmount != null && (
-                    <span className="text-sm text-gray-500">{formatCentsAsBRL(bill.expectedAmount)}</span>
-                  )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      {/* Delete confirmation dialog (outside map loop) */}
+      <AlertDialog open={deleteBillId !== null} onOpenChange={(open) => !open && setDeleteBillId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteBillTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('deleteBillDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (deleteBillId !== null) {
+                  handleDelete(deleteBillId);
+                  setDeleteBillId(null);
+                }
+              }}
+              disabled={deleting === deleteBillId}
+            >
+              {deleting === deleteBillId ? '...' : t('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

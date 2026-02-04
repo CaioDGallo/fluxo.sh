@@ -1072,6 +1072,7 @@
     "activeBills": "Active Bills",
     "archivedBills": "Archived",
     "noArchivedBills": "No archived bills",
+    "actions": "Actions",
     "status": {
       "active": "Active",
       "paused": "Paused",

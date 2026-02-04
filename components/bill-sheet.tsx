@@ -54,7 +54,7 @@ export function BillSheet({
   const tCommon = useTranslations('common');
   const tBills = useTranslations('bills');
 
-  // Form state (15 variables from bill-form-client.tsx lines 31-48)
+  // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState<string>('');
@@ -229,7 +229,7 @@ export function BillSheet({
         <form onSubmit={handleSubmit} className="flex bg-muted/20 dark:bg-muted flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4 space-y-5">
             {loading ? (
-              <div className="text-center py-12 text-gray-400">...</div>
+              <div className="text-center py-12 text-muted-foreground">...</div>
             ) : (
               <FieldGroup>
                 {/* Name */}

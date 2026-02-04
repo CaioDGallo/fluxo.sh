@@ -1115,6 +1115,7 @@
     "activeBills": "Contas Ativas",
     "archivedBills": "Arquivadas",
     "noArchivedBills": "Nenhuma conta arquivada",
+    "actions": "Ações",
     "status": {
       "active": "Ativa",
       "paused": "Pausada",

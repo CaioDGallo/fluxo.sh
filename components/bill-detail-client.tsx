@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowLeft01Icon,
@@ -13,7 +15,7 @@ import {
   Forward01Icon,
   Link01Icon,
 } from '@hugeicons/core-free-icons';
-import { formatCentsAsBRL } from '@/lib/utils';
+import { formatCentsAsBRL, formatDate } from '@/lib/utils';
 import { skipOccurrence } from '@/lib/actions/bill-occurrences';
 import { PayBillDialog } from '@/components/pay-bill-dialog';
 import { LinkTransactionDialog } from '@/components/link-transaction-dialog';
@@ -60,14 +62,6 @@ interface BillDetailClientProps {
   accounts: Account[];
 }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  upcoming: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  pending: { bg: 'bg-amber-100', text: 'text-amber-700' },
-  paid: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  overdue: { bg: 'bg-red-100', text: 'text-red-700' },
-  skipped: { bg: 'bg-gray-100', text: 'text-gray-600' },
-};
-
 export function BillDetailClient({ billData, categories, accounts }: BillDetailClientProps) {
   const t = useTranslations('bills');
   const tForm = useTranslations('billsForm');
@@ -104,8 +98,8 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">{bill.name}</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-bold text-foreground">{bill.name}</h1>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
             {categoryName && (
               <>
                 <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
@@ -125,94 +119,116 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
       </div>
 
       {/* Bill summary card */}
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            {bill.description && <p className="text-sm text-gray-600">{bill.description}</p>}
-            <div className="flex gap-4 text-sm text-gray-500">
-              <span>Status: <span className="font-medium text-gray-700">{t(`status.${bill.status}`)}</span></span>
-            </div>
-          </div>
-          {bill.expectedAmount != null && (
-            <div className="text-right">
-              <div className="text-xs text-gray-400">{t('expectedAmount')}</div>
-              <div className="text-lg font-bold text-gray-900">
-                {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
+      <Card className="py-0">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              {bill.description && <p className="text-sm text-muted-foreground">{bill.description}</p>}
+              <div className="flex gap-4 text-sm text-muted-foreground">
+                <span>Status: <span className="font-medium text-foreground">{t(`status.${bill.status}`)}</span></span>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+            {bill.expectedAmount != null && (
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">{t('expectedAmount')}</div>
+                <div className="text-lg font-bold text-foreground">
+                  {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Occurrences list */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 mb-3">{t('occurrences')}</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('occurrences')}</h2>
         {sorted.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4">{t('noOccurrences')}</p>
+          <p className="text-sm text-muted-foreground py-4">{t('noOccurrences')}</p>
         ) : (
           <div className="space-y-2">
             {sorted.map((occ) => {
-              const { bg, text } = STATUS_COLORS[occ.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600' };
               const canPay = occ.status === 'upcoming' || occ.status === 'pending' || occ.status === 'overdue';
               const dueDate = new Date(occ.dueDate);
 
+              // Map status to Badge variant
+              let statusVariant: 'secondary' | 'outline' | 'default' | 'destructive' | 'ghost' = 'secondary';
+              let statusClassName = '';
+
+              if (occ.status === 'upcoming') {
+                statusVariant = 'secondary';
+              } else if (occ.status === 'pending') {
+                statusVariant = 'outline';
+              } else if (occ.status === 'paid') {
+                statusVariant = 'default';
+                statusClassName = 'bg-green-600 text-white';
+              } else if (occ.status === 'overdue') {
+                statusVariant = 'destructive';
+              } else if (occ.status === 'skipped') {
+                statusVariant = 'ghost';
+              }
+
               return (
-                <div key={occ.id} className="flex items-center justify-between rounded-lg border bg-white p-3 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${bg} ${text}`}>
-                      {t(`occurrence.${occ.status}`)}
-                    </span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">
-                        {dueDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <Card key={occ.id} className="py-0">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={statusVariant} className={statusClassName}>
+                          {t(`occurrence.${occ.status}`)}
+                        </Badge>
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            {formatDate(String(dueDate.toISOString().split('T')[0]))}
+                          </div>
+                          {occ.matchedTransactionId && (
+                            <div className="text-xs text-blue-600">{t('linkedTransaction')}</div>
+                          )}
+                        </div>
                       </div>
-                      {occ.matchedTransactionId && (
-                        <div className="text-xs text-blue-600">{t('linkedTransaction')}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      {occ.status === 'paid' && occ.actualAmount != null ? (
-                        <span className="text-sm font-semibold text-emerald-700">{formatCentsAsBRL(occ.actualAmount)}</span>
-                      ) : occ.expectedAmount != null ? (
-                        <span className="text-sm text-gray-600">{formatCentsAsBRL(occ.expectedAmount)}</span>
-                      ) : null}
-                    </div>
-                    {canPay && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => setPayDialogOccurrence(occ)}
-                        >
-                          <HugeiconsIcon icon={Tick02Icon} className="size-3.5 mr-1" />
-                          {t('pay')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => setLinkDialogOccurrence(occ)}
-                          title={t('linkTransaction')}
-                        >
-                          <HugeiconsIcon icon={Link01Icon} className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => handleSkip(occ.id)}
-                          disabled={skipping === occ.id}
-                          title={t('skip')}
-                        >
-                          <HugeiconsIcon icon={Forward01Icon} className="size-3.5" />
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          {occ.status === 'paid' && occ.actualAmount != null ? (
+                            <span className="text-sm font-semibold text-green-600">{formatCentsAsBRL(occ.actualAmount)}</span>
+                          ) : occ.expectedAmount != null ? (
+                            <span className="text-sm text-muted-foreground">{formatCentsAsBRL(occ.expectedAmount)}</span>
+                          ) : null}
+                        </div>
+                        {canPay && (
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() => setPayDialogOccurrence(occ)}
+                            >
+                              <HugeiconsIcon icon={Tick02Icon} className="size-3.5 mr-1" />
+                              {t('pay')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() => setLinkDialogOccurrence(occ)}
+                              aria-label={t('linkTransaction')}
+                            >
+                              <HugeiconsIcon icon={Link01Icon} className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() => handleSkip(occ.id)}
+                              disabled={skipping === occ.id}
+                              aria-label={t('skip')}
+                            >
+                              <HugeiconsIcon icon={Forward01Icon} className="size-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>

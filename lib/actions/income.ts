@@ -1,7 +1,7 @@
 'use server';
 
 import { cache } from 'react';
-import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
 import { income, categories, accounts } from '@/lib/schema';
 import { eq, and, gte, lte, desc, isNull, isNotNull, sql, inArray } from 'drizzle-orm';
@@ -239,12 +239,10 @@ export type IncomeFilters = {
 export const getIncome = cache(async (filters: IncomeFilters = {}) => {
   const userId = await getCurrentUserId();
 
-  return unstable_cache(
-    async () => {
-      const conditions = [eq(income.userId, userId)];
+  const conditions = [eq(income.userId, userId)];
 
-      // Filter by month
-      if (filters.yearMonth) {
+  // Filter by month
+  if (filters.yearMonth) {
     const [year, month] = filters.yearMonth.split('-').map(Number);
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endOfMonth = new Date(year, month, 0).getDate();
@@ -284,15 +282,14 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       categoryColor: categories.color,
       categoryIcon: categories.icon,
       accountId: accounts.id,
-    accountName: accounts.name,
-    accountType: accounts.type,
-    accountSource: accounts.source,
-    bankLogo: accounts.bankLogo,
-    replenishCategoryId: income.replenishCategoryId,
-    replenishCategoryName: sql<string | null>`replenish_cat.name`,
-    replenishCategoryColor: sql<string | null>`replenish_cat.color`,
-  })
-
+      accountName: accounts.name,
+      accountType: accounts.type,
+      accountSource: accounts.source,
+      bankLogo: accounts.bankLogo,
+      replenishCategoryId: income.replenishCategoryId,
+      replenishCategoryName: sql<string | null>`replenish_cat.name`,
+      replenishCategoryColor: sql<string | null>`replenish_cat.color`,
+    })
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))
     .innerJoin(accounts, eq(income.accountId, accounts.id))
@@ -300,14 +297,10 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       sql`categories AS replenish_cat`,
       sql`${income.replenishCategoryId} = replenish_cat.id`
     )
-      .where(and(...conditions))
-      .orderBy(desc(income.receivedDate), desc(income.createdAt));
+    .where(and(...conditions))
+    .orderBy(desc(income.receivedDate), desc(income.createdAt));
 
-      return results;
-    },
-    ['income', userId, filters.yearMonth || 'all', filters.categoryId?.toString() || 'all', filters.accountId?.toString() || 'all', filters.status || 'all'],
-    { tags: [`user-${userId}`], revalidate: 300 }
-  )();
+  return results;
 });
 
 export async function markIncomeReceived(incomeId: number) {

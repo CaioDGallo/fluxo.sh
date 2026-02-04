@@ -53,6 +53,15 @@ importers:
       '@schedule-x/theme-shadcn':
         specifier: ^3.6.0
         version: 3.6.0
+      '@serwist/cacheable-response':
+        specifier: ^9.5.3
+        version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+      '@serwist/core':
+        specifier: ^9.5.3
+        version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+      '@serwist/expiration':
+        specifier: ^9.5.3
+        version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
       '@serwist/next':
         specifier: 9.5.0
         version: 9.5.0(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -2713,6 +2722,30 @@ packages:
       typescript:
         optional: true
 
+  '@serwist/cacheable-response@9.5.3':
+    resolution: {integrity: sha512-PvY1Bt1vkEMiMMXoByV2Gf+IthGFBHZbQbDx2BWiHW+H09RsQcNry4e4qeB0pp2P0wzrhoY3NCp188muP+rtkQ==}
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@serwist/core@9.5.3':
+    resolution: {integrity: sha512-aLeieC1f8jF31+P/rAZGJoXykLkMAMvsVZwe0i3sM91MC5aYme4xeRrNtdVE1ZFmiSN8drmYUYWkGb+jwKIs6Q==}
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@serwist/expiration@9.5.3':
+    resolution: {integrity: sha512-L/OUjmAG/RNECCHk+czMn/slF5xpK9BNGHKO50l/RPpaNrlUd8bkek7BWEcsyCnw5jwSTqihXWhSB2w8P0za/w==}
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   '@serwist/next@9.5.0':
     resolution: {integrity: sha512-amJUpLzOd3F9xY8/Le0W9pf47PtDvRZrJ27gDSJESohsfoBRfnabsatjNuQdUnVE8rgl0YFIMYyVgLejNOb06g==}
     engines: {node: '>=18.0.0'}
@@ -2729,6 +2762,14 @@ packages:
 
   '@serwist/utils@9.5.0':
     resolution: {integrity: sha512-DBzmJgL63/VYcQ/TpSYXW1FJKRILesOxytu+1MHY0vW2WFhW7pYkLgVuHqksP5K+3ypt54M3+2QNDDMixrnutQ==}
+
+  '@serwist/utils@9.5.3':
+    resolution: {integrity: sha512-0xIce0kTZdL+ErngUuKOvPoSpLetldnQBNFB84WYWudaMW1MqYdU3SdftLGCJdEGlLc0gOzQ2fjeT+U6bsa9Zg==}
+    peerDependencies:
+      browserslist: '>=4'
+    peerDependenciesMeta:
+      browserslist:
+        optional: true
 
   '@serwist/webpack-plugin@9.5.0':
     resolution: {integrity: sha512-76o1GZRS6r5nUtfam55c3T/Fe5NoqqW70RyFTjZAIPj6jjIRufcHXQHBpedT5jfew/7toCCmvtZ8GI60aFigVg==}
@@ -5940,6 +5981,14 @@ packages:
       typescript:
         optional: true
 
+  serwist@9.5.3:
+    resolution: {integrity: sha512-ZNYJkFjg5EuXUlX29AvgOhl+8mDMBJhP9xGfaP3rovEzSH5avs4L1mkHQtFm1IwwYwtJBhelyjFnEDkmNGGmtA==}
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   set-function-length@1.2.2:
     resolution: {integrity: sha512-pgRc4hJ4/sNjWCSS9AmnS40x3bNMDTknHgL5UaMBTMyJnU90EgWh1Rz+MC9eFu4BuN/UwZjKQuY/1v3rM7HMfg==}
     engines: {node: '>= 0.4'}
@@ -9036,6 +9085,30 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  '@serwist/cacheable-response@9.5.3(browserslist@4.28.1)(typescript@5.9.3)':
+    dependencies:
+      serwist: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
+
+  '@serwist/core@9.5.3(browserslist@4.28.1)(typescript@5.9.3)':
+    dependencies:
+      serwist: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
+
+  '@serwist/expiration@9.5.3(browserslist@4.28.1)(typescript@5.9.3)':
+    dependencies:
+      serwist: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
+
   '@serwist/next@9.5.0(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)':
     dependencies:
       '@serwist/build': 9.5.0(typescript@5.9.3)
@@ -9056,6 +9129,10 @@ snapshots:
       - webpack
 
   '@serwist/utils@9.5.0': {}
+
+  '@serwist/utils@9.5.3(browserslist@4.28.1)':
+    optionalDependencies:
+      browserslist: 4.28.1
 
   '@serwist/webpack-plugin@9.5.0(typescript@5.9.3)':
     dependencies:
@@ -12558,6 +12635,15 @@ snapshots:
       idb: 8.0.3
     optionalDependencies:
       typescript: 5.9.3
+
+  serwist@9.5.3(browserslist@4.28.1)(typescript@5.9.3):
+    dependencies:
+      '@serwist/utils': 9.5.3(browserslist@4.28.1)
+      idb: 8.0.3
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
 
   set-function-length@1.2.2:
     dependencies:

@@ -1,7 +1,7 @@
 'use server';
 
 import { cache } from 'react';
-import { unstable_cache, revalidatePath, revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
 import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
@@ -489,70 +489,64 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
   const userId = await getCurrentUserId();
   const { yearMonth, categoryId, accountId, status = 'all' } = filters;
 
-  return unstable_cache(
-    async () => {
-      const conditions = [eq(entries.userId, userId)];
+  const conditions = [eq(entries.userId, userId)];
 
-      // Filter ignored transactions (they should still appear but won't affect calculations)
-      // Note: We don't filter them out, allowing them to be visible but dimmed in UI
+  // Filter ignored transactions (they should still appear but won't affect calculations)
+  // Note: We don't filter them out, allowing them to be visible but dimmed in UI
 
-      // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
-      if (yearMonth) {
-        conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
-      }
+  // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
+  if (yearMonth) {
+    conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
+  }
 
-      if (categoryId) {
-        conditions.push(eq(transactions.categoryId, categoryId));
-      }
+  if (categoryId) {
+    conditions.push(eq(transactions.categoryId, categoryId));
+  }
 
-      if (accountId) {
-        conditions.push(eq(entries.accountId, accountId));
-      }
+  if (accountId) {
+    conditions.push(eq(entries.accountId, accountId));
+  }
 
-      if (status === 'pending') {
-        conditions.push(isNull(entries.paidAt));
-      } else if (status === 'paid') {
-        conditions.push(isNotNull(entries.paidAt));
-      }
+  if (status === 'pending') {
+    conditions.push(isNull(entries.paidAt));
+  } else if (status === 'paid') {
+    conditions.push(isNotNull(entries.paidAt));
+  }
 
-      const results = await db
-        .select({
-          id: entries.id,
-          amount: entries.amount,
-          purchaseDate: entries.purchaseDate,
-          faturaMonth: entries.faturaMonth,
-          dueDate: entries.dueDate,
-          paidAt: sql<string | null>`${entries.paidAt}::text`,
-          installmentNumber: entries.installmentNumber,
-          transactionId: transactions.id,
-          description: transactions.description,
-          totalInstallments: transactions.totalInstallments,
-          totalAmount: transactions.totalAmount,
-          ignored: transactions.ignored,
-          refundedAmount: transactions.refundedAmount,
-          isFullyRefunded: sql<boolean>`COALESCE(${transactions.refundedAmount}, 0) >= ${transactions.totalAmount}`,
-          categoryId: categories.id,
-          categoryName: categories.name,
-          categoryColor: categories.color,
-          categoryIcon: categories.icon,
-          accountId: accounts.id,
-          accountName: accounts.name,
-          accountType: accounts.type,
-          accountSource: accounts.source,
-          bankLogo: accounts.bankLogo,
-        })
-        .from(entries)
-        .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .innerJoin(accounts, eq(entries.accountId, accounts.id))
-        .where(and(...conditions))
-        .orderBy(desc(entries.dueDate));
+  const results = await db
+    .select({
+      id: entries.id,
+      amount: entries.amount,
+      purchaseDate: entries.purchaseDate,
+      faturaMonth: entries.faturaMonth,
+      dueDate: entries.dueDate,
+      paidAt: sql<string | null>`${entries.paidAt}::text`,
+      installmentNumber: entries.installmentNumber,
+      transactionId: transactions.id,
+      description: transactions.description,
+      totalInstallments: transactions.totalInstallments,
+      totalAmount: transactions.totalAmount,
+      ignored: transactions.ignored,
+      refundedAmount: transactions.refundedAmount,
+      isFullyRefunded: sql<boolean>`COALESCE(${transactions.refundedAmount}, 0) >= ${transactions.totalAmount}`,
+      categoryId: categories.id,
+      categoryName: categories.name,
+      categoryColor: categories.color,
+      categoryIcon: categories.icon,
+      accountId: accounts.id,
+      accountName: accounts.name,
+      accountType: accounts.type,
+      accountSource: accounts.source,
+      bankLogo: accounts.bankLogo,
+    })
+    .from(entries)
+    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+    .innerJoin(categories, eq(transactions.categoryId, categories.id))
+    .innerJoin(accounts, eq(entries.accountId, accounts.id))
+    .where(and(...conditions))
+    .orderBy(desc(entries.dueDate));
 
-      return results;
-    },
-    ['expenses', userId, yearMonth || 'all', categoryId?.toString() || 'all', accountId?.toString() || 'all', status],
-    { tags: [`user-${userId}`], revalidate: 300 }
-  )();
+  return results;
 });
 
 export async function markEntryPaid(entryId: number) {

@@ -1,6 +1,7 @@
-import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { CacheFirst, NetworkOnly, Serwist, StaleWhileRevalidate } from "serwist";
+import { CacheableResponsePlugin } from "@serwist/cacheable-response";
+import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -16,12 +17,54 @@ declare global {
 
 declare const self: WorkerGlobalScope;
 
+// Static-only caching: cache immutable assets, but always fetch fresh data
+const staticAssetCache = [
+  // Google Fonts (long-lived, immutable)
+  {
+    matcher: ({ url }: { url: URL }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+    handler: new CacheFirst({
+      cacheName: 'google-fonts',
+      plugins: [
+        new CacheableResponsePlugin({ statuses: [0, 200] }),
+        new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 }), // 1 year
+      ],
+    }),
+  },
+  // Next.js static assets (hashed filenames = immutable)
+  {
+    matcher: ({ url }: { url: URL }) => url.pathname.startsWith('/_next/static/'),
+    handler: new CacheFirst({
+      cacheName: 'next-static',
+      plugins: [
+        new CacheableResponsePlugin({ statuses: [200] }),
+        new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 }), // 30 days
+      ],
+    }),
+  },
+  // Images
+  {
+    matcher: ({ request }: { request: Request }) => request.destination === 'image',
+    handler: new StaleWhileRevalidate({
+      cacheName: 'images',
+      plugins: [
+        new CacheableResponsePlugin({ statuses: [0, 200] }),
+        new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 }), // 30 days
+      ],
+    }),
+  },
+  // Everything else: NetworkOnly (no caching of pages, RSC, API, data)
+  {
+    matcher: () => true,
+    handler: new NetworkOnly(),
+  },
+];
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: staticAssetCache,
   fallbacks: {
     entries: [{ url: "/offline", matcher: ({ request }) => request.destination === "document" }],
   },

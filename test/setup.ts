@@ -15,7 +15,6 @@ afterEach(() => {
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
-  unstable_cache: vi.fn((fn) => fn),
 }));
 
 // Mock PostHog server client

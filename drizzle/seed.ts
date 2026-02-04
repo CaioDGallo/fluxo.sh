@@ -54,7 +54,6 @@ const seedSchema = {
   transactions: schema.transactions,
   entries: schema.entries,
   faturas: schema.faturas,
-  transfers: schema.transfers,
   income: schema.income,
   categoryFrequency: schema.categoryFrequency,
   userSettings: schema.userSettings,
@@ -82,7 +81,6 @@ const serialTables = new Set<SeedTableKey>([
   'transactions',
   'entries',
   'faturas',
-  'transfers',
   'income',
   'categoryFrequency',
   'userSettings',
@@ -108,7 +106,6 @@ const idCounters: Record<SeedTableKey, number> = {
   transactions: 0,
   entries: 0,
   faturas: 0,
-  transfers: 0,
   income: 0,
   categoryFrequency: 0,
   userSettings: 0,
@@ -158,7 +155,6 @@ async function resetSequences() {
     { table: 'transactions', count: idCounters.transactions },
     { table: 'entries', count: idCounters.entries },
     { table: 'faturas', count: idCounters.faturas },
-    { table: 'transfers', count: idCounters.transfers },
     { table: 'income', count: idCounters.income },
     { table: 'category_frequency', count: idCounters.categoryFrequency },
     { table: 'user_settings', count: idCounters.userSettings },
@@ -761,6 +757,7 @@ function generateEntries(
       userId,
       transactionId,
       accountId,
+      faturaId: undefined, // Will be set after faturas are created
       amount,
       purchaseDate,
       faturaMonth,
@@ -979,17 +976,15 @@ async function seedDatabase() {
     }));
     const seededTransactions = await seedRows('transactions', transactionRecords);
 
+    // Generate entry records (without faturaId yet)
     const entryRecords = transactionsData.flatMap((transaction, index) => {
       const transactionId = seededTransactions[index].id as number;
       return generateEntries(transactionId, transaction, accountMap, accountsById, TEST_USER_ID);
     });
 
-    await seedRows('entries', entryRecords);
-
     console.log(`  ✓ ${seededTransactions.length} transactions created`);
-    console.log(`  ✓ ${entryRecords.length} entries created\n`);
 
-    // 10. Insert faturas (credit card statements)
+    // 10. Create faturas BEFORE inserting entries
     console.log('  💳 Creating faturas...');
     const faturaGroups = new Map<string, { accountId: number; faturaMonth: string; total: number }>();
 
@@ -1012,6 +1007,7 @@ async function seedDatabase() {
       userId: string;
       accountId: number;
       yearMonth: string;
+      closingDate: string;
       totalAmount: number;
       dueDate: string;
       paidAt: Date | null;
@@ -1051,7 +1047,24 @@ async function seedDatabase() {
     }
 
     const seededFaturas = await seedRows('faturas', faturaRecords);
-    console.log(`  ✓ ${faturaRecords.length} faturas created\n`);
+    console.log(`  ✓ ${faturaRecords.length} faturas created`);
+
+    // Build faturaId map: (accountId-faturaMonth) -> faturaId
+    const faturaIdMap = new Map<string, number>();
+    for (const fatura of seededFaturas) {
+      const key = `${fatura.accountId}-${fatura.yearMonth}`;
+      faturaIdMap.set(key, fatura.id as number);
+    }
+
+    // Now set faturaId on entries
+    for (const entry of entryRecords) {
+      const key = `${entry.accountId}-${entry.faturaMonth}`;
+      entry.faturaId = faturaIdMap.get(key);
+    }
+
+    // Insert entries with faturaId
+    await seedRows('entries', entryRecords);
+    console.log(`  ✓ ${entryRecords.length} entries created\n`);
 
     // 11. Insert income
     console.log('  💵 Inserting income...');
@@ -1081,130 +1094,9 @@ async function seedDatabase() {
     await seedRows('monthlyBudgets', monthlyBudgetRecords);
     console.log(`  ✓ ${monthlyBudgetRecords.length} monthly budgets created\n`);
 
-    // 13. Insert transfers (fatura payments, internal transfers, deposits, withdrawals)
-    console.log('  💸 Inserting transfers...');
-    const transferRecords: Array<{
-      userId: string;
-      fromAccountId: number | null;
-      toAccountId: number | null;
-      amount: number;
-      date: string;
-      type: 'fatura_payment' | 'internal_transfer' | 'deposit' | 'withdrawal';
-      faturaId?: number;
-      description: string | null;
-      externalId: string | null;
-      ignored: boolean;
-    }> = [];
-
-    // Create fatura payment transfers for paid faturas
-    for (const fatura of seededFaturas) {
-      if (fatura.paidAt && fatura.paidFromAccountId) {
-        transferRecords.push({
-          userId: TEST_USER_ID,
-          fromAccountId: fatura.paidFromAccountId as number,
-          toAccountId: fatura.accountId as number,
-          amount: fatura.totalAmount as number,
-          date: fatura.dueDate as string,
-          type: 'fatura_payment',
-          faturaId: fatura.id as number,
-          description: `Pagamento fatura ${fatura.yearMonth}`,
-          externalId: null,
-          ignored: false,
-        });
-      }
-    }
-
-    // Add internal transfers
-    transferRecords.push(
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: accountMap['Itaú Corrente'],
-        toAccountId: accountMap['Nubank Rendimento'],
-        amount: 100000, // R$ 1,000
-        date: getRelativeDate(0, 15),
-        type: 'internal_transfer',
-        description: 'Investimento mensal',
-        externalId: null,
-        ignored: false,
-      },
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: accountMap['Nubank Rendimento'],
-        toAccountId: accountMap['Itaú Corrente'],
-        amount: 50000, // R$ 500
-        date: getRelativeDate(-1, 20),
-        type: 'internal_transfer',
-        description: 'Resgate poupança',
-        externalId: null,
-        ignored: false,
-      }
-    );
-
-    // Add deposits and withdrawals
-    transferRecords.push(
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: null,
-        toAccountId: accountMap['Itaú Corrente'],
-        amount: 200000, // R$ 2,000
-        date: getRelativeDate(0, 3),
-        type: 'deposit',
-        description: 'Depósito em dinheiro',
-        externalId: null,
-        ignored: false,
-      },
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: accountMap['Itaú Corrente'],
-        toAccountId: null,
-        amount: 30000, // R$ 300
-        date: getRelativeDate(0, 10),
-        type: 'withdrawal',
-        description: 'Saque caixa eletrônico',
-        externalId: null,
-        ignored: false,
-      },
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: accountMap['Carteira'],
-        toAccountId: null,
-        amount: 5000, // R$ 50
-        date: getRelativeDate(-1, 18),
-        type: 'withdrawal',
-        description: 'Saque emergência',
-        externalId: null,
-        ignored: false,
-      }
-    );
-
-    // Add ignored transfers
-    transferRecords.push(
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: accountMap['Itaú Corrente'],
-        toAccountId: accountMap['Nubank Rendimento'],
-        amount: 75000, // R$ 750
-        date: getRelativeDate(0, 22),
-        type: 'internal_transfer',
-        description: 'Teste transferência - cancelado',
-        externalId: null,
-        ignored: true,
-      },
-      {
-        userId: TEST_USER_ID,
-        fromAccountId: null,
-        toAccountId: accountMap['Carteira'],
-        amount: 10000, // R$ 100
-        date: getRelativeDate(-1, 5),
-        type: 'deposit',
-        description: 'Depósito teste',
-        externalId: null,
-        ignored: true,
-      }
-    );
-
-    await seedRows('transfers', transferRecords);
-    console.log(`  ✓ ${transferRecords.length} transfers created\n`);
+    // 13. Skip transfers - table doesn't exist in schema
+    // TODO: Implement transfers table if needed
+    console.log('  💸 Skipping transfers (table not in schema)\n');
 
     // 14. Insert category frequency (for smart categorization)
     console.log('  🔍 Inserting category frequency data...');
@@ -1947,7 +1839,6 @@ async function seedDatabase() {
     console.log(`   Transactions: ${seededTransactions.length}`);
     console.log(`   Entries: ${entryRecords.length}`);
     console.log(`   Faturas: ${faturaRecords.length}`);
-    console.log(`   Transfers: ${transferRecords.length}`);
     console.log(`   Income: ${incomeRecords.length}`);
     console.log(`   Category Frequency: ${categoryFrequencyRecords.length}`);
     console.log(`   User Settings: ${userSettingsRecords.length}`);

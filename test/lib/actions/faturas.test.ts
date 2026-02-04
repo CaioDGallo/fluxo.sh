@@ -68,18 +68,6 @@ describe('Fatura Actions', () => {
       })
       .returning();
 
-    await db.insert(schema.entries).values({
-      userId: TEST_USER_ID,
-      transactionId: transaction.id,
-      accountId: account.id,
-      amount,
-      purchaseDate: '2025-01-10',
-      faturaMonth,
-      dueDate,
-      installmentNumber: 1,
-      paidAt: options.entryPaidAt ?? null,
-    });
-
     const [fatura] = await db
       .insert(schema.faturas)
       .values({
@@ -93,6 +81,19 @@ describe('Fatura Actions', () => {
         paidFromAccountId: options.paidFromAccountId ?? null,
       })
       .returning();
+
+    await db.insert(schema.entries).values({
+      userId: TEST_USER_ID,
+      transactionId: transaction.id,
+      accountId: account.id,
+      amount,
+      purchaseDate: '2025-01-10',
+      faturaMonth,
+      faturaId: fatura.id,
+      dueDate,
+      installmentNumber: 1,
+      paidAt: options.entryPaidAt ?? null,
+    });
 
     return { account, category, transaction, fatura, faturaMonth, amount };
   };
@@ -139,6 +140,24 @@ describe('Fatura Actions', () => {
     getCurrentUserIdMock = vi.fn().mockResolvedValue(TEST_USER_ID);
     vi.doMock('@/lib/auth', () => ({
       getCurrentUserId: getCurrentUserIdMock,
+    }));
+
+    // Mock i18n to return Portuguese translations
+    const messagesPtBR = await import('@/messages/pt-BR.json');
+    vi.doMock('@/lib/i18n/server-errors', () => ({
+      t: async (key: string) => {
+        const keys = key.split('.');
+        let value: unknown = messagesPtBR.default;
+        for (const k of keys) {
+          if (value && typeof value === 'object' && k in value) {
+            value = (value as Record<string, unknown>)[k];
+          } else {
+            return key;
+          }
+        }
+        return typeof value === 'string' ? value : key;
+      },
+      getLocale: vi.fn().mockResolvedValue('pt-BR'),
     }));
 
     const faturaActions = await import('@/lib/actions/faturas');
@@ -206,7 +225,7 @@ describe('Fatura Actions', () => {
     });
 
     it('throws when account does not exist', async () => {
-      await expect(ensureFaturaExists(999, '2025-01')).rejects.toThrow('Account not found');
+      await expect(ensureFaturaExists(999, '2025-01')).rejects.toThrow('Conta não encontrada');
     });
 
     it('creates fatura with startDate override', async () => {
@@ -312,7 +331,7 @@ describe('Fatura Actions', () => {
         updateFaturaDates(999, {
           startDate: '2025-01-01',
         })
-      ).rejects.toThrow('Bill not found');
+      ).rejects.toThrow('Fatura não encontrada');
     });
   });
 
@@ -332,14 +351,14 @@ describe('Fatura Actions', () => {
         })
         .returning();
 
-      await db.insert(schema.faturas).values({
+      const [fatura] = await db.insert(schema.faturas).values({
         userId: TEST_USER_ID,
         accountId: account.id,
         yearMonth: '2025-01',
         closingDate: '2025-01-15',
         totalAmount: 0,
         dueDate: '2025-02-05',
-      });
+      }).returning();
 
       await db.insert(schema.entries).values([
         {
@@ -349,6 +368,7 @@ describe('Fatura Actions', () => {
           amount: 1000,
           purchaseDate: '2025-01-10',
           faturaMonth: '2025-01',
+          faturaId: fatura.id,
           dueDate: '2025-02-05',
           installmentNumber: 1,
           paidAt: null,
@@ -360,6 +380,7 @@ describe('Fatura Actions', () => {
           amount: 2000,
           purchaseDate: '2025-01-12',
           faturaMonth: '2025-01',
+          faturaId: fatura.id,
           dueDate: '2025-02-05',
           installmentNumber: 2,
           paidAt: null,
@@ -371,6 +392,7 @@ describe('Fatura Actions', () => {
           amount: 9999,
           purchaseDate: '2025-01-12',
           faturaMonth: '2025-01',
+          faturaId: fatura.id,
           dueDate: '2025-02-05',
           installmentNumber: 1,
           paidAt: null,
@@ -379,12 +401,12 @@ describe('Fatura Actions', () => {
 
       await updateFaturaTotal(account.id, '2025-01');
 
-      const [fatura] = await db
+      const [updatedFatura] = await db
         .select()
         .from(schema.faturas)
         .where(and(eq(schema.faturas.userId, TEST_USER_ID), eq(schema.faturas.accountId, account.id)));
 
-      expect(fatura.totalAmount).toBe(3000);
+      expect(updatedFatura.totalAmount).toBe(3000);
     });
 
     it('sets total to 0 when there are no entries', async () => {
@@ -513,18 +535,6 @@ describe('Fatura Actions', () => {
         })
         .returning();
 
-      await db.insert(schema.entries).values({
-        userId: TEST_USER_ID,
-        transactionId: transaction.id,
-        accountId: account.id,
-        amount: 3000,
-        purchaseDate: '2025-01-14',
-        faturaMonth: '2025-01',
-        dueDate: '2025-02-05',
-        installmentNumber: 1,
-        paidAt: null,
-      });
-
       const [fatura] = await db
         .insert(schema.faturas)
         .values({
@@ -536,6 +546,19 @@ describe('Fatura Actions', () => {
           dueDate: '2025-02-05',
         })
         .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 3000,
+        purchaseDate: '2025-01-14',
+        faturaMonth: '2025-01',
+        faturaId: fatura.id,
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+        paidAt: null,
+      });
 
       const result = await getFaturaWithEntries(fatura.id);
 
@@ -560,25 +583,25 @@ describe('Fatura Actions', () => {
 
   describe('payFatura', () => {
     it('validates ids before paying', async () => {
-      await expect(payFatura(0, 1)).rejects.toThrow('Invalid bill ID');
-      await expect(payFatura(1, 0)).rejects.toThrow('Invalid account ID');
+      await expect(payFatura(0, 1)).rejects.toThrow('ID de fatura inválido');
+      await expect(payFatura(1, 0)).rejects.toThrow('ID de conta inválido');
     });
 
     it('throws when fatura is missing or already paid', async () => {
-      await expect(payFatura(999, 1)).rejects.toThrow('Bill not found');
+      await expect(payFatura(999, 1)).rejects.toThrow('Fatura não encontrada');
 
       const { fatura } = await seedFaturaWithEntry({
         faturaPaidAt: new Date('2025-01-20T00:00:00Z'),
       });
 
-      await expect(payFatura(fatura.id, 1)).rejects.toThrow('Bill already paid');
+      await expect(payFatura(fatura.id, 1)).rejects.toThrow('Fatura já paga');
     });
 
     it('prevents paying from credit card accounts', async () => {
       const { account, fatura } = await seedFaturaWithEntry();
 
       await expect(payFatura(fatura.id, account.id)).rejects.toThrow(
-        'Cannot pay bill from a credit card account'
+        'Não é possível pagar fatura de cartão de crédito'
       );
     });
 
@@ -655,11 +678,11 @@ describe('Fatura Actions', () => {
 
   describe('markFaturaUnpaid', () => {
     it('validates ids before marking unpaid', async () => {
-      await expect(markFaturaUnpaid(0)).rejects.toThrow('Invalid bill ID');
+      await expect(markFaturaUnpaid(0)).rejects.toThrow('ID de fatura inválido');
     });
 
     it('throws when fatura is missing', async () => {
-      await expect(markFaturaUnpaid(999)).rejects.toThrow('Bill not found');
+      await expect(markFaturaUnpaid(999)).rejects.toThrow('Fatura não encontrada');
     });
 
     it('clears paid state for fatura and entries', async () => {
@@ -787,23 +810,23 @@ describe('Fatura Actions', () => {
 
   describe('convertExpenseToFaturaPayment', () => {
     it('validates entryId', async () => {
-      await expect(convertExpenseToFaturaPayment(0, 1)).rejects.toThrow('Invalid transaction ID');
-      await expect(convertExpenseToFaturaPayment(-1, 1)).rejects.toThrow('Invalid transaction ID');
+      await expect(convertExpenseToFaturaPayment(0, 1)).rejects.toThrow('ID de transação inválido');
+      await expect(convertExpenseToFaturaPayment(-1, 1)).rejects.toThrow('ID de transação inválido');
     });
 
     it('validates faturaId', async () => {
-      await expect(convertExpenseToFaturaPayment(1, 0)).rejects.toThrow('Invalid bill ID');
-      await expect(convertExpenseToFaturaPayment(1, -1)).rejects.toThrow('Invalid bill ID');
+      await expect(convertExpenseToFaturaPayment(1, 0)).rejects.toThrow('ID de fatura inválido');
+      await expect(convertExpenseToFaturaPayment(1, -1)).rejects.toThrow('ID de fatura inválido');
     });
 
     it('throws when entry not found', async () => {
       const { fatura } = await seedFaturaWithEntry();
-      await expect(convertExpenseToFaturaPayment(999, fatura.id)).rejects.toThrow('Invalid transaction ID');
+      await expect(convertExpenseToFaturaPayment(999, fatura.id)).rejects.toThrow('ID de transação inválido');
     });
 
     it('throws when fatura not found', async () => {
       const { entry } = await seedExpenseFromChecking(10000);
-      await expect(convertExpenseToFaturaPayment(entry.id, 999)).rejects.toThrow('Bill not found');
+      await expect(convertExpenseToFaturaPayment(entry.id, 999)).rejects.toThrow('Fatura não encontrada');
     });
 
     it('prevents conversion from credit card accounts', async () => {
@@ -837,7 +860,7 @@ describe('Fatura Actions', () => {
         .returning();
 
       await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
-        'This expense cannot be converted to a fatura payment'
+        'Este gasto não pode ser convertido em pagamento de fatura'
       );
     });
 
@@ -872,7 +895,7 @@ describe('Fatura Actions', () => {
         .returning();
 
       await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
-        'This expense cannot be converted to a fatura payment'
+        'Este gasto não pode ser convertido em pagamento de fatura'
       );
     });
 
@@ -885,7 +908,7 @@ describe('Fatura Actions', () => {
       });
       const { entry } = await seedExpenseFromChecking(amount);
 
-      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow('Bill already paid');
+      await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow('Fatura já paga');
     });
 
     it('prevents conversion when amounts do not match', async () => {
@@ -893,7 +916,7 @@ describe('Fatura Actions', () => {
       const { entry } = await seedExpenseFromChecking(5000); // Different amount
 
       await expect(convertExpenseToFaturaPayment(entry.id, fatura.id)).rejects.toThrow(
-        'Expense amount must match fatura total'
+        'Valor do gasto deve ser igual ao total da fatura'
       );
     });
 
@@ -920,7 +943,7 @@ describe('Fatura Actions', () => {
           and(
             eq(schema.entries.userId, TEST_USER_ID),
             eq(schema.entries.accountId, account.id),
-            eq(schema.entries.faturaMonth, fatura.yearMonth)
+            eq(schema.entries.faturaId, fatura.id)
           )
         );
 

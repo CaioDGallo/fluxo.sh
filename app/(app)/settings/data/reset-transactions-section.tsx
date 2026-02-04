@@ -37,6 +37,9 @@ export function ResetTransactionsSection() {
             income: result.deletedIncome,
             faturas: result.deletedFaturas,
             accounts: result.accountsReconciled,
+            pluggyItems: result.pluggyItemsReset,
+            cursors: result.pluggySyncCursorsCleared,
+            webhooks: result.pluggyWebhookEventsCleared,
           })
         );
         setOpen(false);

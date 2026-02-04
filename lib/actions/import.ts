@@ -26,7 +26,7 @@ import { getPostHogClient } from '@/lib/posthog-server';
 import { checkBulkRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, categoryFrequency, entries, income, transactions } from '@/lib/schema';
 import { addMonths } from '@/lib/utils';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 type SuggestionsInput = {
@@ -1120,8 +1120,19 @@ export async function importMixed(data: ImportMixedData): Promise<ImportMixedRes
           overridesForMonth = undefined;
         }
 
-        await ensureFaturaExists(accountId, month, overridesForMonth);
-        await updateFaturaTotal(accountId, month);
+        const fatura = await ensureFaturaExists(accountId, month, overridesForMonth);
+
+        await db
+          .update(entries)
+          .set({ faturaId: fatura.id })
+          .where(and(
+            eq(entries.userId, userId),
+            eq(entries.accountId, accountId),
+            eq(entries.faturaMonth, month),
+            isNull(entries.faturaId)
+          ));
+
+        await updateFaturaTotal(fatura.id);
       }
 
       // Batch recalculate installment dates using actual fatura windows

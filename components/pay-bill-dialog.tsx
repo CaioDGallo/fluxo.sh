@@ -29,6 +29,7 @@ interface PayBillDialogProps {
 
 export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: PayBillDialogProps) {
   const t = useTranslations('payBillDialog');
+  const tCommon = useTranslations('common');
   const [amount, setAmount] = useState(occurrence.expectedAmount ?? 0);
   const [accountId, setAccountId] = useState<string>(
     occurrence.paidFromAccountId?.toString() ?? (accounts[0]?.id?.toString() ?? '')
@@ -49,9 +50,9 @@ export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: P
 
   return (
     <Sheet open={open} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <SheetContent side="bottom" className="max-h-[60vh] flex flex-col">
+      <SheetContent side="bottom" className="max-h-[70vh] sm:max-h-[60vh] flex flex-col">
         <SheetHeader>
-          <SheetTitle>{t('title')}</SheetTitle>
+          <SheetTitle className="text-balance">{t('title')}</SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 space-y-4 py-2 overflow-y-auto">
@@ -61,13 +62,15 @@ export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: P
               id="pay-amount"
               value={amount}
               onChange={setAmount}
+              name="amount"
+              autoComplete="off"
             />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="pay-account">{t('account')}</Label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger id="pay-account">
+              <SelectTrigger id="pay-account" className="w-full">
                 <SelectValue placeholder={t('selectAccount')} />
               </SelectTrigger>
               <SelectContent>
@@ -81,11 +84,17 @@ export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: P
           </div>
         </div>
 
-        <div className="flex gap-3 pt-4 pb-2">
-          <Button onClick={handleConfirm} disabled={saving || !accountId} className="flex-1">
-            {saving ? '...' : t('confirm')}
+        <div className="flex flex-col gap-2 pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center">
+          <Button
+            onClick={handleConfirm}
+            disabled={saving || !accountId}
+            className="w-full sm:flex-1 h-10 sm:h-8"
+          >
+            {saving ? tCommon('paying') : t('confirm')}
           </Button>
-          <Button variant="outline" onClick={onClose} className="flex-1">{t('cancel')}</Button>
+          <Button variant="outline" onClick={onClose} className="w-full sm:flex-1 h-10 sm:h-8">
+            {t('cancel')}
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

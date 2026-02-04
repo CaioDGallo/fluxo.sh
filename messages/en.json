@@ -909,11 +909,14 @@
   "bills": {
     "title": "Bills",
     "addBill": "New Bill",
+    "backToBills": "Back to bills",
     "noBillsYet": "No bills yet. Add your first bill to get started!",
+    "openBill": "Open bill: {name}",
     "activeBills": "Active Bills",
     "archivedBills": "Archived",
     "noArchivedBills": "No archived bills",
     "actions": "Actions",
+    "statusLabel": "Status",
     "status": {
       "active": "Active",
       "paused": "Paused",
@@ -953,9 +956,9 @@
   },
   "billsForm": {
     "name": "Name",
-    "namePlaceholder": "Electricity, Internet, Rent...",
+    "namePlaceholder": "Electricity, Internet, Rent…",
     "description": "Description (Optional)",
-    "descriptionPlaceholder": "Details about this bill...",
+    "descriptionPlaceholder": "Details about this bill…",
     "category": "Category",
     "noCategory": "No category",
     "expectedAmount": "Expected Amount (Optional)",

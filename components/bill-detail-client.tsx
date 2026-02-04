@@ -91,29 +91,48 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/bills">
-            <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-foreground">{bill.name}</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-            {categoryName && (
-              <>
-                <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: categoryColor ?? '#6b7280' }} />
-                <span>{categoryName}</span>
-                <span>·</span>
-              </>
-            )}
-            <span>{tForm(bill.recurrenceType)}</span>
-            <span>·</span>
-            <span>{t('dueDayLabel', { day: bill.dueDay })}</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 sm:size-8"
+            asChild
+            aria-label={t('backToBills')}
+          >
+            <Link href="/bills" className="touch-manipulation">
+              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground text-balance break-words">{bill.name}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              {categoryName && (
+                <>
+                  <span className="flex items-center gap-1 min-w-0">
+                    <span
+                      className="inline-block size-2.5 rounded-full"
+                      style={{ backgroundColor: categoryColor ?? '#6b7280' }}
+                      aria-hidden
+                    />
+                    <span className="truncate">{categoryName}</span>
+                  </span>
+                  <span aria-hidden>·</span>
+                </>
+              )}
+              <span>{tForm(bill.recurrenceType)}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{t('dueDayLabel', { day: bill.dueDay })}</span>
+            </div>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setEditSheetOpen(true)}>
-          <HugeiconsIcon icon={Edit01Icon} className="mr-1.5 size-3.5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full h-9 px-3 sm:w-auto sm:h-7 sm:px-2.5"
+          onClick={() => setEditSheetOpen(true)}
+        >
+          <HugeiconsIcon icon={Edit01Icon} className="mr-1.5 size-3.5" aria-hidden />
           {t('edit')}
         </Button>
       </div>
@@ -121,17 +140,21 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
       {/* Bill summary card */}
       <Card className="py-0">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              {bill.description && <p className="text-sm text-muted-foreground">{bill.description}</p>}
-              <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>Status: <span className="font-medium text-foreground">{t(`status.${bill.status}`)}</span></span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              {bill.description && (
+                <p className="text-sm text-muted-foreground break-words text-pretty">{bill.description}</p>
+              )}
+              <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                <span>
+                  {t('statusLabel')}: <span className="font-medium text-foreground">{t(`status.${bill.status}`)}</span>
+                </span>
               </div>
             </div>
             {bill.expectedAmount != null && (
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-xs text-muted-foreground">{t('expectedAmount')}</div>
-                <div className="text-lg font-bold text-foreground">
+                <div className="text-lg font-bold text-foreground tabular-nums">
                   {bill.isVariableAmount ? '~' : ''}{formatCentsAsBRL(bill.expectedAmount)}
                 </div>
               </div>
@@ -142,7 +165,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
 
       {/* Occurrences list */}
       <div>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">{t('occurrences')}</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3 text-balance">{t('occurrences')}</h2>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">{t('noOccurrences')}</p>
         ) : (
@@ -171,13 +194,13 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
               return (
                 <Card key={occ.id} className="py-0">
                   <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={statusVariant} className={statusClassName}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Badge variant={statusVariant} className={statusClassName ? `${statusClassName} shrink-0` : 'shrink-0'}>
                           {t(`occurrence.${occ.status}`)}
                         </Badge>
-                        <div>
-                          <div className="text-sm font-medium text-foreground">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground tabular-nums">
                             {formatDate(String(dueDate.toISOString().split('T')[0]))}
                           </div>
                           {occ.matchedTransactionId && (
@@ -185,8 +208,8 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="text-left sm:text-right tabular-nums">
                           {occ.status === 'paid' && occ.actualAmount != null ? (
                             <span className="text-sm font-semibold text-green-600">{formatCentsAsBRL(occ.actualAmount)}</span>
                           ) : occ.expectedAmount != null ? (
@@ -194,34 +217,34 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                           ) : null}
                         </div>
                         {canPay && (
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-2 sm:gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2"
+                              className="h-9 px-3 sm:h-7 sm:px-2.5"
                               onClick={() => setPayDialogOccurrence(occ)}
                             >
-                              <HugeiconsIcon icon={Tick02Icon} className="size-3.5 mr-1" />
+                              <HugeiconsIcon icon={Tick02Icon} className="size-3.5 mr-1" aria-hidden />
                               {t('pay')}
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-7 px-2"
+                              size="icon"
+                              className="size-9 sm:size-7"
                               onClick={() => setLinkDialogOccurrence(occ)}
                               aria-label={t('linkTransaction')}
                             >
-                              <HugeiconsIcon icon={Link01Icon} className="size-3.5" />
+                              <HugeiconsIcon icon={Link01Icon} className="size-3.5" aria-hidden />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-7 px-2"
+                              size="icon"
+                              className="size-9 sm:size-7"
                               onClick={() => handleSkip(occ.id)}
                               disabled={skipping === occ.id}
                               aria-label={t('skip')}
                             >
-                              <HugeiconsIcon icon={Forward01Icon} className="size-3.5" />
+                              <HugeiconsIcon icon={Forward01Icon} className="size-3.5" aria-hidden />
                             </Button>
                           </div>
                         )}

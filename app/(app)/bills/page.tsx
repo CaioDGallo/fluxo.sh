@@ -15,7 +15,7 @@ export default async function BillsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <h1 className="text-2xl font-bold text-balance">{t('title')}</h1>
       </div>
       <BillsClient
         bills={billRows}

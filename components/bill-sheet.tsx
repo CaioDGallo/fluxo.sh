@@ -186,7 +186,7 @@ export function BillSheet({
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent
         side="bottom"
-        className="max-h-[80vh] p-0 flex flex-col"
+        className="max-h-[92vh] sm:max-h-[80vh] p-0 flex flex-col"
         showCloseButton={false}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -195,9 +195,12 @@ export function BillSheet({
           }
         }}
       >
-        <SheetHeader className="border-b border-border/60 bg-muted/70 dark:bg-muted/20 px-4 py-3">
-          <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
-            <SheetTitle className="text-start text-sm font-semibold text-balance">{title}</SheetTitle>
+        <SheetHeader className="border-b border-border/60 bg-muted/70 dark:bg-muted/20 px-4 py-3 gap-2">
+          <div className="flex justify-center sm:hidden">
+            <span className="h-1 w-12 rounded-full bg-foreground/20" aria-hidden />
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <SheetTitle className="text-start text-sm font-semibold text-balance min-w-0">{title}</SheetTitle>
             <div className="flex items-center gap-2">
               <span
                 className="size-4 rounded-full border border-green-700 bg-green-500 shadow-[1px_1px_0px_rgba(0,0,0,0.6)]"
@@ -229,7 +232,7 @@ export function BillSheet({
         <form onSubmit={handleSubmit} className="flex bg-muted/20 dark:bg-muted flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4 space-y-5">
             {loading ? (
-              <div className="text-center py-12 text-muted-foreground">...</div>
+              <div className="text-center py-12 text-muted-foreground">{tCommon('loading')}</div>
             ) : (
               <FieldGroup>
                 {/* Name */}
@@ -238,6 +241,7 @@ export function BillSheet({
                   <Input
                     ref={nameInputRef}
                     id="bill-name"
+                    name="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t('namePlaceholder')}
@@ -251,10 +255,12 @@ export function BillSheet({
                   <FieldLabel htmlFor="bill-desc">{t('description')}</FieldLabel>
                   <Textarea
                     id="bill-desc"
+                    name="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t('descriptionPlaceholder')}
                     rows={2}
+                    autoComplete="off"
                   />
                 </Field>
 
@@ -262,7 +268,7 @@ export function BillSheet({
                 <Field>
                   <FieldLabel>{t('category')}</FieldLabel>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={t('noCategory')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,8 +300,13 @@ export function BillSheet({
                     </FieldLabel>
                   </div>
                   {hasAmount && (
-                    <div className="ml-6 space-y-2 mt-2">
-                      <CurrencyInput value={expectedAmount} onChange={setExpectedAmount} />
+                    <div className="ml-4 sm:ml-6 space-y-2 mt-2">
+                      <CurrencyInput
+                        value={expectedAmount}
+                        onChange={setExpectedAmount}
+                        name="expectedAmount"
+                        autoComplete="off"
+                      />
                       <div className="flex items-center gap-2">
                         <Checkbox
                           id="is-variable"
@@ -314,7 +325,7 @@ export function BillSheet({
                 <Field>
                   <FieldLabel>{t('recurrence')} *</FieldLabel>
                   <Select value={recurrenceType} onValueChange={setRecurrenceType}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -331,7 +342,7 @@ export function BillSheet({
                 <Field>
                   <FieldLabel>{t('dueDay')} *</FieldLabel>
                   <Select value={dueDay.toString()} onValueChange={(v) => setDueDay(Number(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -351,31 +362,37 @@ export function BillSheet({
                   <FieldLabel htmlFor="bill-time">{t('dueTime')}</FieldLabel>
                   <Input
                     id="bill-time"
+                    name="dueTime"
                     type="time"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
+                    autoComplete="off"
                   />
                 </Field>
 
                 {/* Start / End Month */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor="bill-start">{t('startMonth')} *</FieldLabel>
                     <Input
                       id="bill-start"
+                      name="startMonth"
                       type="month"
                       value={startMonth}
                       onChange={(e) => setStartMonth(e.target.value)}
                       required
+                      autoComplete="off"
                     />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="bill-end">{t('endMonth')}</FieldLabel>
                     <Input
                       id="bill-end"
+                      name="endMonth"
                       type="month"
                       value={endMonth}
                       onChange={(e) => setEndMonth(e.target.value)}
+                      autoComplete="off"
                     />
                   </Field>
                 </div>
@@ -384,7 +401,7 @@ export function BillSheet({
                 <Field>
                   <FieldLabel>{t('preferredAccount')}</FieldLabel>
                   <Select value={preferredAccountId} onValueChange={setPreferredAccountId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={t('noPreferredAccount')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -436,7 +453,10 @@ export function BillSheet({
 
                 {/* Error */}
                 {error && (
-                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">
+                  <div
+                    className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200"
+                    role="alert"
+                  >
                     {error}
                   </div>
                 )}
@@ -444,12 +464,12 @@ export function BillSheet({
             )}
           </div>
 
-          <SheetFooter className="border-t border-border/60 bg-muted/70 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <Button type="submit" disabled={isSubmitting || loading}>
+          <SheetFooter className="border-t border-border/60 bg-muted/70 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end">
+            <Button type="submit" disabled={isSubmitting || loading} className="w-full sm:w-auto">
               {isSubmitting ? tCommon('saving') : billId != null ? tCommon('update') : tCommon('create')}
             </Button>
             <SheetClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" className="w-full sm:w-auto">
                 {tCommon('cancel')}
               </Button>
             </SheetClose>

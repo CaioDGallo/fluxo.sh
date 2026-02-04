@@ -952,11 +952,14 @@
   "bills": {
     "title": "Contas a Pagar",
     "addBill": "Nova Conta",
+    "backToBills": "Voltar para contas",
     "noBillsYet": "Nenhuma conta ainda. Adicione sua primeira conta para começar!",
+    "openBill": "Abrir conta: {name}",
     "activeBills": "Contas Ativas",
     "archivedBills": "Arquivadas",
     "noArchivedBills": "Nenhuma conta arquivada",
     "actions": "Ações",
+    "statusLabel": "Status",
     "status": {
       "active": "Ativa",
       "paused": "Pausada",
@@ -996,9 +999,9 @@
   },
   "billsForm": {
     "name": "Nome",
-    "namePlaceholder": "Luz, Internet, Aluguel...",
+    "namePlaceholder": "Luz, Internet, Aluguel…",
     "description": "Descrição (Opcional)",
-    "descriptionPlaceholder": "Detalhes sobre esta conta...",
+    "descriptionPlaceholder": "Detalhes sobre esta conta…",
     "category": "Categoria",
     "noCategory": "Sem categoria",
     "expectedAmount": "Valor esperado (Opcional)",

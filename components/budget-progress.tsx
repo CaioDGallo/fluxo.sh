@@ -115,7 +115,7 @@ export function BudgetProgress({
       </CardContent>
 
       {/* Progress bar - outside CardContent */}
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
+      <div className="h-2 rounded-full bg-background overflow-hidden">
         <div className="h-full flex">
           {/* Spent - solid */}
           <div

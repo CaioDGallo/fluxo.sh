@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useOptimistic, useTransition, useEffect } from 'react';
+import { useState, useOptimistic, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useLongPress } from '@/lib/hooks/use-long-press';
-import { useSwipe } from '@/lib/hooks/use-swipe';
-import { useSwipeHint } from '@/lib/hooks/use-swipe-hint';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +14,6 @@ import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { ReplenishmentPicker } from '@/components/replenishment-picker';
 import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
-import { SwipeActions } from '@/components/swipe-actions';
 import { useIncomeContextOptional } from '@/lib/contexts/income-context';
 import type { Category, Account } from '@/lib/schema';
 import type { RecentAccount } from '@/lib/actions/accounts';
@@ -39,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon, MoreVerticalIcon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon, MoreVerticalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 import { BankLogo } from '@/components/bank-logo';
 
@@ -194,58 +191,6 @@ export function IncomeCard(props: IncomeCardProps) {
     event.stopPropagation();
   };
 
-  const swipe = useSwipe({
-    disabled: props.selectionMode || isOptimistic || isSynced || !isMobile,
-    threshold: 50,
-    velocityThreshold: 0.15,
-  });
-
-  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !isSynced && !swipe.isSwiping && !swipe.isRevealed;
-  const { hintOffset, isHinting } = useSwipeHint({ enabled: swipeHintEnabled });
-
-  // Close revealed actions on click outside
-  useEffect(() => {
-    if (!swipe.isRevealed) return;
-    const close = () => swipe.resetSwipe();
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [swipe.isRevealed, swipe.resetSwipe, isMobile]);
-
-  // Combined handlers for long-press and swipe
-  const combinedHandlers = {
-    onPointerDown: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerDown(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerDown(e);
-      }
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerMove(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerMove(e);
-      }
-    },
-    onPointerUp: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerUp(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerUp(e);
-      }
-    },
-    onPointerCancel: () => {
-      longPressHandlers.onPointerCancel();
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerCancel();
-      }
-    },
-    onPointerLeave: () => {
-      longPressHandlers.onPointerLeave();
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerLeave();
-      }
-    },
-  };
-
   // Support Shift+Click to enter selection mode (keyboard accessible)
   const handleCardClick = (e: React.MouseEvent) => {
     if (!props.selectionMode && e.shiftKey && props.onLongPress) {
@@ -254,7 +199,13 @@ export function IncomeCard(props: IncomeCardProps) {
     }
   };
 
-  const contentOffset = isMobile && swipe.swipeOffset < 0 ? swipe.swipeOffset : hintOffset;
+  const handleToggleReceived = async () => {
+    if (isReceived) {
+      await handleMarkPending();
+    } else {
+      await handleMarkReceived();
+    }
+  };
 
   return (
     <>
@@ -265,39 +216,10 @@ export function IncomeCard(props: IncomeCardProps) {
         props.selectionMode && "cursor-pointer",
         props.selectionMode && props.isSelected && "ring-2 ring-primary ring-offset-2"
       )}>
-        {/* Swipe actions revealed on swipe (mobile only) */}
-        {isMobile && (swipe.isSwiping || swipe.isRevealed) && swipe.swipeOffset < 0 && (
-          <SwipeActions
-            onDelete={() => {
-              swipe.resetSwipe();
-              setShowDeleteConfirm(true);
-            }}
-            onTogglePaid={async () => {
-              swipe.resetSwipe();
-              if (isReceived) {
-                await handleMarkPending();
-              } else {
-                await handleMarkReceived();
-              }
-            }}
-            onToggleIgnore={async () => {
-              swipe.resetSwipe();
-              await handleToggleIgnore();
-            }}
-            isPaid={isReceived}
-            isIgnored={income.ignored}
-            isIncome={true}
-          />
-        )}
-
         <CardContent
-          {...combinedHandlers}
+          {...longPressHandlers}
           onClick={handleCardClick}
-          className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 relative bg-card select-none touch-pan-y"
-          style={{
-            transform: contentOffset !== 0 ? `translateX(${contentOffset}px)` : undefined,
-            transition: swipe.isSwiping ? 'none' : 'transform 0.26s ease-out',
-          }}
+          className="flex items-start gap-4 p-4 relative bg-card select-none touch-pan-y"
         >
           {/* Category icon - clickable */}
           <button
@@ -322,16 +244,15 @@ export function IncomeCard(props: IncomeCardProps) {
                 }
               }
             }}
-            className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
+            className="relative size-12 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
-            <span className='size-16 absolute' />
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (
-              <div className="absolute z-10">
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
                 <div className={cn(
-                  "size-10 rounded-full border-2 flex items-center justify-center transition-all",
+                  "size-12 rounded-full border-2 flex items-center justify-center transition-all",
                   props.isSelected
                     ? "bg-primary/85 border-green-600"
                     : "bg-gray-100/70 border-gray-500"
@@ -348,10 +269,14 @@ export function IncomeCard(props: IncomeCardProps) {
             )}
           </button>
 
-          {/* Description + mobile date */}
-          <div className="flex-1 min-w-0">
+          {/* Description */}
+          <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="font-medium text-sm truncate">{income.description}</h3>
+              <h3 className="font-medium text-base leading-tight truncate">{income.description}</h3>
+            </div>
+            <div className="flex flex-col text-xs text-gray-500 md:text-sm min-w-0">
+              <span className="truncate">{optimisticCategory.name}</span>
+              <span className="truncate">{income.accountName}</span>
             </div>
             {/* Replenishment indicator */}
             {income.replenishCategoryId && income.replenishCategoryName && (
@@ -364,7 +289,6 @@ export function IncomeCard(props: IncomeCardProps) {
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex items-center py-1 gap-1 text-blue-600 hover:text-blue-700 transition-colors"
               >
-                <span className='absolute h-16 w-24' />
                 <div className='flex flex-row gap-1 items-center p-1 px-2 bg-blue-100'>
                   <HugeiconsIcon
                     icon={ArrowReloadHorizontalIcon}
@@ -374,28 +298,18 @@ export function IncomeCard(props: IncomeCardProps) {
                   {income.replenishCategoryName}</div>
               </button>
             )}
-            {/* Mobile only: short date */}
-            <div className="text-xs text-gray-500 md:hidden">
-              {formatDate(income.receivedDate, { day: '2-digit', month: 'short' })}
-            </div>
-          </div>
-
-          {/* Desktop only: Category + Account */}
-          <div className="hidden md:flex items-center gap-1 text-sm text-gray-500 shrink-0 min-w-0">
-            <span className="truncate">{optimisticCategory.name}</span>
-            <span>•</span>
-            <span className="truncate">{income.accountName}</span>
-          </div>
-
-          {/* Desktop only: Full date */}
-          <div className="hidden md:block text-sm text-gray-500 shrink-0">
-            {formatDate(income.receivedDate)}
           </div>
 
           {/* Amount + Icons column */}
-          <div className="flex flex-col items-end gap-0.5 shrink-0">
-            <div className="text-sm font-semibold text-green-600">
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="text-sm md:text-base font-semibold text-green-600">
               +{formatCurrency(income.amount)}
+            </div>
+            <div className="text-xs text-gray-500 md:hidden">
+              {formatDate(income.receivedDate, { day: '2-digit', month: 'short' })}
+            </div>
+            <div className="hidden md:block text-sm text-gray-500">
+              {formatDate(income.receivedDate)}
             </div>
             <div className="flex items-center w-full justify-end space-x-2">
               {/* Status icon */}
@@ -503,18 +417,6 @@ export function IncomeCard(props: IncomeCardProps) {
             </div>
           )}
 
-          {isMobile && (
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-muted/80 text-muted-foreground opacity-0 translate-x-1 transition-[opacity,transform] duration-300",
-                isHinting && "opacity-100 translate-x-0"
-              )}
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} strokeWidth={2} />
-            </div>
-          )}
-
         </CardContent>
       </Card>
 
@@ -533,6 +435,9 @@ export function IncomeCard(props: IncomeCardProps) {
         categories={categories}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        onTogglePaid={handleToggleReceived}
+        onToggleIgnore={handleToggleIgnore}
+        onRequestDelete={() => setShowDeleteConfirm(true)}
       />
 
       <EditTransactionDialog
@@ -555,7 +460,7 @@ export function IncomeCard(props: IncomeCardProps) {
         isUpdating={isPending}
       />
 
-      {/* Swipe-to-delete confirmation dialog */}
+      {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>

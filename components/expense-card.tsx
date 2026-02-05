@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useOptimistic, useTransition, useEffect } from 'react';
+import { useState, useOptimistic, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useLongPress } from '@/lib/hooks/use-long-press';
-import { useSwipe } from '@/lib/hooks/use-swipe';
-import { useSwipeHint } from '@/lib/hooks/use-swipe-hint';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { triggerHaptic, HapticPatterns } from '@/lib/utils/haptics';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +16,6 @@ import { CategoryQuickPicker } from '@/components/category-quick-picker';
 import { TransactionDetailSheet } from '@/components/transaction-detail-sheet';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { ConvertToFaturaDialog } from '@/components/convert-to-fatura-dialog';
-import { SwipeActions } from '@/components/swipe-actions';
 import { useExpenseContextOptional } from '@/lib/contexts/expense-context';
 import type { Category, Account } from '@/lib/schema';
 import type { UnpaidFatura } from '@/lib/actions/faturas';
@@ -42,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { MoreVerticalIcon, Tick02Icon, Clock01Icon, ArrowLeft01Icon, ArrowReloadHorizontalIcon } from '@hugeicons/core-free-icons';
+import { MoreVerticalIcon, Tick02Icon, Clock01Icon, ArrowReloadHorizontalIcon } from '@hugeicons/core-free-icons';
 import { accountTypeConfig } from '@/lib/account-type-config';
 import { BankLogo } from '@/components/bank-logo';
 
@@ -111,16 +108,6 @@ export function ExpenseCard(props: ExpenseCardProps) {
   const canConvertToFatura = entry.accountType !== 'credit_card' && entry.totalInstallments === 1 && unpaidFaturas.length > 0;
 
   const isSynced = entry.accountSource === 'pluggy';
-
-  // Swipe gesture to reveal actions (disabled in selection mode)
-  const swipe = useSwipe({
-    disabled: props.selectionMode || isOptimistic || isSynced || !isMobile,
-    threshold: 50,
-    velocityThreshold: 0.15,
-  });
-
-  const swipeHintEnabled = isMobile && !props.selectionMode && !isOptimistic && !isSynced && !swipe.isSwiping && !swipe.isRevealed;
-  const { hintOffset, isHinting } = useSwipeHint({ enabled: swipeHintEnabled });
 
   const t = useTranslations('expenses');
   const tCommon = useTranslations('common');
@@ -213,49 +200,6 @@ export function ExpenseCard(props: ExpenseCardProps) {
     event.stopPropagation();
   };
 
-  // Close revealed actions on click outside
-  useEffect(() => {
-    if (!swipe.isRevealed) return;
-    const close = () => swipe.resetSwipe();
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [swipe.isRevealed, swipe.resetSwipe, isMobile]);
-
-  // Merge gesture handlers without override
-  const combinedHandlers = {
-    onPointerDown: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerDown(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerDown(e);
-      }
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerMove(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerMove(e);
-      }
-    },
-    onPointerUp: (e: React.PointerEvent) => {
-      longPressHandlers.onPointerUp(e);
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerUp(e);
-      }
-    },
-    onPointerCancel: () => {
-      longPressHandlers.onPointerCancel();
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerCancel();
-      }
-    },
-    onPointerLeave: () => {
-      longPressHandlers.onPointerLeave();
-      if (!props.selectionMode && !isOptimistic) {
-        swipe.handlers.onPointerLeave();
-      }
-    },
-  };
-
   // Support Shift+Click to enter selection mode (keyboard accessible)
   const handleCardClick = (e: React.MouseEvent) => {
     if (!props.selectionMode && e.shiftKey && props.onLongPress) {
@@ -264,7 +208,13 @@ export function ExpenseCard(props: ExpenseCardProps) {
     }
   };
 
-  const contentOffset = isMobile && swipe.swipeOffset < 0 ? swipe.swipeOffset : hintOffset;
+  const handleTogglePaid = async () => {
+    if (isPaid) {
+      await handleMarkPending();
+    } else {
+      await handleMarkPaid();
+    }
+  };
 
   return (
     <>
@@ -275,38 +225,10 @@ export function ExpenseCard(props: ExpenseCardProps) {
         props.selectionMode && "cursor-pointer",
         props.selectionMode && props.isSelected && "ring-2 ring-primary ring-offset-2"
       )}>
-        {/* Swipe actions revealed on swipe (mobile only) */}
-        {isMobile && (swipe.isSwiping || swipe.isRevealed) && swipe.swipeOffset < 0 && (
-          <SwipeActions
-            onDelete={() => {
-              swipe.resetSwipe();
-              setShowDeleteConfirm(true);
-            }}
-            onTogglePaid={async () => {
-              swipe.resetSwipe();
-              if (isPaid) {
-                await handleMarkPending();
-              } else {
-                await handleMarkPaid();
-              }
-            }}
-            onToggleIgnore={async () => {
-              swipe.resetSwipe();
-              await handleToggleIgnore();
-            }}
-            isPaid={isPaid}
-            isIgnored={entry.ignored}
-          />
-        )}
-
         <CardContent
-          {...combinedHandlers}
+          {...longPressHandlers}
           onClick={handleCardClick}
-          className="flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 relative bg-card select-none touch-pan-y"
-          style={{
-            transform: contentOffset !== 0 ? `translateX(${contentOffset}px)` : undefined,
-            transition: swipe.isSwiping ? 'none' : 'transform 0.26s ease-out',
-          }}
+          className="flex items-start gap-4 p-3 relative bg-card select-none touch-pan-y"
         >
           {/* Category icon - clickable */}
           <button
@@ -331,16 +253,15 @@ export function ExpenseCard(props: ExpenseCardProps) {
                 }
               }
             }}
-            className="size-10 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
+            className="relative size-12 shrink-0 rounded-none flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
-            <span className='size-16 absolute' />
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (
-              <div className="absolute z-10">
+              <div className="absolute inset-0 z-10 flex items-center justify-center">
                 <div className={cn(
-                  "size-10 rounded-full border-2 flex items-center justify-center transition-all",
+                  "size-12 rounded-none border-2 flex items-center justify-center transition-all",
                   props.isSelected
                     ? "bg-primary/85 border-green-600"
                     : "bg-gray-100/70 border-gray-500"
@@ -357,11 +278,11 @@ export function ExpenseCard(props: ExpenseCardProps) {
             )}
           </button>
 
-          {/* Description + installment badge + mobile date */}
-          <div className="flex-1 min-w-0">
+          {/* Description + installment badge */}
+          <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className={cn(
-                "font-medium text-sm truncate",
+                "font-medium text-base leading-tight truncate",
                 entry.isFullyRefunded && "line-through text-muted-foreground"
               )}>
                 {entry.description}
@@ -382,29 +303,21 @@ export function ExpenseCard(props: ExpenseCardProps) {
                 </Badge>
               )}
             </div>
-            {/* Mobile only: Category • Account */}
-            <div className="flex items-center gap-1 text-xs text-gray-500 md:hidden min-w-0">
-              <span className="w-fit truncate">{optimisticCategory.name}</span>
-              <span className="shrink-0">•</span>
-              <span className="shrink truncate">{entry.accountName}</span>
+            <div className="flex flex-col text-xs text-gray-500 md:text-sm min-w-0">
+              <span className="truncate">{optimisticCategory.name}</span>
+              <span className="truncate">{entry.accountName}</span>
             </div>
           </div>
 
-          {/* Desktop only: Category + Account */}
-          <div className="hidden md:flex items-center gap-1 text-sm text-gray-500 shrink-0 min-w-0">
-            <span className="truncate">{optimisticCategory.name}</span>
-            <span>•</span>
-            <span className="truncate">{entry.accountName}</span>
-          </div>
-
-          {/* Desktop only: Full date */}
-          <div className="hidden md:block text-sm text-gray-500 shrink-0">
-            {formatDate(entry.dueDate)}
-          </div>
-
           {/* Amount + Icons column */}
-          <div className="flex flex-col items-end gap-0.5 shrink-0">
-            <div className="text-sm font-semibold">{formatCurrency(entry.amount)}</div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="text-sm md:text-base font-semibold">{formatCurrency(entry.amount)}</div>
+            <div className="text-xs text-gray-500 md:hidden">
+              {formatDate(entry.dueDate, { day: '2-digit', month: 'short' })}
+            </div>
+            <div className="hidden md:block text-sm text-gray-500">
+              {formatDate(entry.dueDate)}
+            </div>
             <div className="flex items-center w-full justify-end space-x-2">
               {/* Status icon */}
               <HugeiconsIcon
@@ -520,18 +433,6 @@ export function ExpenseCard(props: ExpenseCardProps) {
             </div>
           )}
 
-          {isMobile && (
-            <div
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full bg-muted/80 text-muted-foreground opacity-0 translate-x-1 transition-[opacity,transform] duration-300",
-                isHinting && "opacity-100 translate-x-0"
-              )}
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} strokeWidth={2} />
-            </div>
-          )}
-
         </CardContent>
       </Card>
 
@@ -553,6 +454,9 @@ export function ExpenseCard(props: ExpenseCardProps) {
         unpaidFaturas={unpaidFaturas}
         canConvertToFatura={canConvertToFatura}
         onConvertToFatura={() => setConvertDialogOpen(true)}
+        onTogglePaid={handleTogglePaid}
+        onToggleIgnore={handleToggleIgnore}
+        onRequestDelete={() => setShowDeleteConfirm(true)}
       />
 
       <EditTransactionDialog
@@ -586,7 +490,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
         />
       )}
 
-      {/* Delete confirmation dialog (triggered by swipe or menu) */}
+      {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>

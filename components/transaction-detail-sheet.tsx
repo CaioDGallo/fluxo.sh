@@ -30,9 +30,24 @@ type TransactionDetailSheetProps = {
   unpaidFaturas?: UnpaidFatura[];
   onConvertToFatura?: () => void;
   canConvertToFatura?: boolean;
+  onTogglePaid?: () => void;
+  onToggleIgnore?: () => void;
+  onRequestDelete?: () => void;
 };
 
-export function TransactionDetailSheet({ expense, income, accounts, categories, open, onOpenChange, canConvertToFatura, onConvertToFatura }: TransactionDetailSheetProps) {
+export function TransactionDetailSheet({
+  expense,
+  income,
+  accounts,
+  categories,
+  open,
+  onOpenChange,
+  canConvertToFatura,
+  onConvertToFatura,
+  onTogglePaid,
+  onToggleIgnore,
+  onRequestDelete,
+}: TransactionDetailSheetProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [replenishPickerOpen, setReplenishPickerOpen] = useState(false);
@@ -42,6 +57,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
   const isExpense = !!expense;
   const data = expense || income;
   const t = useTranslations('transactionDetail');
+  const tExpenses = useTranslations('expenses');
   const tIncome = useTranslations('income');
   const tSynced = useTranslations('synced');
 
@@ -52,12 +68,24 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
   if (!data) return null;
 
   const isPaidOrReceived = isExpense ? !!expense.paidAt : !!income?.receivedAt;
+  const isIgnored = !!data?.ignored;
+  const canMutate = !isSynced;
   const statusLabel = isExpense
     ? (isPaidOrReceived ? t('paid') : t('pending'))
     : (isPaidOrReceived ? t('received') : t('pending'));
 
   const dateLabel = isExpense ? t('dueDate') : t('receivedDate');
   const dateValue = isExpense ? expense.dueDate : income?.receivedDate;
+
+  const togglePaidLabel = isExpense
+    ? (isPaidOrReceived ? tExpenses('markAsPending') : tExpenses('markAsPaid'))
+    : (isPaidOrReceived ? tIncome('markAsPending') : tIncome('markAsReceived'));
+
+  const toggleIgnoreLabel = isExpense
+    ? (isIgnored ? tExpenses('showInTotals') : tExpenses('hideFromTotals'))
+    : (isIgnored ? tIncome('showInTotals') : tIncome('hideFromTotals'));
+
+  const deleteLabel = isExpense ? tExpenses('deleteTransaction') : tIncome('deleteIncome');
 
   const handleOpenReplenishPicker = async () => {
     if (!income?.receivedDate) return;
@@ -218,8 +246,28 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
 
           {/* Footer buttons */}
           <SheetFooter className="flex-col gap-2 sm:flex-col pt-4">
+            {canMutate && onTogglePaid && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={onTogglePaid}
+              >
+                {togglePaidLabel}
+              </Button>
+            )}
+
+            {onToggleIgnore && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={onToggleIgnore}
+              >
+                {toggleIgnoreLabel}
+              </Button>
+            )}
+
             {/* View All Installments - only for multi-installment expenses */}
-            {isExpense && expense && expense.totalInstallments > 1 && (
+            {isExpense && expense && expense.totalInstallments > 1 && canMutate && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -233,7 +281,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
             )}
 
             {/* Convert to Fatura button - only for eligible expenses */}
-            {canConvertToFatura && onConvertToFatura && (
+            {canConvertToFatura && onConvertToFatura && canMutate && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -247,7 +295,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
             )}
 
             {/* Register refund button - only for credit card expenses */}
-            {isExpense && expense && expense.accountType === 'credit_card' && !expense.ignored && !expense.isFullyRefunded && (
+            {isExpense && expense && expense.accountType === 'credit_card' && !expense.ignored && !expense.isFullyRefunded && canMutate && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -258,7 +306,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
             )}
 
             {/* Replenish budget button - only for received income */}
-            {!isExpense && income?.receivedAt && (
+            {!isExpense && income?.receivedAt && canMutate && (
               <Button
                 variant="outline"
                 className="w-full"
@@ -270,7 +318,7 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
             )}
 
             {/* Edit button — hidden for synced items */}
-            {!isSynced && accounts && categories && (
+            {canMutate && accounts && categories && (
               <Button
                 variant="default"
                 className="w-full"
@@ -280,6 +328,16 @@ export function TransactionDetailSheet({ expense, income, accounts, categories, 
                 }}
               >
                 {t('edit')}
+              </Button>
+            )}
+
+            {canMutate && onRequestDelete && (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={onRequestDelete}
+              >
+                {deleteLabel}
               </Button>
             )}
           </SheetFooter>

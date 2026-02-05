@@ -64,7 +64,7 @@ export function PayBillDialog({ occurrence, bill, accounts, open, onClose, onPai
           <SheetTitle className="text-balance">{t('title')}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 space-y-4 py-2 overflow-y-auto">
+        <div className="flex-1 space-y-4 p-4 overflow-y-auto">
           <div className="space-y-1.5">
             <Label htmlFor="pay-amount">{t('amount')}</Label>
             <CurrencyInput
@@ -76,7 +76,7 @@ export function PayBillDialog({ occurrence, bill, accounts, open, onClose, onPai
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="pay-account">{t('account')}</Label>
             <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger id="pay-account" className="w-full">
@@ -120,7 +120,7 @@ export function PayBillDialog({ occurrence, bill, accounts, open, onClose, onPai
           )}
         </div>
 
-        <div className="flex flex-col gap-2 pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center">
           <Button
             onClick={handleConfirm}
             disabled={saving || !accountId}

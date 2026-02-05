@@ -73,7 +73,7 @@ export function LinkTransactionDialog({ occurrence, open, onClose, onLinked }: L
           <SheetDescription>{t('description')}</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="text-sm text-gray-400 py-6 text-center">...</div>
           ) : suggestions.length === 0 ? (
@@ -112,7 +112,7 @@ export function LinkTransactionDialog({ occurrence, open, onClose, onLinked }: L
           )}
         </div>
 
-        <div className="pt-3 pb-2">
+        <div className="p-4">
           <Button variant="outline" onClick={onClose} className="w-full">{t('cancel')}</Button>
         </div>
       </SheetContent>

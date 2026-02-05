@@ -48,7 +48,7 @@ jobs:
       - name: Run database migrations
         run: npx drizzle-kit migrate
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fluxosh
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_DIRECT_URL }}
       - name: Run e2e tests
         run: pnpm test:e2e
         env:

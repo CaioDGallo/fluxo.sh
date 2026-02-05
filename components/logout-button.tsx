@@ -6,6 +6,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Logout01Icon } from '@hugeicons/core-free-icons';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import {
@@ -31,8 +32,18 @@ export function LogoutButton({ variant }: LogoutButtonProps) {
 
   const handleLogout = () => {
     startTransition(async () => {
-      const data = await signOut({ redirect: false, callbackUrl: '/login' });
-      router.push(data.url);
+      try {
+        const data = await signOut({ redirect: false, callbackUrl: '/login' });
+        router.push(data.url);
+      } catch (error: unknown) {
+        // Handle rate limit errors
+        if (error && typeof error === 'object' && 'status' in error && error.status === 429) {
+          toast.error(t('errors.rateLimitExceeded'));
+        } else {
+          toast.error(t('errors.logoutFailed'));
+        }
+        console.error('Logout error:', error);
+      }
     });
   };
 

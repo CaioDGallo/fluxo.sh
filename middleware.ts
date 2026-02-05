@@ -55,7 +55,7 @@ function getClientIP(request: NextRequest): string {
   );
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPlaywright = request.headers.get('x-playwright') === 'true';
 
@@ -78,6 +78,11 @@ export async function proxy(request: NextRequest) {
     pathname.endsWith('.gif') ||
     pathname.endsWith('.webp')
   ) {
+    return NextResponse.next();
+  }
+
+  // Skip rate limiting for auth endpoints (they have their own rate limiters in lib/rate-limit.ts)
+  if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 

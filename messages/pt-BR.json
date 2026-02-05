@@ -100,7 +100,9 @@
     "importLimitReached": "Você atingiu o limite semanal de {{limit}} importações do seu plano",
     "exportLimitReached": "Você atingiu o limite semanal de {{limit}} exportações do seu plano",
     "exportVolumeLimitReached": "O período selecionado excede o limite de {{limit}} registros. Reduza o período.",
-    "openFinanceNotAvailable": "Open Finance está disponível apenas nos planos Pro ou Founder."
+    "openFinanceNotAvailable": "Open Finance está disponível apenas nos planos Pro ou Founder.",
+    "rateLimitExceeded": "Muitas solicitações. Aguarde alguns segundos e tente novamente.",
+    "logoutFailed": "Falha ao sair. Tente novamente."
   },
   "navigation": {
     "fluxosh": "fluxo.sh",

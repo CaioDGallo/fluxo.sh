@@ -1,4 +1,4 @@
-import { boolean, date, integer, pgEnum, pgTable, serial, text, timestamp, unique } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, pgEnum, pgTable, serial, text, timestamp, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Export Auth.js schema tables
@@ -263,7 +263,9 @@ export const entries = pgTable('entries', {
   paidAt: timestamp('paid_at'), // null = pending, timestamp = paid
   installmentNumber: integer('installment_number').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (table) => ({
+  userPurchaseDateIdx: index('entries_user_purchase_date_idx').on(table.userId, table.purchaseDate),
+}));
 
 // Faturas table (credit card statements/bills)
 export const faturas = pgTable(
@@ -315,7 +317,9 @@ export const income = pgTable('income', {
   faturaMonth: text('fatura_month'), // "YYYY-MM" format - which fatura to credit (nullable for non-CC income)
   isRefund: boolean('is_refund').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (table) => ({
+  userReceivedDateIdx: index('income_user_received_date_idx').on(table.userId, table.receivedDate),
+}));
 
 // Category Frequency table (for smart categorization suggestions)
 export const categoryFrequency = pgTable(

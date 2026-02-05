@@ -8,8 +8,10 @@ import { useSelection } from '@/lib/hooks/use-selection';
 import { formatDate } from '@/lib/utils';
 import { HapticPatterns, triggerHaptic } from '@/lib/utils/haptics';
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { flattenGroupedData } from '@/lib/utils/flatten-grouped-data';
+import { useVirtualizedGroupedList } from '@/lib/hooks/use-virtualized-grouped-list';
 
 export { ExpenseListProvider };
 
@@ -32,6 +34,15 @@ export function ExpenseList() {
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+  // Flatten for virtualization (only computed when filters change)
+  const flatRows = useMemo(
+    () => flattenGroupedData(groupedByDate, dates),
+    [groupedByDate, dates]
+  );
+
+  // Conditional virtualization (only for large lists)
+  const { listRef, virtualizer, shouldVirtualize } = useVirtualizedGroupedList(flatRows);
 
   // Watch filter changes (clear selection when month changes)
   const prevYearMonthRef = useRef(filters.yearMonth);
@@ -123,53 +134,92 @@ export function ExpenseList() {
     );
   }
 
+  // Helper to render an expense card
+  const renderExpenseCard = (expense: typeof filteredExpenses[number]) =>
+    selection.isSelectionMode ? (
+      <ExpenseCard
+        key={expense._tempId || expense.id}
+        entry={expense}
+        categories={categories}
+        accounts={accounts}
+        recentAccounts={recentAccounts}
+        recentCategories={recentCategories}
+        isOptimistic={!!expense._optimistic}
+        selectionMode={true}
+        isSelected={selection.isSelected(expense.id)}
+        onLongPress={() => selection.enterSelectionMode(expense.id)}
+        onToggleSelection={() => selection.toggleSelection(expense.id)}
+        unpaidFaturas={unpaidFaturas}
+      />
+    ) : (
+      <ExpenseCard
+        key={expense._tempId || expense.id}
+        entry={expense}
+        categories={categories}
+        accounts={accounts}
+        recentAccounts={recentAccounts}
+        recentCategories={recentCategories}
+        isOptimistic={!!expense._optimistic}
+        selectionMode={false}
+        onLongPress={() => selection.enterSelectionMode(expense.id)}
+        unpaidFaturas={unpaidFaturas}
+      />
+    );
+
   return (
     <div className="space-y-4">
-      {dates.map((date) => (
-        <div key={date}>
-          <h2 className="mb-2 text-sm font-medium text-gray-500">
-            {formatDate(date, {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </h2>
-          <div className="space-y-1">
-            {groupedByDate[date].map((expense) =>
-              selection.isSelectionMode ? (
-                <ExpenseCard
-                  key={expense._tempId || expense.id}
-                  entry={expense}
-                  categories={categories}
-                  accounts={accounts}
-                  recentAccounts={recentAccounts}
-                  recentCategories={recentCategories}
-                  isOptimistic={!!expense._optimistic}
-                  selectionMode={true}
-                  isSelected={selection.isSelected(expense.id)}
-                  onLongPress={() => selection.enterSelectionMode(expense.id)}
-                  onToggleSelection={() => selection.toggleSelection(expense.id)}
-                  unpaidFaturas={unpaidFaturas}
-                />
-              ) : (
-                <ExpenseCard
-                  key={expense._tempId || expense.id}
-                  entry={expense}
-                  categories={categories}
-                  accounts={accounts}
-                  recentAccounts={recentAccounts}
-                  recentCategories={recentCategories}
-                  isOptimistic={!!expense._optimistic}
-                  selectionMode={false}
-                  onLongPress={() => selection.enterSelectionMode(expense.id)}
-                  unpaidFaturas={unpaidFaturas}
-                />
-              )
-            )}
+      {!shouldVirtualize ? (
+        // Small lists: render normally (exact current behavior)
+        dates.map((date) => (
+          <div key={date}>
+            <h2 className="mb-2 text-sm font-medium text-gray-500">
+              {formatDate(date, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </h2>
+            <div className="space-y-1">{groupedByDate[date].map(renderExpenseCard)}</div>
           </div>
+        ))
+      ) : (
+        // Large lists: use virtualization
+        <div ref={listRef} style={{ position: 'relative', height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const row = flatRows[virtualRow.index];
+            if (!row) return null;
+
+            return (
+              <div
+                key={virtualRow.index}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {row.type === 'header' ? (
+                  <h2 className="mb-2 text-sm font-medium text-gray-500">
+                    {formatDate(row.date, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </h2>
+                ) : (
+                  renderExpenseCard(row.data)
+                )}
+              </div>
+            );
+          })}
         </div>
-      ))}
+      )}
 
       {/* Selection action bar */}
       {selection.isSelectionMode && (

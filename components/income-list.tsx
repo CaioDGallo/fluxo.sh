@@ -6,8 +6,10 @@ import { SelectionActionBar } from '@/components/selection-action-bar';
 import { IncomeListProvider, useIncomeContext } from '@/lib/contexts/income-context';
 import { useSelection } from '@/lib/hooks/use-selection';
 import { formatDate } from '@/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { flattenGroupedData } from '@/lib/utils/flatten-grouped-data';
+import { useVirtualizedGroupedList } from '@/lib/hooks/use-virtualized-grouped-list';
 
 export { IncomeListProvider };
 
@@ -29,6 +31,15 @@ export function IncomeList() {
   );
 
   const dates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
+  // Flatten for virtualization (only computed when filters change)
+  const flatRows = useMemo(
+    () => flattenGroupedData(groupedByDate, dates),
+    [groupedByDate, dates]
+  );
+
+  // Conditional virtualization (only for large lists)
+  const { listRef, virtualizer, shouldVirtualize } = useVirtualizedGroupedList(flatRows);
 
   // Watch filter changes (clear selection when month changes)
   const prevYearMonthRef = useRef(filters.yearMonth);
@@ -81,51 +92,90 @@ export function IncomeList() {
     );
   }
 
+  // Helper to render an income card
+  const renderIncomeCard = (inc: typeof filteredIncome[number]) =>
+    selection.isSelectionMode ? (
+      <IncomeCard
+        key={inc._tempId || inc.id}
+        income={inc}
+        categories={categories}
+        accounts={accounts}
+        recentAccounts={recentAccounts}
+        recentCategories={recentCategories}
+        isOptimistic={!!inc._optimistic}
+        selectionMode={true}
+        isSelected={selection.isSelected(inc.id)}
+        onLongPress={() => selection.enterSelectionMode(inc.id)}
+        onToggleSelection={() => selection.toggleSelection(inc.id)}
+      />
+    ) : (
+      <IncomeCard
+        key={inc._tempId || inc.id}
+        income={inc}
+        categories={categories}
+        accounts={accounts}
+        recentAccounts={recentAccounts}
+        recentCategories={recentCategories}
+        isOptimistic={!!inc._optimistic}
+        selectionMode={false}
+        onLongPress={() => selection.enterSelectionMode(inc.id)}
+      />
+    );
+
   return (
     <div className="space-y-4">
-      {dates.map((date) => (
-        <div key={date}>
-          <h2 className="mb-2 text-sm font-medium text-gray-500">
-            {formatDate(date, {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </h2>
-          <div className="space-y-1">
-            {groupedByDate[date].map((inc) =>
-              selection.isSelectionMode ? (
-                <IncomeCard
-                  key={inc._tempId || inc.id}
-                  income={inc}
-                  categories={categories}
-                  accounts={accounts}
-                  recentAccounts={recentAccounts}
-                  recentCategories={recentCategories}
-                  isOptimistic={!!inc._optimistic}
-                  selectionMode={true}
-                  isSelected={selection.isSelected(inc.id)}
-                  onLongPress={() => selection.enterSelectionMode(inc.id)}
-                  onToggleSelection={() => selection.toggleSelection(inc.id)}
-                />
-              ) : (
-                <IncomeCard
-                  key={inc._tempId || inc.id}
-                  income={inc}
-                  categories={categories}
-                  accounts={accounts}
-                  recentAccounts={recentAccounts}
-                  recentCategories={recentCategories}
-                  isOptimistic={!!inc._optimistic}
-                  selectionMode={false}
-                  onLongPress={() => selection.enterSelectionMode(inc.id)}
-                />
-              )
-            )}
+      {!shouldVirtualize ? (
+        // Small lists: render normally (exact current behavior)
+        dates.map((date) => (
+          <div key={date}>
+            <h2 className="mb-2 text-sm font-medium text-gray-500">
+              {formatDate(date, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </h2>
+            <div className="space-y-1">{groupedByDate[date].map(renderIncomeCard)}</div>
           </div>
+        ))
+      ) : (
+        // Large lists: use virtualization
+        <div ref={listRef} style={{ position: 'relative', height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const row = flatRows[virtualRow.index];
+            if (!row) return null;
+
+            return (
+              <div
+                key={virtualRow.index}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {row.type === 'header' ? (
+                  <h2 className="mb-2 text-sm font-medium text-gray-500">
+                    {formatDate(row.date, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </h2>
+                ) : (
+                  renderIncomeCard(row.data)
+                )}
+              </div>
+            );
+          })}
         </div>
-      ))}
+      )}
 
       {/* Selection action bar */}
       {selection.isSelectionMode && (

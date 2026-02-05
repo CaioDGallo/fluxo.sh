@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
 import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
-import { eq, and, isNull, isNotNull, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc, sql, inArray, gte, lte } from 'drizzle-orm';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, getFaturaWindowStart, updateFaturaTotal } from '@/lib/actions/faturas';
 import { addMonths } from '@/lib/utils';
@@ -520,9 +520,14 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
   // Filter ignored transactions (they should still appear but won't affect calculations)
   // Note: We don't filter them out, allowing them to be visible but dimmed in UI
 
-  // Filter by month using SQL to extract year-month from purchaseDate (for budget tracking)
+  // Filter by month using range comparison (enables index usage)
   if (yearMonth) {
-    conditions.push(sql`to_char(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`);
+    const [year, month] = yearMonth.split('-').map(Number);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endOfMonth = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${endOfMonth}`;
+    conditions.push(gte(entries.purchaseDate, startDate));
+    conditions.push(lte(entries.purchaseDate, endDate));
   }
 
   if (categoryId) {

@@ -23,12 +23,14 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Analytics01Icon,
+  ArrowDataTransferHorizontalIcon,
   ArrowRight01Icon,
   CreditCardIcon,
   Crown03Icon,
   FileDownloadIcon,
   Invoice03Icon,
-  MoneyReceiveFlow02Icon,
+  MoneyReceive02Icon,
+  MoneySend02Icon,
   Notification02Icon,
   ReceiptDollarIcon,
   Settings01Icon,
@@ -38,15 +40,16 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { key: 'dashboard', href: '/dashboard', icon: MoneyReceiveFlow02Icon },
+  { key: 'dashboard', href: '/dashboard', icon: ArrowDataTransferHorizontalIcon },
   { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'budgets', href: '/budgets', icon: Invoice03Icon },
-  { key: 'expenses', href: '/expenses', icon: Wallet01Icon },
-  { key: 'income', href: '/income', icon: Wallet01Icon },
+  { key: 'expenses', href: '/expenses', icon: MoneySend02Icon },
+  { key: 'income', href: '/income', icon: MoneyReceive02Icon },
   { key: 'plan', href: '/settings/plan', icon: Crown03Icon },
   { key: 'bills', href: '/bills', icon: ReceiptDollarIcon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
@@ -75,17 +78,20 @@ export function AppSidebar() {
         {/* Expanded state: clickable brand link */}
         <Link
           href="/"
-          className="flex h-12 items-center px-4 font-semibold group-data-[collapsible=icon]:hidden hover:opacity-80 transition-opacity"
+          className="flex py-3 gap-1 flex-col items-center font-semibold group-data-[collapsible=icon]:hidden hover:opacity-80 transition-opacity"
         >
+          <Image src="/brand-kit/exports/icon-48-light.png" alt="" width={32} height={32} className="dark:hidden" />
+          <Image src="/brand-kit/exports/icon-48-dark.png" alt="" width={32} height={32} className="hidden dark:block" />
           {t('fluxosh')}
         </Link>
 
-        {/* Collapsed state: show clickable icon */}
+        {/* Collapsed state: show clickable logo */}
         <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip={t('home')}>
               <Link href="/">
-                <HugeiconsIcon icon={SparklesIcon} />
+                <Image src="/brand-kit/exports/icon-48-light.png" alt="fluxo.sh" width={24} height={24} className="dark:hidden" />
+                <Image src="/brand-kit/exports/icon-48-dark.png" alt="fluxo.sh" width={24} height={24} className="hidden dark:block" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

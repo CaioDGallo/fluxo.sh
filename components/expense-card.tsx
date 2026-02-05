@@ -309,7 +309,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
                 </Badge>
               )}
             </div>
-            <div className="flex flex-col text-xs text-gray-500 md:text-sm min-w-0">
+            <div className="flex flex-col text-xs text-gray-500 md:text-sm min-w-0 space-y-0.5">
               <span className="truncate">{optimisticCategory.name}</span>
               <span className="truncate">{entry.accountName}</span>
             </div>

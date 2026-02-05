@@ -1,8 +1,6 @@
-'use client';
-
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 type SummaryCardProps = {
   spent: number; // cents
@@ -10,9 +8,11 @@ type SummaryCardProps = {
   budget: number; // cents
 };
 
-export function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
-  const t = useTranslations('summary');
-  const tBudgets = useTranslations('budgets');
+export async function SummaryCard({ spent, replenished, budget }: SummaryCardProps) {
+  const [t, tBudgets] = await Promise.all([
+    getTranslations('summary'),
+    getTranslations('budgets'),
+  ]);
   const netSpent = spent - replenished;
   const percentage = budget > 0 ? (netSpent / budget) * 100 : 0;
   const remaining = budget - netSpent;

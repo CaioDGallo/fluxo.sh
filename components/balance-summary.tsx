@@ -1,8 +1,6 @@
-'use client';
-
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 type BalanceSummaryProps = {
   income: number; // cents
@@ -10,8 +8,8 @@ type BalanceSummaryProps = {
   netBalance: number; // cents
 };
 
-export function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryProps) {
-  const t = useTranslations('summary');
+export async function BalanceSummary({ income, expenses, netBalance }: BalanceSummaryProps) {
+  const t = await getTranslations('summary');
   const isPositive = netBalance >= 0;
 
   return (

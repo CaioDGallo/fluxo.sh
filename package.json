@@ -36,6 +36,7 @@
     "@serwist/core": "^9.5.3",
     "@serwist/expiration": "^9.5.3",
     "@serwist/next": "9.5.0",
+    "@tanstack/react-virtual": "^3.13.18",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.1",
     "@vercel/analytics": "^1.6.1",

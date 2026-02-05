@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactElement, cloneElement } from 'react';
-import posthog from 'posthog-js';
+import { captureEvent } from '@/lib/posthog-client';
 import {
   type CtaType,
   type CtaLocation,
@@ -40,7 +40,7 @@ export function LandingCtaTracker({
       time_to_click_seconds: timeToClick,
     };
 
-    posthog.capture('landing_cta_clicked', properties);
+    void captureEvent('landing_cta_clicked', properties);
 
     // Increment CTA click count
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

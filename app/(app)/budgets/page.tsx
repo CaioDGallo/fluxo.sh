@@ -16,9 +16,11 @@ export default async function BudgetsPage({
 }: {
   searchParams: Promise<{ month?: string; bucket?: string }>
 }) {
-  const t = await getTranslations('budgets');
-  const tOnboarding = await getTranslations('onboarding.hints');
-  const params = await searchParams;
+  const [t, tOnboarding, params] = await Promise.all([
+    getTranslations('budgets'),
+    getTranslations('onboarding.hints'),
+    searchParams,
+  ]);
   const yearMonth = params.month || getCurrentYearMonth();
   const bucketFilter = (params.bucket || 'all') as BucketFilter;
   const data = await getBudgetsWithSpending(yearMonth);

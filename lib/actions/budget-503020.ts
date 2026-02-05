@@ -140,62 +140,62 @@ export const getSafeToSpendData = cache(async (yearMonth: string): Promise<SafeT
   try {
     const userId = await getCurrentUserId();
 
-    // Get user's budget config (or use default preset)
-    const [config] = await db
-      .select()
-      .from(budgetConfig)
-      .where(eq(budgetConfig.userId, userId))
-      .limit(1);
+    const [configRows, budgetRows, spendingRows, commitmentRows] = await Promise.all([
+      // Get user's budget config (or use default preset)
+      db
+        .select()
+        .from(budgetConfig)
+        .where(eq(budgetConfig.userId, userId))
+        .limit(1),
+      // Get total monthly budget
+      db
+        .select({
+          categoryId: budgets.categoryId,
+          amount: budgets.amount,
+          bucket: categories.bucket,
+        })
+        .from(budgets)
+        .innerJoin(categories, eq(budgets.categoryId, categories.id))
+        .where(and(
+          eq(budgets.userId, userId),
+          eq(budgets.yearMonth, yearMonth)
+        )),
+      // Get spending by bucket for this month
+      db
+        .select({
+          bucket: categories.bucket,
+          totalSpent: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as('total_spent'),
+        })
+        .from(entries)
+        .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+        .innerJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(and(
+          eq(entries.userId, userId),
+          sql`TO_CHAR(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`,
+          eq(transactions.ignored, false)
+        ))
+        .groupBy(categories.bucket),
+      // Get committed spending from upcoming/pending bill occurrences this month
+      db
+        .select({
+          bucket: categories.bucket,
+          totalCommitted: sql<number>`COALESCE(SUM(${billOccurrences.expectedAmount}), 0)`.as('total_committed'),
+        })
+        .from(billOccurrences)
+        .innerJoin(bills, eq(billOccurrences.billId, bills.id))
+        .leftJoin(categories, eq(bills.categoryId, categories.id))
+        .where(and(
+          eq(billOccurrences.userId, userId),
+          eq(billOccurrences.yearMonth, yearMonth),
+          inArray(billOccurrences.status, ['upcoming', 'pending', 'overdue'])
+        ))
+        .groupBy(categories.bucket),
+    ]);
 
+    const config = configRows[0];
     const percentages = getBucketPercentages(config);
 
-    // Get total monthly budget
-    const budgetRows = await db
-      .select({
-        categoryId: budgets.categoryId,
-        amount: budgets.amount,
-        bucket: categories.bucket,
-      })
-      .from(budgets)
-      .innerJoin(categories, eq(budgets.categoryId, categories.id))
-      .where(and(
-        eq(budgets.userId, userId),
-        eq(budgets.yearMonth, yearMonth)
-      ));
-
     const totalBudget = budgetRows.reduce((sum, row) => sum + row.amount, 0);
-
-    // Get spending by bucket for this month
-    const spendingRows = await db
-      .select({
-        bucket: categories.bucket,
-        totalSpent: sql<number>`COALESCE(SUM(${entries.amount}), 0)`.as('total_spent'),
-      })
-      .from(entries)
-      .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-      .innerJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(and(
-        eq(entries.userId, userId),
-        sql`TO_CHAR(${entries.purchaseDate}, 'YYYY-MM') = ${yearMonth}`,
-        eq(transactions.ignored, false)
-      ))
-      .groupBy(categories.bucket);
-
-    // Get committed spending from upcoming/pending bill occurrences this month
-    const commitmentRows = await db
-      .select({
-        bucket: categories.bucket,
-        totalCommitted: sql<number>`COALESCE(SUM(${billOccurrences.expectedAmount}), 0)`.as('total_committed'),
-      })
-      .from(billOccurrences)
-      .innerJoin(bills, eq(billOccurrences.billId, bills.id))
-      .leftJoin(categories, eq(bills.categoryId, categories.id))
-      .where(and(
-        eq(billOccurrences.userId, userId),
-        eq(billOccurrences.yearMonth, yearMonth),
-        inArray(billOccurrences.status, ['upcoming', 'pending', 'overdue'])
-      ))
-      .groupBy(categories.bucket);
 
     const commitmentMap = new Map<BucketType | null, number>();
     for (const row of commitmentRows) {

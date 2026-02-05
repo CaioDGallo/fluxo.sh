@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import posthog from 'posthog-js';
+import { captureEvent } from '@/lib/posthog-client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { joinWaitlist } from '@/lib/actions/waitlist';
@@ -63,7 +63,7 @@ export function LandingWaitlistForm({
       sections_viewed: sectionsViewed,
     };
 
-    posthog.capture('landing_waitlist_focused', properties);
+    void captureEvent('landing_waitlist_focused', properties);
     setHasTrackedFocus(true);
     interactionStartRef.current = Date.now();
   };
@@ -90,7 +90,7 @@ export function LandingWaitlistForm({
         form_interaction_time_seconds: Math.round(interactionTime),
       };
 
-      posthog.capture('landing_waitlist_started', properties);
+      void captureEvent('landing_waitlist_started', properties);
       setHasTrackedStarted(true);
     }, 500);
   };

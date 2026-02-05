@@ -12,9 +12,11 @@ export default async function FaturasPage({
 }: {
   searchParams: Promise<{ month?: string }>
 }) {
-  const t = await getTranslations('faturas');
-  const tOnboarding = await getTranslations('onboarding.hints');
-  const { month } = await searchParams;
+  const [{ month }, t, tOnboarding] = await Promise.all([
+    searchParams,
+    getTranslations('faturas'),
+    getTranslations('onboarding.hints'),
+  ]);
 
   // Faturas page defaults to next month if no month specified
   const yearMonth = month || getCurrentYearMonth(true);

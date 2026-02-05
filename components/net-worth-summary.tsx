@@ -1,8 +1,6 @@
-'use client';
-
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 type NetWorthSummaryProps = {
   totalAssets: number; // cents
@@ -11,13 +9,13 @@ type NetWorthSummaryProps = {
   byType: Record<string, number>; // cents
 };
 
-export function NetWorthSummary({
+export async function NetWorthSummary({
   totalAssets,
   totalLiabilities,
   netWorth,
   byType,
 }: NetWorthSummaryProps) {
-  const t = useTranslations('netWorth');
+  const t = await getTranslations('netWorth');
   const isPositive = netWorth >= 0;
 
   return (

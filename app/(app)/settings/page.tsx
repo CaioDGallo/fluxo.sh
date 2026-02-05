@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 export default async function SettingsPage() {
-  const t = await getTranslations('settings');
-  const tLegal = await getTranslations('legal');
+  const [t, tLegal] = await Promise.all([
+    getTranslations('settings'),
+    getTranslations('legal'),
+  ]);
 
   return (
     <div>

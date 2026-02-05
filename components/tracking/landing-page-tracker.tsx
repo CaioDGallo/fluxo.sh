@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import posthog from 'posthog-js';
+import { captureEvent } from '@/lib/posthog-client';
 import {
   getTrafficProperties,
   getScrollDepth,
@@ -28,7 +28,7 @@ export function LandingPageTracker({ children }: LandingPageTrackerProps) {
     startTimeRef.current = Date.now();
 
     // Track page view with traffic properties
-    posthog.capture('landing_page_viewed', getTrafficProperties());
+    void captureEvent('landing_page_viewed', getTrafficProperties());
 
     // Track scroll depth
     const handleScroll = () => {
@@ -61,7 +61,7 @@ export function LandingPageTracker({ children }: LandingPageTrackerProps) {
       };
 
       // Use sendBeacon transport for reliable exit tracking
-      posthog.capture('landing_page_exited', exitProperties, { transport: 'sendBeacon' });
+      void captureEvent('landing_page_exited', exitProperties, { transport: 'sendBeacon' });
     };
   }, []);
 

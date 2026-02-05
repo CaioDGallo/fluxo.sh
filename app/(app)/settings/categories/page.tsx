@@ -4,9 +4,11 @@ import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
 import { CategoriesTabs } from '@/components/categories-tabs';
 
 export default async function CategoriesPage() {
-  const t = await getTranslations('categories');
-  const tOnboarding = await getTranslations('onboarding.hints');
-  const categories = await getCategories();
+  const [t, tOnboarding, categories] = await Promise.all([
+    getTranslations('categories'),
+    getTranslations('onboarding.hints'),
+    getCategories(),
+  ]);
 
   const expenseCategories = categories.filter(cat => cat.type === 'expense');
   const incomeCategories = categories.filter(cat => cat.type === 'income');

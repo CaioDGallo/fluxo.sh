@@ -54,34 +54,117 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
   const endOfMonth = new Date(year, month, 0).getDate();
   const endDate = `${year}-${String(month).padStart(2, '0')}-${endOfMonth}`;
 
-  // 1. Get all budgets for the month with category info
-  const monthBudgets = await db
-    .select({
-      categoryId: budgets.categoryId,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      categoryIcon: categories.icon,
-      budget: budgets.amount,
-    })
-    .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id))
-    .where(and(eq(budgets.yearMonth, yearMonth), eq(budgets.userId, userId)));
-
-  // 2. Get spending by category for the month (by purchase date)
-  const spending = await db
-    .select({
-      categoryId: transactions.categoryId,
-      spent: sql<number>`CAST(SUM(${entries.amount}) AS INTEGER)`,
-    })
-    .from(entries)
-    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .where(and(
-      gte(entries.purchaseDate, startDate),
-      lte(entries.purchaseDate, endDate),
-      eq(entries.userId, userId),
-      activeTransactionCondition()
-    ))
-    .groupBy(transactions.categoryId);
+  const [
+    monthBudgets,
+    spending,
+    replenishments,
+    incomeData,
+    recentExpenses,
+    recentIncome,
+  ] = await Promise.all([
+    // 1. Get all budgets for the month with category info
+    db
+      .select({
+        categoryId: budgets.categoryId,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        categoryIcon: categories.icon,
+        budget: budgets.amount,
+      })
+      .from(budgets)
+      .innerJoin(categories, eq(budgets.categoryId, categories.id))
+      .where(and(eq(budgets.yearMonth, yearMonth), eq(budgets.userId, userId))),
+    // 2. Get spending by category for the month (by purchase date)
+    db
+      .select({
+        categoryId: transactions.categoryId,
+        spent: sql<number>`CAST(SUM(${entries.amount}) AS INTEGER)`,
+      })
+      .from(entries)
+      .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+      .where(and(
+        gte(entries.purchaseDate, startDate),
+        lte(entries.purchaseDate, endDate),
+        eq(entries.userId, userId),
+        activeTransactionCondition()
+      ))
+      .groupBy(transactions.categoryId),
+    // 2b. Get replenishments by expense category for the month
+    db
+      .select({
+        categoryId: income.replenishCategoryId,
+        replenished: sql<number>`CAST(SUM(${income.amount}) AS INTEGER)`,
+      })
+      .from(income)
+      .where(and(
+        eq(income.userId, userId),
+        gte(income.receivedDate, startDate),
+        lte(income.receivedDate, endDate),
+        isNotNull(income.replenishCategoryId),
+        eq(income.ignored, false)
+      ))
+      .groupBy(income.replenishCategoryId),
+    // 4. Get income for the month
+    db
+      .select({
+        amount: income.amount,
+      })
+      .from(income)
+      .where(and(
+        gte(income.receivedDate, startDate),
+        lte(income.receivedDate, endDate),
+        eq(income.userId, userId),
+        activeIncomeCondition()
+      )),
+    // 7. Get recent 5 expenses (filtered by purchaseDate)
+    db
+      .select({
+        entryId: entries.id,
+        description: transactions.description,
+        amount: entries.amount,
+        purchaseDate: entries.purchaseDate,
+        dueDate: entries.dueDate,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        categoryIcon: categories.icon,
+        accountName: accounts.name,
+      })
+      .from(entries)
+      .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .innerJoin(accounts, eq(entries.accountId, accounts.id))
+      .where(and(
+        gte(entries.purchaseDate, startDate),
+        lte(entries.purchaseDate, endDate),
+        eq(entries.userId, userId),
+        activeTransactionCondition()
+      ))
+      .orderBy(desc(entries.createdAt))
+      .limit(5),
+    // 8. Get recent 5 income
+    db
+      .select({
+        incomeId: income.id,
+        description: income.description,
+        amount: income.amount,
+        receivedDate: income.receivedDate,
+        categoryName: categories.name,
+        categoryColor: categories.color,
+        categoryIcon: categories.icon,
+        accountName: accounts.name,
+      })
+      .from(income)
+      .innerJoin(categories, eq(income.categoryId, categories.id))
+      .innerJoin(accounts, eq(income.accountId, accounts.id))
+      .where(and(
+        gte(income.receivedDate, startDate),
+        lte(income.receivedDate, endDate),
+        eq(income.userId, userId),
+        activeIncomeCondition()
+      ))
+      .orderBy(desc(income.createdAt))
+      .limit(5),
+  ]);
 
   // Build spending map
   const spendingMap = new Map<number, number>();
@@ -89,26 +172,10 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     spendingMap.set(s.categoryId, s.spent);
   }
 
-  // 2b. Get replenishments by expense category for the month
-  const replenishments = await db
-    .select({
-      categoryId: income.replenishCategoryId,
-      replenished: sql<number>`CAST(SUM(${income.amount}) AS INTEGER)`,
-    })
-    .from(income)
-    .where(and(
-      eq(income.userId, userId),
-      gte(income.receivedDate, startDate),
-      lte(income.receivedDate, endDate),
-      isNotNull(income.replenishCategoryId),
-      eq(income.ignored, false)
-    ))
-    .groupBy(income.replenishCategoryId);
-
   const replenishmentsMap = new Map<number, number>();
   for (const r of replenishments) {
     if (!r.categoryId) {
-      continue
+      continue;
     }
     replenishmentsMap.set(r.categoryId, r.replenished);
   }
@@ -124,19 +191,6 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
     budget: budget.budget,
   }));
 
-  // 4. Get income for the month
-  const incomeData = await db
-    .select({
-      amount: income.amount,
-    })
-    .from(income)
-    .where(and(
-      gte(income.receivedDate, startDate),
-      lte(income.receivedDate, endDate),
-      eq(income.userId, userId),
-      activeIncomeCondition()
-    ));
-
   const totalIncome = incomeData.reduce((sum, inc) => sum + inc.amount, 0);
 
   // 5. Calculate totals
@@ -144,56 +198,6 @@ export const getDashboardData = cache(async (yearMonth: string): Promise<Dashboa
   const totalSpent = Array.from(spendingMap.values()).reduce((sum, spent) => sum + spent, 0);
   const totalReplenished = Array.from(replenishmentsMap.values()).reduce((sum, rep) => sum + rep, 0);
   const netBalance = totalIncome - totalSpent;
-
-  // 7. Get recent 5 expenses (filtered by purchaseDate)
-  const recentExpenses = await db
-    .select({
-      entryId: entries.id,
-      description: transactions.description,
-      amount: entries.amount,
-      purchaseDate: entries.purchaseDate,
-      dueDate: entries.dueDate,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      categoryIcon: categories.icon,
-      accountName: accounts.name,
-    })
-    .from(entries)
-    .innerJoin(transactions, eq(entries.transactionId, transactions.id))
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
-    .innerJoin(accounts, eq(entries.accountId, accounts.id))
-    .where(and(
-      gte(entries.purchaseDate, startDate),
-      lte(entries.purchaseDate, endDate),
-      eq(entries.userId, userId),
-      activeTransactionCondition()
-    ))
-    .orderBy(desc(entries.createdAt))
-    .limit(5);
-
-  // 8. Get recent 5 income
-  const recentIncome = await db
-    .select({
-      incomeId: income.id,
-      description: income.description,
-      amount: income.amount,
-      receivedDate: income.receivedDate,
-      categoryName: categories.name,
-      categoryColor: categories.color,
-      categoryIcon: categories.icon,
-      accountName: accounts.name,
-    })
-    .from(income)
-    .innerJoin(categories, eq(income.categoryId, categories.id))
-    .innerJoin(accounts, eq(income.accountId, accounts.id))
-    .where(and(
-      gte(income.receivedDate, startDate),
-      lte(income.receivedDate, endDate),
-      eq(income.userId, userId),
-      activeIncomeCondition()
-    ))
-    .orderBy(desc(income.createdAt))
-    .limit(5);
 
   return {
     totalSpent,

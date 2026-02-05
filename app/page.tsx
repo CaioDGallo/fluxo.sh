@@ -23,8 +23,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const t = await getTranslations('landing');
-  const tLegal = await getTranslations('legal');
+  const [t, tLegal] = await Promise.all([
+    getTranslations('landing'),
+    getTranslations('legal'),
+  ]);
 
   return (
     <LandingPageTracker>

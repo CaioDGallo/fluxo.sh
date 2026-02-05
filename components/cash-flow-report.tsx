@@ -1,8 +1,6 @@
-'use client';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 type CashFlowReportProps = {
   income: number;
@@ -10,8 +8,8 @@ type CashFlowReportProps = {
   net: number;
 };
 
-export function CashFlowReport({ income, expenses, net }: CashFlowReportProps) {
-  const t = useTranslations('cashFlow');
+export async function CashFlowReport({ income, expenses, net }: CashFlowReportProps) {
+  const t = await getTranslations('cashFlow');
   const netPositive = net >= 0;
 
   return (

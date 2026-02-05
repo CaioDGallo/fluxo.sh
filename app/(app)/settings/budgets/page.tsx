@@ -13,9 +13,11 @@ export default async function BudgetsPage({
 }: {
   searchParams: Promise<{ month?: string }>
 }) {
-  const t = await getTranslations('budgets');
-  const tOnboarding = await getTranslations('onboarding.hints');
-  const { month } = await searchParams;
+  const [{ month }, t, tOnboarding] = await Promise.all([
+    searchParams,
+    getTranslations('budgets'),
+    getTranslations('onboarding.hints'),
+  ]);
   const yearMonth = month || getCurrentYearMonth();
 
   const [budgets, monthlyBudget, config] = await Promise.all([

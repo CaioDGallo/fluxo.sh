@@ -15,9 +15,11 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ month?: string }>
 }) {
-  const t = await getTranslations('dashboard');
-  const tOnboarding = await getTranslations('onboarding.hints');
-  const { month } = await searchParams;
+  const [{ month }, t, tOnboarding] = await Promise.all([
+    searchParams,
+    getTranslations('dashboard'),
+    getTranslations('onboarding.hints'),
+  ]);
   const currentMonth = month || getCurrentYearMonth();
 
   const [safeToSpendData, budgetConfig] = await Promise.all([

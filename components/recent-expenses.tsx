@@ -1,9 +1,7 @@
-'use client';
-
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { CategoryIcon } from '@/components/icon-picker';
-import { useTranslations } from 'next-intl';
+import { CategoryIcon } from '@/components/category-icon';
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
 type RecentExpensesProps = {
@@ -19,8 +17,8 @@ type RecentExpensesProps = {
   }[];
 };
 
-export function RecentExpenses({ expenses }: RecentExpensesProps) {
-  const t = useTranslations('recentExpenses');
+export async function RecentExpenses({ expenses }: RecentExpensesProps) {
+  const t = await getTranslations('recentExpenses');
 
   if (expenses.length === 0) {
     return (

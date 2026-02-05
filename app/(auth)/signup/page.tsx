@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signIn } from 'next-auth/react';
-import posthog from 'posthog-js';
+import { captureEvent, identifyUser } from '@/lib/posthog-client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,8 +89,10 @@ export default function SignupPage() {
         setCaptchaToken(null);
       } else {
         // Track signup
-        posthog.identify(email, { email, name });
-        posthog.capture('signup_success', { email, method: 'credentials' });
+        void (async () => {
+          await identifyUser(email, { email, name });
+          await captureEvent('signup_success', { email, method: 'credentials' });
+        })();
 
         // Sign in and redirect
         await signIn('credentials', {
@@ -122,7 +124,7 @@ export default function SignupPage() {
       }
 
       // Track OAuth attempt
-      posthog.capture('signup_oauth_attempt', { provider });
+      void captureEvent('signup_oauth_attempt', { provider });
 
       // Redirect to OAuth
       await signIn(provider, { callbackUrl: redirectUrl });

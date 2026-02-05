@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import posthog from 'posthog-js';
+import { captureEvent } from '@/lib/posthog-client';
 import {
   getScrollDepth,
   type SectionName,
@@ -46,7 +46,7 @@ export function LandingSectionObserver({ sectionId, children }: LandingSectionOb
                   scroll_depth_percent: getScrollDepth(),
                 };
 
-                posthog.capture('landing_section_viewed', properties);
+                void captureEvent('landing_section_viewed', properties);
                 hasTrackedRef.current = true;
 
                 // Notify parent tracker

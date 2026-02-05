@@ -9,55 +9,75 @@ import { RecentExpenses } from '@/components/recent-expenses';
 import { MonthPicker } from '@/components/month-picker';
 import { CashFlowReport } from '@/components/cash-flow-report';
 
-// Mock next-intl
-vi.mock('next-intl', () => ({
-  useLocale: () => 'pt-BR',
-  useTranslations: (namespace: string) => (key: string) => {
-    const translations: Record<string, Record<string, string>> = {
-      summary: {
-        balanceSummary: 'Balance Summary',
-        totalIncome: 'Total Income',
-        totalExpenses: 'Total Expenses',
-        netBalance: 'Net Balance',
-        incomeSpent: 'of income spent',
-        noIncome: 'No income recorded',
-        monthlySummary: 'Monthly Summary',
-        totalSpent: 'Total Spent',
-        totalBudget: 'Total Budget',
-        overBudget: 'Over Budget',
-        remaining: 'Remaining',
-        unbudgeted: 'Unbudgeted',
-        budgetUsed: 'of budget used',
-      },
-      cashFlow: {
-        title: 'Cash Flow',
-        income: 'Income',
-        expenses: 'Expenses',
-        transfersIn: 'Transfers In',
-        transfersOut: 'Transfers Out',
-        net: 'Net Cash Flow',
-      },
-      recentExpenses: {
-        title: 'Recent Expenses',
-        noExpenses: 'No expenses this month yet',
-        viewAll: 'View all',
-      },
-      budgets: {
-        spent: 'Spent',
-        replenished: 'Replenished',
-        netSpent: 'Net Spent',
-        remaining: 'Remaining',
-        nearLimit: 'Near limit',
-        overBudgetLabel: 'Over budget',
-      },
-      common: {
-        previousMonth: 'Previous month',
-        nextMonth: 'Next month',
-      },
-    };
-    return translations[namespace]?.[key] || key;
+const translations = vi.hoisted(() => ({
+  summary: {
+    balanceSummary: 'Balance Summary',
+    totalIncome: 'Total Income',
+    totalExpenses: 'Total Expenses',
+    netBalance: 'Net Balance',
+    incomeSpent: 'of income spent',
+    noIncome: 'No income recorded',
+    monthlySummary: 'Monthly Summary',
+    totalSpent: 'Total Spent',
+    totalBudget: 'Total Budget',
+    overBudget: 'Over Budget',
+    remaining: 'Remaining',
+    unbudgeted: 'Unbudgeted',
+    budgetUsed: 'of budget used',
+  },
+  cashFlow: {
+    title: 'Cash Flow',
+    income: 'Income',
+    expenses: 'Expenses',
+    transfersIn: 'Transfers In',
+    transfersOut: 'Transfers Out',
+    net: 'Net Cash Flow',
+  },
+  recentExpenses: {
+    title: 'Recent Expenses',
+    noExpenses: 'No expenses this month yet',
+    viewAll: 'View all',
+  },
+  budgets: {
+    spent: 'Spent',
+    replenished: 'Replenished',
+    netSpent: 'Net Spent',
+    remaining: 'Remaining',
+    nearLimit: 'Near limit',
+    overBudgetLabel: 'Over budget',
+  },
+  common: {
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
   },
 }));
+
+// Mock next-intl (client)
+vi.mock('next-intl', () => ({
+  useLocale: () => 'pt-BR',
+  useTranslations: (namespace: string) => (key: string) =>
+    translations[namespace as keyof typeof translations]?.[key] || key,
+}));
+
+// Mock next-intl (server)
+vi.mock('next-intl/server', () => ({
+  getTranslations: async (namespace: string) => (key: string) =>
+    translations[namespace as keyof typeof translations]?.[key] || key,
+}));
+
+const renderAsync = async (ui: Promise<JSX.Element> | JSX.Element) => {
+  const resolved = await ui;
+  const type = (resolved as { type?: unknown }).type;
+
+  if (typeof type === 'function' && type.constructor?.name === 'AsyncFunction') {
+    const element = await (type as (props: unknown) => Promise<JSX.Element>)(
+      (resolved as { props?: unknown }).props
+    );
+    return render(element);
+  }
+
+  return render(resolved);
+};
 
 // Mock next/navigation
 const mockPush = vi.fn();
@@ -96,8 +116,8 @@ describe('Dashboard Components', () => {
 
   describe('BalanceSummary Component', () => {
     describe('Display Tests', () => {
-      it('shows total income, expenses, and net balance', () => {
-        render(
+      it('shows total income, expenses, and net balance', async () => {
+        await renderAsync(
           <BalanceSummary income={100000} expenses={60000} netBalance={40000} />
         );
 
@@ -112,8 +132,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText(/R\$\s*400,00/)).toBeInTheDocument();
       });
 
-      it('displays green color for positive balance', () => {
-        render(
+      it('displays green color for positive balance', async () => {
+        await renderAsync(
           <BalanceSummary income={100000} expenses={60000} netBalance={40000} />
         );
 
@@ -123,8 +143,8 @@ describe('Dashboard Components', () => {
         expect(netBalanceText).toHaveClass('text-green-600');
       });
 
-      it('displays red color for negative balance', () => {
-        render(
+      it('displays red color for negative balance', async () => {
+        await renderAsync(
           <BalanceSummary income={50000} expenses={80000} netBalance={-30000} />
         );
 
@@ -134,8 +154,8 @@ describe('Dashboard Components', () => {
         expect(netBalanceText).toHaveClass('text-red-600');
       });
 
-      it('shows progress bar percentage correctly', () => {
-        render(
+      it('shows progress bar percentage correctly', async () => {
+        await renderAsync(
           <BalanceSummary income={100000} expenses={60000} netBalance={40000} />
         );
 
@@ -144,8 +164,8 @@ describe('Dashboard Components', () => {
     });
 
     describe('Edge Cases', () => {
-      it('handles zero income and zero expenses', () => {
-        render(<BalanceSummary income={0} expenses={0} netBalance={0} />);
+      it('handles zero income and zero expenses', async () => {
+        await renderAsync(<BalanceSummary income={0} expenses={0} netBalance={0} />);
 
         // Check that all three amounts are displayed (income, expenses, net balance)
         const zeroAmounts = screen.getAllByText(/R\$\s*0,00/);
@@ -153,8 +173,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('No income recorded')).toBeInTheDocument();
       });
 
-      it('handles zero income with positive expenses (division by zero)', () => {
-        const { container } = render(
+      it('handles zero income with positive expenses (division by zero)', async () => {
+        const { container } = await renderAsync(
           <BalanceSummary income={0} expenses={50000} netBalance={-50000} />
         );
 
@@ -166,8 +186,8 @@ describe('Dashboard Components', () => {
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
-      it('handles positive income with zero expenses', () => {
-        const { container } = render(
+      it('handles positive income with zero expenses', async () => {
+        const { container } = await renderAsync(
           <BalanceSummary income={100000} expenses={0} netBalance={100000} />
         );
 
@@ -177,8 +197,8 @@ describe('Dashboard Components', () => {
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
-      it('handles income equals expenses (100% spent)', () => {
-        render(
+      it('handles income equals expenses (100% spent)', async () => {
+        await renderAsync(
           <BalanceSummary income={100000} expenses={100000} netBalance={0} />
         );
 
@@ -186,8 +206,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText(/\+R\$\s*0,00/)).toBeInTheDocument(); // Net balance is 0 (positive)
       });
 
-      it('handles expenses greater than income (over 100%)', () => {
-        const { container } = render(
+      it('handles expenses greater than income (over 100%)', async () => {
+        const { container } = await renderAsync(
           <BalanceSummary income={50000} expenses={80000} netBalance={-30000} />
         );
 
@@ -201,8 +221,8 @@ describe('Dashboard Components', () => {
         expect(progressBar).toHaveClass('bg-red-600');
       });
 
-      it('handles very large amounts', () => {
-        render(
+      it('handles very large amounts', async () => {
+        await renderAsync(
           <BalanceSummary
             income={99999999}
             expenses={50000000}
@@ -220,8 +240,8 @@ describe('Dashboard Components', () => {
 
   describe('SummaryCard Component', () => {
     describe('Display Tests', () => {
-      it('shows total spent, total budget, and remaining', () => {
-        render(<SummaryCard replenished={0} spent={60000} budget={100000} />);
+      it('shows total spent, total budget, and remaining', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={60000} budget={100000} />);
 
         expect(screen.getByText('Monthly Summary')).toBeInTheDocument();
         expect(screen.getByText('Total Spent')).toBeInTheDocument();
@@ -233,39 +253,39 @@ describe('Dashboard Components', () => {
         expect(screen.getByText(/R\$\s*400,00/)).toBeInTheDocument();
       });
 
-      it('shows green progress bar when under 80%', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={70000} budget={100000} />);
+      it('shows green progress bar when under 80%', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={70000} budget={100000} />);
 
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-green-500');
         expect(progressBar).toHaveStyle({ width: '70%' });
       });
 
-      it('shows yellow progress bar when between 80-100%', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={85000} budget={100000} />);
+      it('shows yellow progress bar when between 80-100%', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={85000} budget={100000} />);
 
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500');
         expect(progressBar).toHaveStyle({ width: '85%' });
       });
 
-      it('shows red progress bar when over 100%', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={120000} budget={100000} />);
+      it('shows red progress bar when over 100%', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={120000} budget={100000} />);
 
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-red-500');
         expect(progressBar).toHaveStyle({ width: '100%' }); // Capped at 100%
       });
 
-      it('shows "Over Budget" label when spending exceeds budget', () => {
-        render(<SummaryCard replenished={0} spent={120000} budget={100000} />);
+      it('shows "Over Budget" label when spending exceeds budget', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={120000} budget={100000} />);
 
         expect(screen.getByText('Over Budget')).toBeInTheDocument();
         expect(screen.getByText(/R\$\s*200,00/)).toBeInTheDocument(); // Absolute value
       });
 
-      it('calculates net spent with replenishment', () => {
-        render(<SummaryCard replenished={10000} spent={60000} budget={100000} />);
+      it('calculates net spent with replenishment', async () => {
+        await renderAsync(<SummaryCard replenished={10000} spent={60000} budget={100000} />);
 
         const totalSpentLabel = screen.getByText('Total Spent');
         const totalSpentRow = totalSpentLabel.parentElement as HTMLElement;
@@ -274,8 +294,8 @@ describe('Dashboard Components', () => {
     });
 
     describe('Edge Cases', () => {
-      it('handles budget=0 with spent>0', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={50000} budget={0} />);
+      it('handles budget=0 with spent>0', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={50000} budget={0} />);
 
         expect(screen.getByText('Unbudgeted')).toBeInTheDocument();
 
@@ -284,8 +304,8 @@ describe('Dashboard Components', () => {
         expect(progressBar).toHaveStyle({ width: '0%' });
       });
 
-      it('handles spent=0 with budget>0', () => {
-        render(<SummaryCard replenished={0} spent={0} budget={100000} />);
+      it('handles spent=0 with budget>0', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={0} budget={100000} />);
 
         expect(screen.getByText('Remaining')).toBeInTheDocument();
         // Two instances of R$ 1.000,00 (budget and remaining)
@@ -294,8 +314,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('0.0% of budget used')).toBeInTheDocument();
       });
 
-      it('handles spent=0 and budget=0', () => {
-        render(<SummaryCard replenished={0} spent={0} budget={0} />);
+      it('handles spent=0 and budget=0', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={0} budget={0} />);
 
         // Multiple instances of R$ 0,00 (spent, budget, remaining)
         const zeroAmounts = screen.getAllByText(/R\$\s*0,00/);
@@ -303,38 +323,38 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('0.0% of budget used')).toBeInTheDocument();
       });
 
-      it('handles spent>budget (negative remaining)', () => {
-        render(<SummaryCard replenished={0} spent={120000} budget={100000} />);
+      it('handles spent>budget (negative remaining)', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={120000} budget={100000} />);
 
         expect(screen.getByText('Over Budget')).toBeInTheDocument();
         // Shows absolute value of negative remaining
         expect(screen.getByText(/R\$\s*200,00/)).toBeInTheDocument();
       });
 
-      it('handles spent=budget (zero remaining)', () => {
-        render(<SummaryCard replenished={0} spent={100000} budget={100000} />);
+      it('handles spent=budget (zero remaining)', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={100000} budget={100000} />);
 
         expect(screen.getByText('Remaining')).toBeInTheDocument();
         expect(screen.getByText(/R\$\s*0,00/)).toBeInTheDocument();
         expect(screen.getByText('100.0% of budget used')).toBeInTheDocument();
       });
 
-      it('tests exact boundary at 80%', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={80000} budget={100000} />);
+      it('tests exact boundary at 80%', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={80000} budget={100000} />);
 
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500'); // 80% is warning
       });
 
-      it('tests exact boundary at 100%', () => {
-        const { container } = render(<SummaryCard replenished={0} spent={100000} budget={100000} />);
+      it('tests exact boundary at 100%', async () => {
+        const { container } = await renderAsync(<SummaryCard replenished={0} spent={100000} budget={100000} />);
 
         const progressBar = container.querySelector('[data-slot="progress-bar"]');
         expect(progressBar).toHaveClass('bg-yellow-500'); // 100% is still warning
       });
 
-      it('handles very large amounts', () => {
-        render(<SummaryCard replenished={0} spent={50000000} budget={99999999} />);
+      it('handles very large amounts', async () => {
+        await renderAsync(<SummaryCard replenished={0} spent={50000000} budget={99999999} />);
 
         expect(screen.getByText(/R\$\s*500\.000,00/)).toBeInTheDocument();
         expect(screen.getByText(/R\$\s*999\.999,99/)).toBeInTheDocument();
@@ -556,8 +576,8 @@ describe('Dashboard Components', () => {
     ];
 
     describe('Display Tests', () => {
-      it('shows list of expenses with all details', () => {
-        render(<RecentExpenses expenses={mockExpenses} />);
+      it('shows list of expenses with all details', async () => {
+        await renderAsync(<RecentExpenses expenses={mockExpenses} />);
 
         expect(screen.getByText('Recent Expenses')).toBeInTheDocument();
         expect(screen.getByText('Restaurant Lunch')).toBeInTheDocument();
@@ -566,16 +586,16 @@ describe('Dashboard Components', () => {
         expect(screen.getByText('Food • Debit Card')).toBeInTheDocument();
       });
 
-      it('shows link to full expenses page', () => {
-        const { container } = render(<RecentExpenses expenses={mockExpenses} />);
+      it('shows link to full expenses page', async () => {
+        const { container } = await renderAsync(<RecentExpenses expenses={mockExpenses} />);
 
         const link = container.querySelector('a[href="/expenses"]');
         expect(link).toBeInTheDocument();
         expect(link?.textContent).toBe('View all');
       });
 
-      it('shows empty state when no expenses exist', () => {
-        render(<RecentExpenses expenses={[]} />);
+      it('shows empty state when no expenses exist', async () => {
+        await renderAsync(<RecentExpenses expenses={[]} />);
 
         expect(screen.getByText('Recent Expenses')).toBeInTheDocument();
         expect(screen.getByText('No expenses this month yet')).toBeInTheDocument();
@@ -583,27 +603,27 @@ describe('Dashboard Components', () => {
     });
 
     describe('Edge Cases', () => {
-      it('handles single expense', () => {
-        render(<RecentExpenses expenses={[mockExpenses[0]]} />);
+      it('handles single expense', async () => {
+        await renderAsync(<RecentExpenses expenses={[mockExpenses[0]]} />);
 
         expect(screen.getByText('Restaurant Lunch')).toBeInTheDocument();
         expect(screen.queryByText('Grocery Store')).not.toBeInTheDocument();
       });
 
-      it('handles exactly 5 expenses', () => {
+      it('handles exactly 5 expenses', async () => {
         const fiveExpenses = Array.from({ length: 5 }, (_, i) => ({
           ...mockExpenses[0],
           entryId: i + 1,
           description: `Expense ${i + 1}`,
         }));
 
-        render(<RecentExpenses expenses={fiveExpenses} />);
+        await renderAsync(<RecentExpenses expenses={fiveExpenses} />);
 
         expect(screen.getByText('Expense 1')).toBeInTheDocument();
         expect(screen.getByText('Expense 5')).toBeInTheDocument();
       });
 
-      it('handles expense with null icon', () => {
+      it('handles expense with null icon', async () => {
         const expenseWithNullIcon = [
           {
             ...mockExpenses[0],
@@ -611,12 +631,12 @@ describe('Dashboard Components', () => {
           },
         ];
 
-        render(<RecentExpenses expenses={expenseWithNullIcon} />);
+        await renderAsync(<RecentExpenses expenses={expenseWithNullIcon} />);
 
         expect(screen.getByText('Restaurant Lunch')).toBeInTheDocument();
       });
 
-      it('handles very large amounts', () => {
+      it('handles very large amounts', async () => {
         const largeExpense = [
           {
             ...mockExpenses[0],
@@ -624,7 +644,7 @@ describe('Dashboard Components', () => {
           },
         ];
 
-        render(<RecentExpenses expenses={largeExpense} />);
+        await renderAsync(<RecentExpenses expenses={largeExpense} />);
 
         expect(screen.getByText(/R\$\s*999\.999,99/)).toBeInTheDocument();
       });
@@ -668,8 +688,8 @@ describe('Dashboard Components', () => {
 
   describe('CashFlowReport Component', () => {
     describe('Display Tests', () => {
-      it('shows income, expenses, and net cash flow', () => {
-        render(
+      it('shows income, expenses, and net cash flow', async () => {
+        await renderAsync(
           <CashFlowReport
             income={100000}
             expenses={60000}
@@ -688,8 +708,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText(/R\$\s*400,00/)).toBeInTheDocument(); // Net
       });
 
-      it('displays positive net cash flow in green', () => {
-        render(
+      it('displays positive net cash flow in green', async () => {
+        await renderAsync(
           <CashFlowReport
             income={100000}
             expenses={60000}
@@ -701,8 +721,8 @@ describe('Dashboard Components', () => {
         expect(netText).toHaveClass('text-green-600');
       });
 
-      it('displays negative net cash flow in red', () => {
-        render(
+      it('displays negative net cash flow in red', async () => {
+        await renderAsync(
           <CashFlowReport
             income={50000}
             expenses={80000}
@@ -714,8 +734,8 @@ describe('Dashboard Components', () => {
         expect(netText).toHaveClass('text-red-600');
       });
 
-      it('displays zero net cash flow as positive (green)', () => {
-        render(
+      it('displays zero net cash flow as positive (green)', async () => {
+        await renderAsync(
           <CashFlowReport
             income={50000}
             expenses={50000}
@@ -733,8 +753,8 @@ describe('Dashboard Components', () => {
     });
 
     describe('Edge Cases', () => {
-      it('handles all zero values', () => {
-        render(
+      it('handles all zero values', async () => {
+        await renderAsync(
           <CashFlowReport
             income={0}
             expenses={0}
@@ -747,8 +767,8 @@ describe('Dashboard Components', () => {
         expect(zeroAmounts.length).toBeGreaterThanOrEqual(3);
       });
 
-      it('handles large amounts correctly', () => {
-        render(
+      it('handles large amounts correctly', async () => {
+        await renderAsync(
           <CashFlowReport
             income={99999999}
             expenses={50000000}
@@ -761,8 +781,8 @@ describe('Dashboard Components', () => {
         expect(screen.getByText(/R\$\s*499\.999,99/)).toBeInTheDocument();
       });
 
-      it('handles negative values with correct sign display', () => {
-        render(
+      it('handles negative values with correct sign display', async () => {
+        await renderAsync(
           <CashFlowReport
             income={0}
             expenses={100000}
@@ -777,8 +797,8 @@ describe('Dashboard Components', () => {
         expect(netText).toHaveClass('text-red-600');
       });
 
-      it('handles income only (no expenses)', () => {
-        render(
+      it('handles income only (no expenses)', async () => {
+        await renderAsync(
           <CashFlowReport
             income={50000}
             expenses={0}

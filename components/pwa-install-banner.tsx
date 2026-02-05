@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import posthog from "posthog-js";
+import { captureEvent } from "@/lib/posthog-client";
 import { usePwaInstall } from "@/lib/hooks/use-pwa-install";
 import { Button } from "./ui/button";
 import Image from "next/image";
@@ -36,7 +36,7 @@ export function PwaInstallBanner() {
       const platform = getPlatform();
       const { width, height } = getViewportSize();
 
-      posthog.capture("landing_pwa_banner_shown", {
+      void captureEvent("landing_pwa_banner_shown", {
         platform,
         viewport_size: `${width}x${height}`,
       });
@@ -52,7 +52,7 @@ export function PwaInstallBanner() {
     const platform = getPlatform();
     const { width, height } = getViewportSize();
 
-    posthog.capture("landing_pwa_install_clicked", {
+    void captureEvent("landing_pwa_install_clicked", {
       platform,
       viewport_size: `${width}x${height}`,
       time_to_interaction_seconds: timeToInteraction,
@@ -68,7 +68,7 @@ export function PwaInstallBanner() {
 
     const platform = getPlatform();
 
-    posthog.capture("landing_pwa_banner_dismissed", {
+    void captureEvent("landing_pwa_banner_dismissed", {
       platform,
       time_visible_seconds: timeVisible,
       viewport_size: `${getViewportSize().width}x${getViewportSize().height}`,

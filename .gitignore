@@ -59,3 +59,5 @@ public/workbox-*.js.map
 test-results/
 nextjs-pluggy-example/
 pluggy-node-example/
+budget-caio.md
+pluggy-openapi.json

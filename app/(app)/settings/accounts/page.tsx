@@ -32,7 +32,6 @@ export default function AccountsPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAccounts();
   }, []);
 

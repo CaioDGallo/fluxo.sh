@@ -228,57 +228,66 @@ export function ExpenseCard(props: ExpenseCardProps) {
         <CardContent
           {...longPressHandlers}
           onClick={handleCardClick}
-          className="flex items-start gap-4 p-3 relative bg-card select-none touch-pan-y"
+          className="flex items-stretch gap-4 p-3 relative bg-card select-none touch-pan-y"
         >
-          {/* Category icon - clickable */}
-          <button
-            type="button"
-            aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (props.selectionMode) {
-                props.onToggleSelection();
-              } else {
-                setPickerOpen(true);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+          <div className='flex flex-col'>
+            {/* Category icon - clickable */}
+            <div
+              aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
                 if (props.selectionMode) {
                   props.onToggleSelection();
                 } else {
                   setPickerOpen(true);
                 }
-              }
-            }}
-            className="relative size-12 shrink-0 rounded-none flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
-            style={{ backgroundColor: optimisticCategory.color }}
-          >
-            <span className='size-20 absolute'></span>
-            <CategoryIcon icon={optimisticCategory.icon} />
-            {/* Checkbox indicator - only shown in selection mode */}
-            {props.selectionMode && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <div className={cn(
-                  "size-12 rounded-none border-2 flex items-center justify-center transition-all",
-                  props.isSelected
-                    ? "bg-primary/85 border-green-600"
-                    : "bg-gray-100/70 border-gray-500"
-                )}>
-                  {props.isSelected && (
-                    <HugeiconsIcon
-                      icon={Tick02Icon}
-                      className="size-4 text-green-600"
-                      strokeWidth={4}
-                    />
-                  )}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (props.selectionMode) {
+                    props.onToggleSelection();
+                  } else {
+                    setPickerOpen(true);
+                  }
+                }
+              }}
+              className="relative w-12 h-full shrink-0 rounded-none flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
+              style={{ backgroundColor: optimisticCategory.color }}
+            >
+              <span className='size-20 absolute z-10'></span>
+              <CategoryIcon icon={optimisticCategory.icon} />
+              {/* Checkbox indicator - only shown in selection mode */}
+              {props.selectionMode && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center">
+                  <div className={cn(
+                    "size-12 rounded-none border-2 flex items-center justify-center transition-all",
+                    props.isSelected
+                      ? "bg-primary/85 border-green-600"
+                      : "bg-gray-100/70 border-gray-500"
+                  )}>
+                    {props.isSelected && (
+                      <HugeiconsIcon
+                        icon={Tick02Icon}
+                        className="size-4 text-green-600"
+                        strokeWidth={4}
+                      />
+                    )}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {entry.totalInstallments > 1 && (
+              <div className='flex w-12 bottom-3 justify-center absolute'>
+                <Badge variant="secondary" className="w-full">
+                  {entry.installmentNumber}/{entry.totalInstallments}
+                </Badge>
               </div>
             )}
-          </button>
+          </div>
 
           {/* Description + installment badge */}
           <div className="flex-1 min-w-0 space-y-1">
@@ -289,11 +298,6 @@ export function ExpenseCard(props: ExpenseCardProps) {
               )}>
                 {entry.description}
               </h3>
-              {entry.totalInstallments > 1 && (
-                <Badge variant="secondary" className="shrink-0">
-                  {entry.installmentNumber}/{entry.totalInstallments}
-                </Badge>
-              )}
               {entry.isFullyRefunded && (
                 <Badge variant="secondary" className="shrink-0 text-green-600">
                   {t('refunded')}

@@ -86,7 +86,7 @@ export async function getPluggyConnectToken(itemId?: string): Promise<ActionResu
     }
     const webhookUrl = resolvePluggyWebhookUrl();
     const appUrl = resolveAppUrl();
-    const oauthRedirectUri = appUrl ? `${appUrl}/settings/accounts` : undefined;
+    const oauthRedirectUri = appUrl ? `${appUrl}/auth/pluggy-callback` : undefined;
     const client = getPluggyClient();
     const { accessToken } = await client.createConnectToken(itemId, {
       clientUserId: userId,
@@ -332,12 +332,24 @@ export async function syncPluggyItemById(pluggyItemId: string): Promise<SyncResu
 
     const userId = await getCurrentUserId();
     await assertOpenFinanceAccess(userId);
-    const rateLimit = await checkPluggyManualSyncRateLimit(userId, pluggyItemId.trim());
-    if (!rateLimit.allowed) {
-      return {
-        success: false,
-        error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
-      };
+
+    // Check if this is a first sync (no lastSyncedAt) - bypass rate limiting for first sync
+    const [existingItem] = await db
+      .select({ lastSyncedAt: pluggyItems.lastSyncedAt })
+      .from(pluggyItems)
+      .where(and(eq(pluggyItems.userId, userId), eq(pluggyItems.pluggyItemId, pluggyItemId.trim())))
+      .limit(1);
+
+    const isFirstSync = !existingItem || !existingItem.lastSyncedAt;
+
+    if (!isFirstSync) {
+      const rateLimit = await checkPluggyManualSyncRateLimit(userId, pluggyItemId.trim());
+      if (!rateLimit.allowed) {
+        return {
+          success: false,
+          error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+        };
+      }
     }
 
     const result = await syncPluggyItem(pluggyItemId.trim(), undefined, 'manual');

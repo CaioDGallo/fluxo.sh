@@ -1294,6 +1294,17 @@
     "connectSuccess": "Bank connected successfully!",
     "connectFailed": "Failed to connect. Try again.",
     "connectCancelled": "Connection cancelled by user.",
+    "oauthCallback": {
+      "title": "Connecting bank",
+      "loading": "Connecting bank...",
+      "loadingDescription": "Please wait while we set up your connection",
+      "error": "Connection error",
+      "errorDescription": "Could not connect the bank. Please try again.",
+      "successPWA": "Bank connected!",
+      "redirecting": "Redirecting...",
+      "successBrowser": "Bank connected successfully!",
+      "returnToApp": "Return to the fluxo.sh app to view your accounts."
+    },
     "disconnect": "Disconnect",
     "disconnectTitle": "Disconnect bank?",
     "disconnectDescription": "Choose what to do with the synced data.",

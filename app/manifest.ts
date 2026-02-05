@@ -6,10 +6,13 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "fluxo.sh",
     description: "Suas finanças, no seu controle",
     start_url: "/dashboard",
+    scope: "/",
     display: "standalone",
     background_color: "#09090b",
     theme_color: "#09090b",
     orientation: "portrait-primary",
+    // @ts-expect-error - handle_links is not yet in Next.js types but is valid PWA manifest
+    handle_links: "preferred",
     icons: [
       {
         src: "/brand-kit/exports/icon-192-dark.png",

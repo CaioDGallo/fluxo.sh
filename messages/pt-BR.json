@@ -1335,6 +1335,17 @@
     "connectSuccess": "Banco conectado com sucesso!",
     "connectFailed": "Falha ao conectar. Tente novamente.",
     "connectCancelled": "Conexão cancelada pelo usuário.",
+    "oauthCallback": {
+      "title": "Conectando banco",
+      "loading": "Conectando banco...",
+      "loadingDescription": "Aguarde enquanto configuramos sua conexão",
+      "error": "Erro na conexão",
+      "errorDescription": "Não foi possível conectar o banco. Tente novamente.",
+      "successPWA": "Banco conectado!",
+      "redirecting": "Redirecionando...",
+      "successBrowser": "Banco conectado com sucesso!",
+      "returnToApp": "Volte para o app fluxo.sh para visualizar suas contas."
+    },
     "disconnect": "Desconectar",
     "disconnectTitle": "Desconectar banco?",
     "disconnectDescription": "Escolha o que fazer com os dados sincronizados.",

@@ -40,6 +40,7 @@ type PluggySyncSource = 'manual' | 'webhook' | 'cron';
 const CURSOR_SCOPE_PREFIX = 'transactions:';
 const CURSOR_BUFFER_MS = 24 * 60 * 60 * 1000;
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const FIRST_SYNC_RETRY_MS = 5 * 60 * 1000; // 5 minutes - short retry when first sync has no data
 const ERROR_BACKOFF_BASE_MS = 30 * 60 * 1000;
 const ERROR_BACKOFF_MAX_MS = 48 * 60 * 60 * 1000;
 
@@ -401,7 +402,11 @@ export async function syncPluggyItem(
       ))
       .limit(1);
 
-    if (isAutoSync && existingItem?.nextSyncAt && existingItem.nextSyncAt > syncedAt) {
+    // Determine if this is a first sync (before guards, so we can bypass rate limits)
+    isNewItem = !existingItem || !existingItem.lastSyncedAt;
+    previousErrorCount = existingItem?.errorCount ?? 0;
+
+    if (isAutoSync && !isNewItem && existingItem?.nextSyncAt && existingItem.nextSyncAt > syncedAt) {
       return {
         success: true,
         pluggyItemId,
@@ -414,7 +419,8 @@ export async function syncPluggyItem(
       };
     }
 
-    if (isAutoSync) {
+    // Bypass Redis rate limit for first sync
+    if (isAutoSync && !isNewItem) {
       const autoLimit = await checkPluggyAutoSyncRateLimit(userId, pluggyItemId);
       if (!autoLimit.allowed) {
         await db
@@ -433,9 +439,6 @@ export async function syncPluggyItem(
         };
       }
     }
-
-    isNewItem = !existingItem || !existingItem.lastSyncedAt;
-    previousErrorCount = existingItem?.errorCount ?? 0;
 
     const client = getPluggyClient();
 
@@ -1110,6 +1113,17 @@ export async function syncPluggyItem(
           },
         });
       }
+    }
+
+    // For first sync with no accounts, set a short retry interval (5 min instead of 24h)
+    // This handles the case where Pluggy hasn't finished processing the connection yet
+    const hasData = pluggyAccountList.length > 0;
+    if (isNewItem && !hasData) {
+      const shortRetryAt = new Date(syncedAt.getTime() + FIRST_SYNC_RETRY_MS);
+      await db
+        .update(pluggyItems)
+        .set({ nextSyncAt: shortRetryAt })
+        .where(and(eq(pluggyItems.userId, userId), eq(pluggyItems.pluggyItemId, pluggyItemId)));
     }
 
     return {

@@ -34,10 +34,10 @@ export function FABSpeedDial() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isExpanded]);
 
-  const handleFABClick = async () => {
+  const handleFABClick = () => {
     if (!isExpanded) {
-      // Fetch data on first expand
-      await fetchData();
+      // Fetch data on first expand (fire-and-forget for instant expansion)
+      void fetchData();
     }
     setIsExpanded(!isExpanded);
   };

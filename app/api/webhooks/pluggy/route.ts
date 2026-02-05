@@ -20,11 +20,13 @@ function extractWebhookSecret(request: Request) {
 
 export async function POST(request: Request) {
   const webhookSecret = process.env.PLUGGY_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const provided = extractWebhookSecret(request);
-    if (!provided || provided !== webhookSecret) {
-      return new NextResponse('Invalid webhook secret', { status: 401 });
-    }
+  if (!webhookSecret) {
+    return new NextResponse('PLUGGY_WEBHOOK_SECRET not configured', { status: 500 });
+  }
+
+  const provided = extractWebhookSecret(request);
+  if (!provided || provided !== webhookSecret) {
+    return new NextResponse('Invalid webhook secret', { status: 401 });
   }
 
   let payload: PluggyWebhookPayload;

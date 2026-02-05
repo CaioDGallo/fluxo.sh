@@ -6,6 +6,7 @@ import { sendPushToUser } from '@/lib/services/push-sender';
 import { defaultLocale, locales, type Locale } from '@/lib/i18n/config';
 import { translateWithLocale } from '@/lib/i18n/server-errors';
 import { eq } from 'drizzle-orm';
+import { checkTestPushRateLimit } from '@/lib/rate-limit';
 
 /**
  * POST /api/test-push
@@ -26,6 +27,22 @@ export async function POST(request: NextRequest) {
     const locale = locales.includes(settings?.locale as Locale)
       ? (settings?.locale as Locale)
       : defaultLocale;
+
+    const rateLimit = await checkTestPushRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: translateWithLocale(locale, 'errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': rateLimit.retryAfter.toString(),
+          },
+        }
+      );
+    }
 
     // Send test notification
     const result = await sendPushToUser(userId, {

@@ -32,6 +32,11 @@ let waitlistLimiter: Ratelimit | null = null;
 let bulkLimiter: Ratelimit | null = null;
 let crudLimiter: Ratelimit | null = null;
 let destructiveLimiter: Ratelimit | null = null;
+let pluggyConnectLimiter: Ratelimit | null = null;
+let pluggyDisconnectLimiter: Ratelimit | null = null;
+let pluggyManualSyncLimiter: Ratelimit | null = null;
+let pluggyAutoSyncLimiter: Ratelimit | null = null;
+let testPushLimiter: Ratelimit | null = null;
 
 function initializeRateLimiters() {
   if (redis) return; // Already initialized
@@ -84,6 +89,36 @@ function initializeRateLimiters() {
     redis,
     limiter: Ratelimit.slidingWindow(3, '3600 s'),
     prefix: 'ratelimit:destructive',
+  });
+
+  pluggyConnectLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, '3600 s'),
+    prefix: 'ratelimit:pluggy-connect',
+  });
+
+  pluggyDisconnectLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, '3600 s'),
+    prefix: 'ratelimit:pluggy-disconnect',
+  });
+
+  pluggyManualSyncLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(1, '86400 s'),
+    prefix: 'ratelimit:pluggy-manual-sync',
+  });
+
+  pluggyAutoSyncLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(1, '86400 s'),
+    prefix: 'ratelimit:pluggy-auto-sync',
+  });
+
+  testPushLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, '3600 s'),
+    prefix: 'ratelimit:test-push',
   });
 
 }
@@ -164,4 +199,30 @@ export async function checkCrudRateLimit(userId: string): Promise<RateLimitResul
 
 export async function checkDestructiveRateLimit(userId: string): Promise<RateLimitResult> {
   return checkLimit(() => destructiveLimiter, userId);
+}
+
+export async function checkPluggyConnectRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(() => pluggyConnectLimiter, userId);
+}
+
+export async function checkPluggyDisconnectRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(() => pluggyDisconnectLimiter, userId);
+}
+
+export async function checkPluggyManualSyncRateLimit(
+  userId: string,
+  pluggyItemId: string
+): Promise<RateLimitResult> {
+  return checkLimit(() => pluggyManualSyncLimiter, `${userId}:${pluggyItemId}`);
+}
+
+export async function checkPluggyAutoSyncRateLimit(
+  userId: string,
+  pluggyItemId: string
+): Promise<RateLimitResult> {
+  return checkLimit(() => pluggyAutoSyncLimiter, `${userId}:${pluggyItemId}`);
+}
+
+export async function checkTestPushRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(() => testPushLimiter, userId);
 }

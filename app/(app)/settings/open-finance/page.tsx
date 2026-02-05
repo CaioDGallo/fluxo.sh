@@ -1,13 +1,32 @@
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/auth';
 import { accounts, pluggyAccounts, pluggyItems } from '@/lib/schema';
 import { eq, asc } from 'drizzle-orm';
 import { OpenFinanceClient } from './open-finance-client';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
+import { Button } from '@/components/ui/button';
 
 export default async function OpenFinancePage() {
   const t = await getTranslations('openFinance');
   const userId = await getCurrentUserId();
+  const { limits } = await getUserEntitlements(userId);
+
+  if (!limits.openFinanceEnabled) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t('lockedTitle')}</p>
+          <p className="text-sm text-muted-foreground">{t('lockedDescription')}</p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/settings/plan">{t('upgradeButton')}</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const items = await db
     .select({

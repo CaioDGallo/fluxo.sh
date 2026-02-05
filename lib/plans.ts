@@ -9,6 +9,7 @@ export type PlanLimits = {
   maxAccounts: number;
   maxCreditCards: number;
   importWeekly: number;
+  openFinanceEnabled: boolean;
   budgetAlertThresholds: number[];
   customBudgetAlerts: boolean;
 };
@@ -31,6 +32,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       maxAccounts: 3,
       maxCreditCards: 2,
       importWeekly: 3,
+      openFinanceEnabled: false,
       budgetAlertThresholds: [100, 120],
       customBudgetAlerts: false,
     },
@@ -43,6 +45,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       maxAccounts: 20,
       maxCreditCards: 20,
       importWeekly: 50,
+      openFinanceEnabled: false,
       budgetAlertThresholds: [80, 100, 120],
       customBudgetAlerts: true,
     },
@@ -55,6 +58,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       maxAccounts: 20,
       maxCreditCards: 20,
       importWeekly: 50,
+      openFinanceEnabled: true,
       budgetAlertThresholds: [80, 100, 120],
       customBudgetAlerts: true,
     },
@@ -67,6 +71,7 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       maxAccounts: 20,
       maxCreditCards: 20,
       importWeekly: 50,
+      openFinanceEnabled: true,
       budgetAlertThresholds: [80, 100, 120],
       customBudgetAlerts: true,
     },

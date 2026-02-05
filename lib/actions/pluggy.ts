@@ -12,6 +12,8 @@ import { accounts, entries, faturas, income, pluggyAccounts, pluggyItems, transa
 import { and, eq, inArray, like } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
+import { assertOpenFinanceAccess } from '@/lib/pluggy/guards';
+import { checkPluggyConnectRateLimit, checkPluggyDisconnectRateLimit, checkPluggyManualSyncRateLimit } from '@/lib/rate-limit';
 
 type ActionResult =
   | { success: true; token: string }
@@ -74,6 +76,14 @@ function parseIsoDate(value?: string | Date | null): Date | null {
 export async function getPluggyConnectToken(itemId?: string): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
+    await assertOpenFinanceAccess(userId);
+    const rateLimit = await checkPluggyConnectRateLimit(`${userId}:init`);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+      };
+    }
     const webhookUrl = resolvePluggyWebhookUrl();
     const appUrl = resolveAppUrl();
     const oauthRedirectUri = appUrl ? `${appUrl}/settings/accounts` : undefined;
@@ -100,6 +110,14 @@ export async function initializePluggyItemAccounts(pluggyItemId: string): Promis
     }
 
     const userId = await getCurrentUserId();
+    await assertOpenFinanceAccess(userId);
+    const rateLimit = await checkPluggyConnectRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+      };
+    }
     const normalizedId = pluggyItemId.trim();
     const now = new Date();
 
@@ -198,6 +216,14 @@ export async function disconnectPluggyItem(
     }
 
     const userId = await getCurrentUserId();
+    await assertOpenFinanceAccess(userId);
+    const rateLimit = await checkPluggyDisconnectRateLimit(userId);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+      };
+    }
     const [item] = await db
       .select({ id: pluggyItems.id })
       .from(pluggyItems)
@@ -304,7 +330,17 @@ export async function syncPluggyItemById(pluggyItemId: string): Promise<SyncResu
       return { success: false, error: await t('errors.failedToLoad') };
     }
 
-    const result = await syncPluggyItem(pluggyItemId.trim());
+    const userId = await getCurrentUserId();
+    await assertOpenFinanceAccess(userId);
+    const rateLimit = await checkPluggyManualSyncRateLimit(userId, pluggyItemId.trim());
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }),
+      };
+    }
+
+    const result = await syncPluggyItem(pluggyItemId.trim(), undefined, 'manual');
     if (!result.success) {
       return { success: false, error: result.error };
     }

@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { budgets, entries, userSettings, categories, budgetAlerts } from '@/lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { budgets, entries, userSettings, categories, budgetAlerts, transactions } from '@/lib/schema';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { sendPushToUser } from '@/lib/services/push-sender';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { defaultLocale, locales, type Locale } from '@/lib/i18n/config';
@@ -57,26 +57,26 @@ export async function checkBudgetAlerts(
     }
 
     // Calculate total spent in this category for current month
-    const allEntries = await db
-      .select()
+    const [year, month] = currentMonth.split('-').map(Number);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+
+    const [spendingRow] = await db
+      .select({ total: sql<number>`CAST(COALESCE(SUM(${entries.amount}), 0) AS INTEGER)` })
       .from(entries)
-      .innerJoin((await import('@/lib/schema')).transactions, eq(entries.transactionId, (await import('@/lib/schema')).transactions.id))
+      .innerJoin(transactions, eq(entries.transactionId, transactions.id))
       .where(
         and(
           eq(entries.userId, userId),
-          eq((await import('@/lib/schema')).transactions.categoryId, categoryId),
-          eq((await import('@/lib/schema')).transactions.ignored, false)
+          eq(transactions.categoryId, categoryId),
+          eq(transactions.ignored, false),
+          gte(entries.purchaseDate, startDate),
+          lte(entries.purchaseDate, endDate)
         )
-      );
+      )
+      .limit(1);
 
-    // Filter entries by purchase date month (budget impact)
-    const monthEntries = allEntries.filter((e) => {
-      const purchaseDate = new Date(e.entries.purchaseDate);
-      const entryMonth = `${purchaseDate.getFullYear()}-${String(purchaseDate.getMonth() + 1).padStart(2, '0')}`;
-      return entryMonth === currentMonth;
-    });
-
-    const totalSpent = monthEntries.reduce((sum, e) => sum + e.entries.amount, 0);
+    const totalSpent = spendingRow?.total ?? 0;
     const percentage = (totalSpent / budget.amount) * 100;
 
     // Determine threshold (80%, 100%, 120%)

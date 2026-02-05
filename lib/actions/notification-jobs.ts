@@ -36,6 +36,23 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
     ))
     .limit(100);
 
+  const reminderIds = Array.from(new Set(
+    pendingJobs
+      .filter(({ job }) => job.itemType === 'bill_reminder')
+      .map(({ job }) => job.itemId)
+  ));
+
+  const remindersById = new Map<number, BillReminderItem>();
+  if (reminderIds.length > 0) {
+    const reminders = await db
+      .select()
+      .from(billReminders)
+      .where(inArray(billReminders.id, reminderIds));
+    for (const reminder of reminders) {
+      remindersById.set(reminder.id, reminder);
+    }
+  }
+
   // Separate bill reminder email jobs from others
   const billReminderEmailJobs: typeof pendingJobs = [];
   const otherJobs: typeof pendingJobs = [];
@@ -50,7 +67,7 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
 
   // Process bill reminder email jobs with grouping
   if (billReminderEmailJobs.length > 0) {
-    const groupResult = await processBillReminderEmailJobsGrouped(billReminderEmailJobs);
+    const groupResult = await processBillReminderEmailJobsGrouped(billReminderEmailJobs, remindersById);
     processed += groupResult.processed;
     failed += groupResult.failed;
   }
@@ -63,12 +80,7 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
       let userId: string | null = null;
 
       if (job.itemType === 'bill_reminder') {
-        const result = await db
-          .select()
-          .from(billReminders)
-          .where(eq(billReminders.id, job.itemId))
-          .limit(1);
-        itemData = result[0] || null;
+        itemData = remindersById.get(job.itemId) || null;
         userId = itemData?.userId || null;
         isValid = itemData !== null && itemData.status === 'active';
       }
@@ -163,22 +175,16 @@ export async function processPendingNotificationJobs(): Promise<ProcessNotificat
 }
 
 async function processBillReminderEmailJobsGrouped(
-  jobWrappers: Array<{ job: NotificationJob }>
+  jobWrappers: Array<{ job: NotificationJob }>,
+  remindersById: Map<number, BillReminderItem>
 ): Promise<ProcessNotificationJobResult> {
   let processed = 0;
   let failed = 0;
 
-  // First, fetch all reminders to get userId for grouping
-  const jobsWithReminders = await Promise.all(
-    jobWrappers.map(async (wrapper) => {
-      const [reminder] = await db
-        .select()
-        .from(billReminders)
-        .where(eq(billReminders.id, wrapper.job.itemId))
-        .limit(1);
-      return { ...wrapper, reminder };
-    })
-  );
+  const jobsWithReminders = jobWrappers.map((wrapper) => {
+    const reminder = remindersById.get(wrapper.job.itemId);
+    return { ...wrapper, reminder };
+  });
 
   // Group jobs by userId and scheduledDate (same day)
   const groups = new Map<string, Array<{ job: NotificationJob; reminder: BillReminderItem | undefined }>>();

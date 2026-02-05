@@ -4,6 +4,7 @@ import { pluggyItems, pluggyWebhookEvents } from '@/lib/schema';
 import { getPluggyClient } from '@/lib/pluggy/sdk';
 import type { Item, WebhookEventPayload } from 'pluggy-sdk';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
+import { assertOpenFinanceAccess } from '@/lib/pluggy/guards';
 
 export type PluggyWebhookPayload = {
   event?: WebhookEventPayload['event'];
@@ -138,7 +139,7 @@ async function handleItemEvent(payload: PluggyWebhookPayload, userId: string) {
     });
 
   if (payload.event && ITEM_SYNC_EVENTS.has(payload.event)) {
-    void syncPluggyItem(itemId, userId).catch((error) => {
+    void syncPluggyItem(itemId, userId, 'webhook').catch((error) => {
       console.error('[pluggy:webhook] Failed to sync item:', error);
     });
   }
@@ -147,7 +148,7 @@ async function handleItemEvent(payload: PluggyWebhookPayload, userId: string) {
 async function handleTransactionsEvent(payload: PluggyWebhookPayload, userId: string) {
   const itemId = payload.itemId;
   if (!itemId) return;
-  void syncPluggyItem(itemId, userId).catch((error) => {
+  void syncPluggyItem(itemId, userId, 'webhook').catch((error) => {
     console.error('[pluggy:webhook] Failed to sync transactions:', error);
   });
 }
@@ -172,6 +173,11 @@ export async function processPluggyWebhook(payload: PluggyWebhookPayload) {
   const userId = await resolveUserId(payload.itemId, payload.clientUserId);
   if (userId) {
     await updateWebhookUser(eventId, userId);
+    try {
+      await assertOpenFinanceAccess(userId);
+    } catch {
+      return { ignored: true };
+    }
   }
 
   if (event.startsWith('item/')) {

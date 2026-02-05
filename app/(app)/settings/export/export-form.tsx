@@ -50,7 +50,11 @@ export function ExportForm() {
       });
     } catch (err) {
       console.error('Export error:', err);
-      setError('Falha ao exportar. Tente novamente.');
+      if (err instanceof Error && err.message) {
+        setError(err.message);
+      } else {
+        setError('Falha ao exportar. Tente novamente.');
+      }
     } finally {
       setIsExporting(false);
     }

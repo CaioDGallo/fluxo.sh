@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { billReminders, notificationJobs, userSettings } from '@/lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { calculateNextDueDate } from '@/lib/utils/bill-reminders';
 
 export async function scheduleBillReminderNotifications(): Promise<{
@@ -26,6 +26,29 @@ export async function scheduleBillReminderNotifications(): Promise<{
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const graceWindowMs = 24 * 60 * 60 * 1000;
+
+  const reminderIds = activeReminders.map(({ reminder }) => reminder.id);
+  const earliestScheduledAt = new Date(now.getTime() - graceWindowMs);
+
+  const existingJobKeys = new Set<string>();
+  if (reminderIds.length > 0) {
+    const existingJobs = await db
+      .select({ itemId: notificationJobs.itemId, scheduledAt: notificationJobs.scheduledAt })
+      .from(notificationJobs)
+      .where(
+        and(
+          eq(notificationJobs.itemType, 'bill_reminder'),
+          inArray(notificationJobs.itemId, reminderIds),
+          eq(notificationJobs.status, 'pending'),
+          gte(notificationJobs.scheduledAt, earliestScheduledAt),
+          lte(notificationJobs.scheduledAt, sevenDaysFromNow)
+        )
+      );
+
+    for (const job of existingJobs) {
+      existingJobKeys.add(`${job.itemId}:${job.scheduledAt.toISOString()}`);
+    }
+  }
 
   for (const { reminder, timezone } of activeReminders) {
     try {
@@ -65,21 +88,8 @@ export async function scheduleBillReminderNotifications(): Promise<{
 
       // Create notification jobs
       for (const notification of notifications) {
-        // Check if job already exists
-        const existingJobs = await db
-          .select()
-          .from(notificationJobs)
-          .where(
-            and(
-              eq(notificationJobs.itemType, 'bill_reminder'),
-              eq(notificationJobs.itemId, reminder.id),
-              eq(notificationJobs.scheduledAt, notification.scheduledAt),
-              eq(notificationJobs.status, 'pending')
-            )
-          )
-          .limit(1);
-
-        if (existingJobs.length > 0) {
+        const jobKey = `${reminder.id}:${notification.scheduledAt.toISOString()}`;
+        if (existingJobKeys.has(jobKey)) {
           skipped++;
           continue;
         }
@@ -94,6 +104,7 @@ export async function scheduleBillReminderNotifications(): Promise<{
           attempts: 0,
         });
 
+        existingJobKeys.add(jobKey);
         scheduled++;
       }
     } catch (error) {

@@ -97,7 +97,10 @@
     "categoryLimitReached": "You reached the {{limit}} category limit for your plan",
     "accountLimitReached": "You reached the {{limit}} account limit for your plan",
     "creditCardLimitReached": "You reached the {{limit}} credit card limit for your plan",
-    "importLimitReached": "You reached the weekly limit of {{limit}} imports for your plan"
+    "importLimitReached": "You reached the weekly limit of {{limit}} imports for your plan",
+    "exportLimitReached": "You reached the weekly limit of {{limit}} exports for your plan",
+    "exportVolumeLimitReached": "The selected period exceeds the limit of {{limit}} records. Reduce the period.",
+    "openFinanceNotAvailable": "Open Finance is available only on Pro or Founder plans."
   },
   "navigation": {
     "fluxosh": "fluxo.sh",
@@ -1241,6 +1244,9 @@
   "openFinance": {
     "title": "Open Finance",
     "description": "Connect banks and track Pluggy syncs.",
+    "lockedTitle": "Open Finance unavailable",
+    "lockedDescription": "Available only on Pro or Founder plans.",
+    "upgradeButton": "View plans",
     "connectTitle": "Connect",
     "connectDescription": "Open Pluggy Connect to link a bank.",
     "connectButton": "Generate Pluggy token",

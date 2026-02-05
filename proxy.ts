@@ -4,7 +4,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 // Initialize Redis for rate limiting
-function getRedisClient(): Redis {
+function getRedisClient(): Redis | null {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     return new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
@@ -16,17 +16,18 @@ function getRedisClient(): Redis {
     return Redis.fromEnv();
   }
 
-  throw new Error('Redis not configured for middleware rate limiting');
+  return null;
 }
 
 let redis: Redis | null = null;
 let globalLimiter: Ratelimit | null = null;
 let apiLimiter: Ratelimit | null = null;
 
-function initializeRateLimiters() {
-  if (redis) return;
-
-  redis = getRedisClient();
+function initializeRateLimiters(): boolean {
+  if (redis) return true;
+  const client = getRedisClient();
+  if (!client) return false;
+  redis = client;
   globalLimiter = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(100, '60 s'),
@@ -38,6 +39,7 @@ function initializeRateLimiters() {
     limiter: Ratelimit.slidingWindow(30, '60 s'),
     prefix: 'ratelimit:api',
   });
+  return true;
 }
 
 function getClientIP(request: NextRequest): string {
@@ -82,10 +84,13 @@ export async function proxy(request: NextRequest) {
   // Rate limiting
   const ip = getClientIP(request);
   const isApiRoute = pathname.startsWith('/api/');
-  initializeRateLimiters();
+  const initialized = initializeRateLimiters();
+  if (!initialized) {
+    return NextResponse.next();
+  }
   const limiter = isApiRoute ? apiLimiter : globalLimiter;
   if (!limiter) {
-    throw new Error('Rate limiter not initialized');
+    return NextResponse.next();
   }
   const { success, reset } = await limiter.limit(ip);
 

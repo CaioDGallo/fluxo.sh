@@ -2,12 +2,22 @@
 
 import { db } from '@/lib/db';
 import { entries, transactions, categories, accounts, income } from '@/lib/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
 import { trackExport } from '@/lib/analytics';
 import { users } from '@/lib/auth-schema';
+import { t } from '@/lib/i18n/server-errors';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
+import { getUsageCount, getUserTimezone, getWeeklyWindow, incrementUsageCount } from '@/lib/plan-usage';
+import { checkBulkRateLimit } from '@/lib/rate-limit';
 
 export type TimeRange = 'month' | 'year' | 'all';
+
+const EXPORT_VOLUME_LIMITS: Record<TimeRange, number> = {
+  month: 5000,
+  year: 20000,
+  all: 50000,
+};
 
 export type ExportEntry = {
   id: number;
@@ -35,6 +45,10 @@ export async function getTransactionsForExport(
   const userId = await getCurrentUserId();
   const results: ExportEntry[] = [];
 
+  if (!includeExpenses && !includeIncome) {
+    return results;
+  }
+
   // Build date filter conditions
   let dateFilter: { gte: string; lte: string } | undefined = undefined;
   if (timeRange === 'month' && yearMonth) {
@@ -49,6 +63,71 @@ export async function getTransactionsForExport(
     const endDate = `${year}-12-31`;
     dateFilter = { gte: startDate, lte: endDate };
   }
+
+  const [entitlements, timezone] = await Promise.all([
+    getUserEntitlements(userId),
+    getUserTimezone(userId),
+  ]);
+
+  const exportWindow = getWeeklyWindow(timezone);
+  const exportCount = await getUsageCount(userId, 'export_weekly', exportWindow);
+  if (exportCount >= entitlements.limits.importWeekly) {
+    throw new Error(await t('errors.exportLimitReached', { limit: entitlements.limits.importWeekly }));
+  }
+
+  const rateLimit = await checkBulkRateLimit(userId);
+  if (!rateLimit.allowed) {
+    throw new Error(await t('errors.tooManyAttempts', { retryAfter: rateLimit.retryAfter }));
+  }
+
+  const [expenseCountResult, incomeCountResult] = await Promise.all([
+    includeExpenses
+      ? db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(entries)
+          .innerJoin(transactions, eq(entries.transactionId, transactions.id))
+          .where(
+            and(
+              eq(entries.userId, userId),
+              eq(transactions.ignored, false),
+              dateFilter
+                ? and(
+                    gte(entries.purchaseDate, dateFilter.gte),
+                    lte(entries.purchaseDate, dateFilter.lte)
+                  )
+                : undefined
+            )
+          )
+      : Promise.resolve([{ count: 0 }]),
+    includeIncome
+      ? db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(income)
+          .where(
+            and(
+              eq(income.userId, userId),
+              eq(income.ignored, false),
+              dateFilter
+                ? and(
+                    gte(income.receivedDate, dateFilter.gte),
+                    lte(income.receivedDate, dateFilter.lte)
+                  )
+                : undefined
+            )
+          )
+      : Promise.resolve([{ count: 0 }]),
+  ]);
+
+  const expenseCount = Number(expenseCountResult?.[0]?.count ?? 0);
+  const incomeCount = Number(incomeCountResult?.[0]?.count ?? 0);
+  const totalCount = expenseCount + incomeCount;
+
+  const volumeLimit = EXPORT_VOLUME_LIMITS[timeRange];
+  if (totalCount > volumeLimit) {
+    throw new Error(await t('errors.exportVolumeLimitReached', { limit: volumeLimit }));
+  }
+
+  await incrementUsageCount(userId, 'export_weekly', exportWindow);
 
   // Fetch expenses (entries)
   if (includeExpenses) {

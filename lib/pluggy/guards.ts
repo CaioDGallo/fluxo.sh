@@ -1,9 +1,17 @@
 import { db } from '@/lib/db';
 import { accounts, income, transactions } from '@/lib/schema';
 import { t } from '@/lib/i18n/server-errors';
+import { getUserEntitlements } from '@/lib/plan-entitlements';
 import { and, eq } from 'drizzle-orm';
 
 export type GuardableEntity = 'account' | 'expense' | 'income';
+
+export async function assertOpenFinanceAccess(userId: string): Promise<void> {
+  const { limits } = await getUserEntitlements(userId);
+  if (!limits.openFinanceEnabled) {
+    throw new Error(await t('errors.openFinanceNotAvailable'));
+  }
+}
 
 /**
  * Throws if the entity is synced from Pluggy and cannot be manually edited/deleted.

@@ -16,12 +16,29 @@ import {
   generateUsageLimitText,
 } from '@/lib/email/usage-limit-template';
 
-export type UsageKey = 'import_weekly';
+export type UsageKey = 'import_weekly' | 'export_weekly';
 
 export type UsageWindow = {
   periodStart: string;
   periodEnd: string;
 };
+
+function resolveUsageLimit(entitlements: Awaited<ReturnType<typeof getUserEntitlements>>, key: UsageKey) {
+  switch (key) {
+    case 'export_weekly':
+      return entitlements.limits.importWeekly;
+    case 'import_weekly':
+    default:
+      return entitlements.limits.importWeekly;
+  }
+}
+
+function resolveFeatureName(locale: string, key: UsageKey) {
+  if (key === 'export_weekly') {
+    return locale === 'pt-BR' ? 'exportações' : 'exports';
+  }
+  return locale === 'pt-BR' ? 'importações' : 'imports';
+}
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -135,7 +152,7 @@ export async function incrementUsageCount(
   // Check if we should send usage emails
   try {
     const entitlements = await getUserEntitlements(userId);
-    const limit = entitlements.limits.importWeekly;
+    const limit = resolveUsageLimit(entitlements, key);
 
     const previousPercentage = Math.floor((previousCount / limit) * 100);
     const newPercentage = Math.floor((newCount / limit) * 100);
@@ -147,7 +164,7 @@ export async function incrementUsageCount(
     const locale = await getUserLocale(userId);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fluxo.sh';
     const planName = getPlanDefinition(entitlements.planKey).name;
-    const featureName = locale === 'pt-BR' ? 'importações' : 'imports';
+    const featureName = resolveFeatureName(locale, key);
 
     /**
      * Usage threshold email logic: 80% warning, 100% limit reached.

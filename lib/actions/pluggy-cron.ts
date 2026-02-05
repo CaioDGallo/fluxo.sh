@@ -34,7 +34,7 @@ export async function runPluggyCronSync(batchSize = DEFAULT_BATCH_SIZE): Promise
 
   for (const item of dueItems) {
     try {
-      const result = await syncPluggyItem(item.pluggyItemId, item.userId);
+      const result = await syncPluggyItem(item.pluggyItemId, item.userId, 'cron');
       if (result.success) {
         succeeded += 1;
       } else {

@@ -10,8 +10,10 @@ import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
 import { batchEnsureFaturasExist, batchUpdateFaturaTotals, syncPluggyBills } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getFaturaMonth } from '@/lib/fatura-utils';
+import { assertOpenFinanceAccess } from '@/lib/pluggy/guards';
+import { checkPluggyAutoSyncRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, income, pluggyAccounts, pluggyItems, pluggySyncCursors, transactions } from '@/lib/schema';
-import { and, asc, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getPostHogClient } from '@/lib/posthog-server';
 
@@ -33,9 +35,11 @@ type PluggySyncResult =
     error: string;
   };
 
+type PluggySyncSource = 'manual' | 'webhook' | 'cron';
+
 const CURSOR_SCOPE_PREFIX = 'transactions:';
 const CURSOR_BUFFER_MS = 24 * 60 * 60 * 1000;
-const SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const ERROR_BACKOFF_BASE_MS = 30 * 60 * 1000;
 const ERROR_BACKOFF_MAX_MS = 48 * 60 * 60 * 1000;
 
@@ -208,25 +212,58 @@ function detectInternalTransferPairs(candidates: PairCandidate[]): {
   const incomeExternalIds: string[] = [];
   const usedIds = new Set<string>();
 
-  const debits = candidates.filter((c) => c.direction === 'debit');
-  const credits = candidates.filter((c) => c.direction === 'credit');
+  const debits: PairCandidate[] = [];
+  const creditsByDate = new Map<string, PairCandidate[]>();
+
+  for (const candidate of candidates) {
+    if (candidate.direction === 'credit') {
+      const list = creditsByDate.get(candidate.date) ?? [];
+      list.push(candidate);
+      creditsByDate.set(candidate.date, list);
+    } else {
+      debits.push(candidate);
+    }
+  }
+
+  for (const list of creditsByDate.values()) {
+    list.sort((a, b) => a.amount - b.amount);
+  }
+
+  const findLowerBound = (list: PairCandidate[], target: number) => {
+    let low = 0;
+    let high = list.length;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (list[mid].amount < target) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  };
 
   for (const debit of debits) {
     if (usedIds.has(debit.externalId)) continue;
+    const credits = creditsByDate.get(debit.date);
+    if (!credits || credits.length === 0) continue;
 
-    const match = credits.find((credit) => {
-      if (usedIds.has(credit.externalId)) return false;
-      if (credit.date !== debit.date) return false;
-      if (credit.accountId === debit.accountId) return false;
-      const tolerance = Math.max(debit.amount * 0.01, 1);
-      return Math.abs(credit.amount - debit.amount) <= tolerance;
-    });
+    const tolerance = Math.max(debit.amount * 0.01, 1);
+    const minAmount = debit.amount - tolerance;
+    const maxAmount = debit.amount + tolerance;
+    const startIndex = findLowerBound(credits, minAmount);
 
-    if (match) {
+    for (let i = startIndex; i < credits.length; i += 1) {
+      const credit = credits[i];
+      if (credit.amount > maxAmount) break;
+      if (usedIds.has(credit.externalId)) continue;
+      if (credit.accountId === debit.accountId) continue;
+
       expenseExternalIds.push(debit.externalId);
-      incomeExternalIds.push(match.externalId);
+      incomeExternalIds.push(credit.externalId);
       usedIds.add(debit.externalId);
-      usedIds.add(match.externalId);
+      usedIds.add(credit.externalId);
+      break;
     }
   }
 
@@ -283,25 +320,14 @@ async function resolveDefaultCategoryId(userId: string, type: 'expense' | 'incom
  * Resolves fatura month for a Pluggy transaction by looking up the fatura via billId.
  * Falls back to transaction date's month if no billId or fatura found.
  */
-async function resolveFaturaMonthFromPluggyBill(
+function resolveFaturaMonthFromPluggyBill(
   transaction: Transaction,
-  accountId: number,
-  userId: string,
+  faturaMonthByBillId: Map<string, string>,
   transactionDate: string
-): Promise<string> {
+): string {
   const billId = transaction.creditCardMetadata?.billId;
-  if (billId) {
-    const [fatura] = await db
-      .select({ yearMonth: faturas.yearMonth })
-      .from(faturas)
-      .where(and(
-        eq(faturas.accountId, accountId),
-        eq(faturas.pluggyBillId, billId)
-      ))
-      .limit(1);
-    if (fatura) {
-      return fatura.yearMonth;
-    }
+  if (billId && faturaMonthByBillId.has(billId)) {
+    return faturaMonthByBillId.get(billId)!;
   }
   // Fallback: use transaction month
   return transactionDate.slice(0, 7);
@@ -309,7 +335,8 @@ async function resolveFaturaMonthFromPluggyBill(
 
 export async function syncPluggyItem(
   pluggyItemId: string,
-  userIdOverride?: string
+  userIdOverride?: string,
+  source: PluggySyncSource = 'manual'
 ): Promise<PluggySyncResult> {
   const syncedAt = new Date();
   const startedAt = Date.now();
@@ -331,12 +358,41 @@ export async function syncPluggyItem(
       resolvedUserId = await getCurrentUserId();
     }
     const userId = resolvedUserId;
+    const isAutoSync = source !== 'manual';
+
+    try {
+      await assertOpenFinanceAccess(userId);
+    } catch (error) {
+      if (isAutoSync) {
+        await db
+          .update(pluggyItems)
+          .set({ nextSyncAt: resolveNextSyncAt(syncedAt), updatedAt: syncedAt })
+          .where(and(eq(pluggyItems.userId, userId), eq(pluggyItems.pluggyItemId, pluggyItemId)));
+        return {
+          success: true,
+          pluggyItemId,
+          syncedAt,
+          accountsSynced: 0,
+          accountsCreated: 0,
+          transactionsCreated: 0,
+          incomeCreated: 0,
+          skipped: 0,
+        };
+      }
+      return {
+        success: false,
+        pluggyItemId,
+        syncedAt,
+        error: error instanceof Error ? error.message : await t('errors.failedToLoad'),
+      };
+    }
 
     const [existingItem] = await db
       .select({
         id: pluggyItems.id,
         errorCount: pluggyItems.errorCount,
         lastSyncedAt: pluggyItems.lastSyncedAt,
+        nextSyncAt: pluggyItems.nextSyncAt,
       })
       .from(pluggyItems)
       .where(and(
@@ -344,6 +400,39 @@ export async function syncPluggyItem(
         eq(pluggyItems.pluggyItemId, pluggyItemId)
       ))
       .limit(1);
+
+    if (isAutoSync && existingItem?.nextSyncAt && existingItem.nextSyncAt > syncedAt) {
+      return {
+        success: true,
+        pluggyItemId,
+        syncedAt,
+        accountsSynced: 0,
+        accountsCreated: 0,
+        transactionsCreated: 0,
+        incomeCreated: 0,
+        skipped: 0,
+      };
+    }
+
+    if (isAutoSync) {
+      const autoLimit = await checkPluggyAutoSyncRateLimit(userId, pluggyItemId);
+      if (!autoLimit.allowed) {
+        await db
+          .update(pluggyItems)
+          .set({ nextSyncAt: resolveNextSyncAt(syncedAt), updatedAt: syncedAt })
+          .where(and(eq(pluggyItems.userId, userId), eq(pluggyItems.pluggyItemId, pluggyItemId)));
+        return {
+          success: true,
+          pluggyItemId,
+          syncedAt,
+          accountsSynced: 0,
+          accountsCreated: 0,
+          transactionsCreated: 0,
+          incomeCreated: 0,
+          skipped: 0,
+        };
+      }
+    }
 
     isNewItem = !existingItem || !existingItem.lastSyncedAt;
     previousErrorCount = existingItem?.errorCount ?? 0;
@@ -452,6 +541,23 @@ export async function syncPluggyItem(
         await syncPluggyBills(accountId, pluggyAccount.id, userId);
       }
 
+      const faturaMonthByBillId = new Map<string, string>();
+      if (accountInfo.type === 'credit_card') {
+        const billRows = await db
+          .select({ pluggyBillId: faturas.pluggyBillId, yearMonth: faturas.yearMonth })
+          .from(faturas)
+          .where(and(
+            eq(faturas.userId, userId),
+            eq(faturas.accountId, accountId),
+            isNotNull(faturas.pluggyBillId)
+          ));
+        for (const row of billRows) {
+          if (row.pluggyBillId) {
+            faturaMonthByBillId.set(row.pluggyBillId, row.yearMonth);
+          }
+        }
+      }
+
       const externalBalanceCents = toCentsMaybe(pluggyAccount.balance);
       const externalCreditLimitCents = toPositiveCentsMaybe(extractCreditLimitValue(pluggyAccount));
       const accountUpdates: Partial<typeof accounts.$inferInsert> = {};
@@ -487,6 +593,11 @@ export async function syncPluggyItem(
         pluggyAccount.id,
         createdAtFrom ? { createdAtFrom } : undefined
       );
+      const transactionsByExternalId = new Map<string, Transaction>();
+      for (const transaction of accountTransactions) {
+        if (!transaction.id) continue;
+        transactionsByExternalId.set(namespacedExternalId(transaction.id), transaction);
+      }
       const externalIds = accountTransactions
         .map((transaction) => transaction.id)
         .filter((id): id is string => !!id)
@@ -583,7 +694,11 @@ export async function syncPluggyItem(
           if (accountInfo.type === 'credit_card') {
             if (accountInfo.source === 'pluggy') {
               // Pluggy CC: resolve from billId or use transaction month
-              faturaMonth = await resolveFaturaMonthFromPluggyBill(normalizedTransaction, accountId, userId, date);
+              faturaMonth = resolveFaturaMonthFromPluggyBill(
+                normalizedTransaction,
+                faturaMonthByBillId,
+                date
+              );
               affectedFaturas.add(faturaMonth);
             } else if (accountInfo.closingDay && accountInfo.paymentDueDay) {
               // Manual CC: use closingDay computation
@@ -660,18 +775,11 @@ export async function syncPluggyItem(
         let overrideBaseFaturaMonth: string | undefined;
         if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
           // Find the original transaction to access creditCardMetadata
-          const originalTx = accountTransactions.find(t => namespacedExternalId(t.id!) === tx.externalId);
+          const originalTx = transactionsByExternalId.get(tx.externalId);
           if (originalTx?.creditCardMetadata?.billId) {
-            const [fatura] = await db
-              .select({ yearMonth: faturas.yearMonth })
-              .from(faturas)
-              .where(and(
-                eq(faturas.accountId, accountId),
-                eq(faturas.pluggyBillId, originalTx.creditCardMetadata.billId)
-              ))
-              .limit(1);
-            if (fatura) {
-              overrideBaseFaturaMonth = fatura.yearMonth;
+            const mappedMonth = faturaMonthByBillId.get(originalTx.creditCardMetadata.billId);
+            if (mappedMonth) {
+              overrideBaseFaturaMonth = mappedMonth;
             }
           }
         }
@@ -723,18 +831,11 @@ export async function syncPluggyItem(
         let overrideBaseFaturaMonth: string | undefined;
         if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
           const firstEntry = group.entries[0];
-          const originalTx = accountTransactions.find(t => namespacedExternalId(t.id!) === firstEntry.externalId);
+          const originalTx = transactionsByExternalId.get(firstEntry.externalId);
           if (originalTx?.creditCardMetadata?.billId) {
-            const [fatura] = await db
-              .select({ yearMonth: faturas.yearMonth })
-              .from(faturas)
-              .where(and(
-                eq(faturas.accountId, accountId),
-                eq(faturas.pluggyBillId, originalTx.creditCardMetadata.billId)
-              ))
-              .limit(1);
-            if (fatura) {
-              overrideBaseFaturaMonth = fatura.yearMonth;
+            const mappedMonth = faturaMonthByBillId.get(originalTx.creditCardMetadata.billId);
+            if (mappedMonth) {
+              overrideBaseFaturaMonth = mappedMonth;
             }
           }
         }
@@ -919,28 +1020,32 @@ export async function syncPluggyItem(
 
     // --- Fatura payment auto-matching ---
     // For each detected fatura payment expense, find the matching unpaid fatura by amount
-    for (const payment of faturaPaymentExpenses) {
-      const tolerance = Math.max(Math.round(payment.amountCents * 0.1), 100);
-      const [matchingFatura] = await db
-        .select({ id: faturas.id })
+    if (faturaPaymentExpenses.length > 0) {
+      const unpaidFaturas = await db
+        .select({ id: faturas.id, totalAmount: faturas.totalAmount, dueDate: faturas.dueDate })
         .from(faturas)
-        .where(and(
-          eq(faturas.userId, userId),
-          isNull(faturas.paidAt),
-          gte(faturas.totalAmount, payment.amountCents - tolerance),
-          lte(faturas.totalAmount, payment.amountCents + tolerance),
-        ))
-        .orderBy(asc(faturas.dueDate))
-        .limit(1);
+        .where(and(eq(faturas.userId, userId), isNull(faturas.paidAt)))
+        .orderBy(asc(faturas.dueDate));
 
-      if (matchingFatura) {
-        await db
-          .update(faturas)
-          .set({
-            paidAt: new Date(payment.date + 'T00:00:00Z'),
-            paidFromAccountId: payment.accountId,
-          })
-          .where(eq(faturas.id, matchingFatura.id));
+      const availableFaturas = [...unpaidFaturas];
+
+      for (const payment of faturaPaymentExpenses) {
+        const tolerance = Math.max(Math.round(payment.amountCents * 0.1), 100);
+        const matchIndex = availableFaturas.findIndex((fatura) =>
+          fatura.totalAmount >= payment.amountCents - tolerance
+          && fatura.totalAmount <= payment.amountCents + tolerance
+        );
+
+        if (matchIndex >= 0) {
+          const [matchingFatura] = availableFaturas.splice(matchIndex, 1);
+          await db
+            .update(faturas)
+            .set({
+              paidAt: new Date(payment.date + 'T00:00:00Z'),
+              paidFromAccountId: payment.accountId,
+            })
+            .where(eq(faturas.id, matchingFatura.id));
+        }
       }
     }
 

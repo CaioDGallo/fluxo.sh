@@ -349,6 +349,7 @@
     "addBudget": "Definir orçamento",
     "spent": "Gasto",
     "replenished": "Reposto",
+    "reserved": "Reservado",
     "netSpent": "Gasto Líquido",
     "remaining": "Restante",
     "nearLimit": "No limite",
@@ -1040,7 +1041,10 @@
     "account": "Conta de pagamento",
     "selectAccount": "Selecionar conta",
     "confirm": "Confirmar pagamento",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "createExpense": "Criar despesa automaticamente",
+    "createExpenseDescription": "Uma despesa será criada e vinculada a esta conta",
+    "noCategoryWarning": "Esta conta não tem categoria definida. Despesas não serão criadas automaticamente."
   },
   "linkTransactionDialog": {
     "title": "Vincular transação",

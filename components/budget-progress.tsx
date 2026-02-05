@@ -14,6 +14,7 @@ type BudgetProgressProps = {
   spent: number; // cents
   replenished: number; // cents
   budget: number; // cents
+  committed?: number; // cents
 };
 
 export function BudgetProgress({
@@ -23,6 +24,7 @@ export function BudgetProgress({
   spent,
   replenished,
   budget,
+  committed = 0,
 }: BudgetProgressProps) {
   const t = useTranslations('budgets');
   const locale = useLocale();
@@ -30,6 +32,7 @@ export function BudgetProgress({
   const netSpent = spent - replenished;
   const remaining = budget - netSpent;
   const percentage = budget > 0 ? (netSpent / budget) * 100 : 0;
+  const committedPercentage = budget > 0 ? (committed / budget) * 100 : 0;
   const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
   const percentFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
   const percentLabel = `${percentFormatter.format(percentage)}%`;
@@ -103,22 +106,38 @@ export function BudgetProgress({
               {t('replenished')}: -{formatCurrency(replenished)}
             </div>
           )}
+          {committed > 0 && (
+            <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+              {t('reserved')}: {formatCurrency(committed)}
+            </div>
+          )}
         </div>
       </CardContent>
 
       {/* Progress bar - outside CardContent */}
       <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          role="progressbar"
-          aria-valuenow={Math.round(clampedPercentage)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-labelledby={`${remainingId} ${spentId}`}
-          aria-valuetext={percentLabel}
-          data-slot="progress-bar"
-          className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${barColor}`}
-          style={{ width: `${clampedPercentage}%` }}
-        />
+        <div className="h-full flex">
+          {/* Spent - solid */}
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(clampedPercentage)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-labelledby={`${remainingId} ${spentId}`}
+            aria-valuetext={percentLabel}
+            data-slot="progress-bar"
+            className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${barColor}`}
+            style={{ width: `${clampedPercentage}%` }}
+          />
+          {/* Reserved - 40% opacity */}
+          {committed > 0 && (
+            <div
+              className={`h-full ${barColor} opacity-40 transition-[width] duration-300 motion-reduce:transition-none`}
+              style={{ width: `${Math.min(committedPercentage, 100 - clampedPercentage)}%` }}
+              aria-hidden="true"
+            />
+          )}
+        </div>
       </div>
     </Card>
   );

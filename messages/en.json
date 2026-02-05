@@ -335,6 +335,7 @@
     "addBudget": "Add budget",
     "spent": "Spent",
     "replenished": "Replenished",
+    "reserved": "Reserved",
     "netSpent": "Net Spent",
     "remaining": "Remaining",
     "nearLimit": "Near limit",
@@ -997,7 +998,10 @@
     "account": "Payment account",
     "selectAccount": "Select account",
     "confirm": "Confirm payment",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "createExpense": "Create expense automatically",
+    "createExpenseDescription": "An expense will be created and linked to this bill",
+    "noCategoryWarning": "This bill has no category. Expenses will not be created automatically."
   },
   "linkTransactionDialog": {
     "title": "Link transaction",

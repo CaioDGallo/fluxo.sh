@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Sheet,
   SheetContent,
@@ -12,7 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { markOccurrencePaid } from '@/lib/actions/bill-occurrences';
+import { markOccurrencePaidWithExpense } from '@/lib/actions/bill-occurrences';
 import type { Account } from '@/lib/schema';
 
 interface PayBillDialogProps {
@@ -21,26 +22,34 @@ interface PayBillDialogProps {
     expectedAmount: number | null;
     paidFromAccountId: number | null;
   };
+  bill: {
+    name: string;
+    categoryId: number | null;
+  };
   accounts: Account[];
   open: boolean;
   onClose: () => void;
   onPaid: () => void;
 }
 
-export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: PayBillDialogProps) {
+export function PayBillDialog({ occurrence, bill, accounts, open, onClose, onPaid }: PayBillDialogProps) {
   const t = useTranslations('payBillDialog');
   const tCommon = useTranslations('common');
   const [amount, setAmount] = useState(occurrence.expectedAmount ?? 0);
   const [accountId, setAccountId] = useState<string>(
     occurrence.paidFromAccountId?.toString() ?? (accounts[0]?.id?.toString() ?? '')
   );
+  const [createExpense, setCreateExpense] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const handleConfirm = async () => {
     setSaving(true);
-    const result = await markOccurrencePaid(occurrence.id, {
+    const result = await markOccurrencePaidWithExpense(occurrence.id, {
       actualAmount: amount,
       paidFromAccountId: accountId ? Number(accountId) : undefined,
+      billName: bill.name,
+      billCategoryId: bill.categoryId,
+      createExpense,
     });
     setSaving(false);
     if (result.success) {
@@ -82,6 +91,33 @@ export function PayBillDialog({ occurrence, accounts, open, onClose, onPaid }: P
               </SelectContent>
             </Select>
           </div>
+
+          {bill.categoryId ? (
+            <div className="flex items-start gap-2 rounded-none bg-muted p-3">
+              <Checkbox
+                id="create-expense"
+                checked={createExpense}
+                onCheckedChange={(checked) => setCreateExpense(checked === true)}
+              />
+              <div className="flex flex-col gap-0.5">
+                <Label
+                  htmlFor="create-expense"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  {t('createExpense')}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('createExpenseDescription')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-none bg-yellow-50 dark:bg-yellow-950/20 p-3 border border-yellow-200 dark:border-yellow-800">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                {t('noCategoryWarning')}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center">

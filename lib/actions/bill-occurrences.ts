@@ -329,6 +329,96 @@ export async function markOccurrencePaid(
   }
 }
 
+export async function markOccurrencePaidWithExpense(
+  id: number,
+  data: {
+    actualAmount?: number;
+    paidFromAccountId?: number;
+    billName: string;
+    billCategoryId: number | null;
+    createExpense: boolean;
+  }
+): Promise<ActionResult> {
+  try {
+    await guardCrudOperation();
+    const userId = await getCurrentUserId();
+
+    const [occurrence] = await db
+      .select()
+      .from(billOccurrences)
+      .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)))
+      .limit(1);
+    if (!occurrence) return { success: false, error: await t('errors.failedToUpdate') };
+
+    // Verify account ownership if provided
+    if (data.paidFromAccountId) {
+      const [acct] = await db.select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, data.paidFromAccountId), eq(accounts.userId, userId)))
+        .limit(1);
+      if (!acct) return { success: false, error: await t('errors.accountNotFound') };
+    }
+
+    let transactionId: number | null = null;
+
+    // Create expense transaction if requested and bill has category
+    if (data.createExpense && data.billCategoryId && data.paidFromAccountId) {
+      const amount = data.actualAmount ?? occurrence.expectedAmount ?? 0;
+      const dueDate = String(occurrence.dueDate);
+
+      // Create transaction
+      const [txn] = await db
+        .insert(transactions)
+        .values({
+          userId,
+          description: data.billName,
+          categoryId: data.billCategoryId,
+          totalAmount: amount,
+          totalInstallments: 1,
+          ignored: false,
+        })
+        .returning({ id: transactions.id });
+
+      transactionId = txn.id;
+
+      // Create single entry marked as paid
+      await db.insert(entries).values({
+        userId,
+        transactionId: txn.id,
+        accountId: data.paidFromAccountId,
+        faturaId: undefined,
+        amount,
+        dueDate,
+        purchaseDate: dueDate,
+        faturaMonth: dueDate.slice(0, 7), // YYYY-MM
+        installmentNumber: 1,
+        paidAt: new Date(),
+      });
+    }
+
+    // Update occurrence
+    await db
+      .update(billOccurrences)
+      .set({
+        status: 'paid',
+        actualAmount: data.actualAmount ?? occurrence.expectedAmount,
+        paidFromAccountId: data.paidFromAccountId ?? occurrence.paidFromAccountId,
+        matchedTransactionId: transactionId,
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
+
+    revalidatePath('/bills');
+    revalidatePath('/dashboard');
+    revalidatePath('/expenses');
+    return { success: true };
+  } catch (error) {
+    console.error('[bill-occurrences:markPaidWithExpense] Failed:', error);
+    return { success: false, error: await handleDbError(error, 'errors.failedToUpdate') };
+  }
+}
+
 export async function linkOccurrenceToTransaction(
   id: number,
   entryId: number

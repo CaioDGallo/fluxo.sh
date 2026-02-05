@@ -262,6 +262,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
       {payDialogOccurrence && (
         <PayBillDialog
           occurrence={payDialogOccurrence}
+          bill={{ name: bill.name, categoryId: bill.categoryId }}
           accounts={accounts}
           open={true}
           onClose={() => setPayDialogOccurrence(null)}

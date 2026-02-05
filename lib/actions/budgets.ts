@@ -3,8 +3,8 @@
 import { cache } from 'react';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
-import { budgets, categories, entries, transactions, monthlyBudgets, income } from '@/lib/schema';
-import { eq, and, gte, lte, sql, isNotNull } from 'drizzle-orm';
+import { budgets, categories, entries, transactions, monthlyBudgets, income, bills, billOccurrences } from '@/lib/schema';
+import { eq, and, gte, lte, sql, isNotNull, inArray } from 'drizzle-orm';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
@@ -256,6 +256,7 @@ export type BudgetWithSpending = {
   replenished: number;
   netSpent: number;
   budget: number;
+  committed: number;
 };
 
 export type UnbudgetedSpending = {
@@ -272,6 +273,7 @@ export type BudgetsPageData = {
   totalReplenished: number;
   totalNetSpent: number;
   totalBudget: number;
+  totalCommitted: number;
   budgets: BudgetWithSpending[];
   unbudgeted: UnbudgetedSpending[];
   totalUnbudgetedSpent: number;
@@ -349,12 +351,30 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
       ))
       .groupBy(income.replenishCategoryId);
 
-    // 3. Merge budgets, spending, and replenishments
+    // 2c. Get committed amounts from unpaid bill occurrences
+    const commitments = await db
+      .select({
+        categoryId: bills.categoryId,
+        committed: sql<number>`COALESCE(SUM(${billOccurrences.expectedAmount}), 0)`,
+      })
+      .from(billOccurrences)
+      .innerJoin(bills, eq(billOccurrences.billId, bills.id))
+      .where(and(
+        eq(billOccurrences.userId, userId),
+        eq(billOccurrences.yearMonth, yearMonth),
+        inArray(billOccurrences.status, ['upcoming', 'pending', 'overdue']),
+        isNotNull(bills.categoryId)
+      ))
+      .groupBy(bills.categoryId);
+
+    // 3. Merge budgets, spending, replenishments, and commitments
     const budgetsWithSpending = monthBudgets.map((budget) => {
       const spentData = spending.find((s) => s.categoryId === budget.categoryId);
       const replenishedData = replenishments.find((r) => r.categoryId === budget.categoryId);
+      const committedData = commitments.find((c) => c.categoryId === budget.categoryId);
       const spent = spentData?.spent || 0;
       const replenished = replenishedData?.replenished || 0;
+      const committed = committedData?.committed || 0;
       return {
         categoryId: budget.categoryId,
         categoryName: budget.categoryName,
@@ -365,6 +385,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
         replenished,
         netSpent: spent - replenished,
         budget: budget.budget,
+        committed,
       };
     });
 
@@ -407,6 +428,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
   const totalSpent = budgetsWithSpending.reduce((sum, cat) => sum + cat.spent, 0);
   const totalReplenished = budgetsWithSpending.reduce((sum, cat) => sum + cat.replenished, 0);
   const totalNetSpent = budgetsWithSpending.reduce((sum, cat) => sum + cat.netSpent, 0);
+  const totalCommitted = budgetsWithSpending.reduce((sum, cat) => sum + cat.committed, 0);
   const totalUnbudgetedSpent = unbudgeted.reduce((sum, cat) => sum + cat.spent, 0);
 
   return {
@@ -414,6 +436,7 @@ export const getBudgetsWithSpending = cache(async (yearMonth: string): Promise<B
     totalReplenished,
     totalNetSpent,
     totalBudget,
+    totalCommitted,
     budgets: budgetsWithSpending,
     unbudgeted,
     totalUnbudgetedSpent,

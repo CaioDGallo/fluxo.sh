@@ -98,6 +98,7 @@ function BucketSection({ bucket, budgets, defaultExpanded = true }: BucketSectio
               spent={budget.spent}
               replenished={budget.replenished}
               budget={budget.budget}
+              committed={budget.committed}
             />
           ))}
         </div>
@@ -145,6 +146,7 @@ export function BudgetBucketView({ budgets, bucketFilter }: BudgetBucketViewProp
                   spent={budget.spent}
                   replenished={budget.replenished}
                   budget={budget.budget}
+                  committed={budget.committed}
                 />
               ))}
             </div>
@@ -190,6 +192,7 @@ export function BudgetBucketView({ budgets, bucketFilter }: BudgetBucketViewProp
                 spent={budget.spent}
                 replenished={budget.replenished}
                 budget={budget.budget}
+                committed={budget.committed}
               />
             ))
           )}

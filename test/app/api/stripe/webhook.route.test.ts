@@ -348,7 +348,7 @@ describe('POST /api/stripe/webhook', () => {
     expect(subscriptions).toHaveLength(0);
   });
 
-  it('stores founder subscriptions as saver plan', async () => {
+  it('stores founder subscriptions as pro plan', async () => {
     constructEventMock.mockReturnValue({
       type: 'customer.subscription.created',
       data: {
@@ -381,7 +381,7 @@ describe('POST /api/stripe/webhook', () => {
 
     const subscriptions = await db.select().from(schema.billingSubscriptions);
     expect(subscriptions).toHaveLength(1);
-    expect(subscriptions[0]?.planKey).toBe('saver');
+    expect(subscriptions[0]?.planKey).toBe('pro');
     expect(subscriptions[0]?.stripePriceId).toBe('price_founder_yearly');
   });
 

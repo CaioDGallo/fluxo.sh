@@ -136,8 +136,8 @@ export async function signup(data: {
         await db.update(users).set({ isFounder: true }).where(eq(users.id, userId));
       }
 
-      // Create subscription (map founder to saver for entitlements)
-      const subscriptionPlan = currentInvite.planKey === 'founder' ? 'saver' : currentInvite.planKey;
+      // Create subscription (map founder to pro for entitlements)
+      const subscriptionPlan = currentInvite.planKey === 'founder' ? 'pro' : currentInvite.planKey;
 
       await createPlanSubscription({
         userId,

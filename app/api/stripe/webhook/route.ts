@@ -195,8 +195,8 @@ export async function POST(req: Request) {
           await db.update(users).set({ isFounder: true }).where(eq(users.id, userId));
         }
 
-        // Map founder to saver for entitlements (same features)
-        const subscriptionPlanKey = planKey === 'founder' ? 'saver' : planKey;
+        // Map founder to pro for entitlements (same features)
+        const subscriptionPlanKey = planKey === 'founder' ? 'pro' : planKey;
 
         await db
           .insert(billingSubscriptions)

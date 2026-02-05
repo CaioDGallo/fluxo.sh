@@ -237,7 +237,7 @@ export function BillSheet({
               <FieldGroup>
                 {/* Name */}
                 <Field>
-                  <FieldLabel htmlFor="bill-name">{t('name')} *</FieldLabel>
+                  <FieldLabel htmlFor="bill-name">{t('name')}</FieldLabel>
                   <Input
                     ref={nameInputRef}
                     id="bill-name"
@@ -323,7 +323,7 @@ export function BillSheet({
 
                 {/* Recurrence */}
                 <Field>
-                  <FieldLabel>{t('recurrence')} *</FieldLabel>
+                  <FieldLabel>{t('recurrence')}</FieldLabel>
                   <Select value={recurrenceType} onValueChange={setRecurrenceType}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
@@ -340,7 +340,7 @@ export function BillSheet({
 
                 {/* Due Day */}
                 <Field>
-                  <FieldLabel>{t('dueDay')} *</FieldLabel>
+                  <FieldLabel>{t('dueDay')}</FieldLabel>
                   <Select value={dueDay.toString()} onValueChange={(v) => setDueDay(Number(v))}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
@@ -373,7 +373,7 @@ export function BillSheet({
                 {/* Start / End Month */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field>
-                    <FieldLabel htmlFor="bill-start">{t('startMonth')} *</FieldLabel>
+                    <FieldLabel htmlFor="bill-start">{t('startMonth')}</FieldLabel>
                     <Input
                       id="bill-start"
                       name="startMonth"

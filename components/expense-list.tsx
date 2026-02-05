@@ -195,6 +195,7 @@ export function ExpenseList() {
                 key={virtualRow.index}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
+                className='space-y-1'
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -213,7 +214,7 @@ export function ExpenseList() {
                     })}
                   </h2>
                 ) : (
-                  <div className="space-y-1">{renderExpenseCard(row.data)}</div>
+                  renderExpenseCard(row.data)
                 )}
               </div>
             );

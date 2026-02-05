@@ -151,6 +151,7 @@ export function IncomeList() {
                 key={virtualRow.index}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
+                className='space-y-1'
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -169,7 +170,7 @@ export function IncomeList() {
                     })}
                   </h2>
                 ) : (
-                  <div className="space-y-1">{renderIncomeCard(row.data)}</div>
+                  renderIncomeCard(row.data)
                 )}
               </div>
             );

@@ -10,34 +10,29 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Install PostgreSQL 17 client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-common
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y postgresql-client-17
+      - name: Create backup with pg_dump
+        uses: tj-actions/pg-dump@v3
+        with:
+          database_url: ${{ secrets.SUPABASE_DB_DIRECT_URL }}
+          postgresql_version: "17"
+          path: "backup_${{ github.run_id }}.sql"
+          options: "--no-owner --no-privileges --clean --if-exists"
 
-      - name: Create backup
-        run: |
-          pg_dump "$DATABASE_URL" \
-            --no-owner \
-            --no-privileges \
-            --clean \
-            --if-exists \
-            | gzip -9 > backup_$(date +%Y-%m-%d).sql.gz
-        env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DB_DIRECT_URL }}
+      - name: Compress backup
+        run: gzip -9 "backup_${{ github.run_id }}.sql"
 
       - name: Upload backup to Cloudflare R2
         run: |
-          BACKUP_FILE="backup_$(date +%Y-%m-%d).sql.gz"
+          BACKUP_FILE="backup_${{ github.run_id }}.sql.gz"
+          REMOTE_NAME="backup_$(date +%Y-%m-%d)_${{ github.run_id }}.sql.gz"
+
           aws s3 cp "$BACKUP_FILE" \
-            "s3://$R2_BUCKET_NAME/backups/$BACKUP_FILE" \
+            "s3://$R2_BUCKET_NAME/backups/$REMOTE_NAME" \
             --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
 
           # Verify upload succeeded
           if [ $? -eq 0 ]; then
-            echo "✓ Backup uploaded successfully: $BACKUP_FILE"
+            echo "✓ Backup uploaded successfully: $REMOTE_NAME"
           else
             echo "✗ Backup upload failed"
             exit 1

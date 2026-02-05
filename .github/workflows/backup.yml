@@ -28,10 +28,22 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_DIRECT_URL }}
 
-      - name: Upload backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: database-backup-${{ github.run_id }}
-          path: backup_*.sql.gz
-          retention-days: 3
-          if-no-files-found: error
+      - name: Upload backup to Cloudflare R2
+        run: |
+          BACKUP_FILE="backup_$(date +%Y-%m-%d).sql.gz"
+          aws s3 cp "$BACKUP_FILE" \
+            "s3://$R2_BUCKET_NAME/backups/$BACKUP_FILE" \
+            --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+
+          # Verify upload succeeded
+          if [ $? -eq 0 ]; then
+            echo "✓ Backup uploaded successfully: $BACKUP_FILE"
+          else
+            echo "✗ Backup upload failed"
+            exit 1
+          fi
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}

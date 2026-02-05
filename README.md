@@ -84,6 +84,27 @@ pnpm db:seed
 pnpm db:reset
 ```
 
+## GitHub Secrets (CI/CD)
+
+Required secrets for production deployment and backups:
+
+**Database (migrations + backups):**
+- `SUPABASE_DB_DIRECT_URL` - Direct connection URL with port 5432 (session mode, NOT pooler)
+  - Format: `postgresql://postgres.<ref>:<password>@db.<ref>.supabase.co:5432/postgres`
+
+**Vercel (deployment):**
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+**Cloudflare R2 (database backups):**
+- `R2_ACCOUNT_ID` - Your Cloudflare account ID
+- `R2_BUCKET_NAME` - Name of the R2 bucket for backups
+- `R2_ACCESS_KEY_ID` - R2 API token access key
+- `R2_SECRET_ACCESS_KEY` - R2 API token secret key
+
+Backups run daily at 6am UTC (3am BRT) and are stored in R2 (free tier: 10GB storage).
+
 ## Database notes
 
 - Money is stored as integer cents. Use `centsToDisplay()` / `displayToCents()` from `lib/utils.ts`.

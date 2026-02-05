@@ -235,6 +235,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
             type="button"
             aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
             onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               if (props.selectionMode) {
@@ -256,6 +257,7 @@ export function ExpenseCard(props: ExpenseCardProps) {
             className="relative size-12 shrink-0 rounded-none flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
+            <span className='size-20 absolute'></span>
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (

@@ -226,6 +226,7 @@ export function IncomeCard(props: IncomeCardProps) {
             type="button"
             aria-label={props.selectionMode ? t('selected') : t('changeCategory')}
             onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               if (props.selectionMode) {
@@ -247,6 +248,7 @@ export function IncomeCard(props: IncomeCardProps) {
             className="relative size-12 shrink-0 rounded-full flex items-center justify-center text-white cursor-pointer transition-all hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary touch-manipulation"
             style={{ backgroundColor: optimisticCategory.color }}
           >
+            <span className='size-20 absolute'></span>
             <CategoryIcon icon={optimisticCategory.icon} />
             {/* Checkbox indicator - only shown in selection mode */}
             {props.selectionMode && (
@@ -287,6 +289,7 @@ export function IncomeCard(props: IncomeCardProps) {
                   handleOpenReplenishPicker();
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
                 className="flex items-center py-1 gap-1 text-blue-600 hover:text-blue-700 transition-colors"
               >
                 <div className='flex flex-row gap-1 items-center p-1 px-2 bg-blue-100'>

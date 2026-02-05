@@ -18,6 +18,9 @@ interface ExtendedUser extends NextAuthUser {
   inviteId?: string;
 }
 
+// TTL for user existence validation (1 hour)
+const USER_VALIDATION_TTL_MS = 60 * 60 * 1000;
+
 export const authConfig: NextAuthOptions = {
   // JWT session strategy (adapter commented out for now)
   session: {
@@ -232,11 +235,38 @@ export const authConfig: NextAuthOptions = {
           token.id = user.id;
         }
       }
+
+      // Periodic user existence validation (not on initial sign-in)
+      if (token.id && !user) {
+        const now = Date.now();
+        const lastValidated = token.lastValidated ?? 0;
+
+        if (now - lastValidated > USER_VALIDATION_TTL_MS) {
+          try {
+            const userExists = await db.query.users.findFirst({
+              where: eq(users.id, token.id as string),
+              columns: { id: true },
+            });
+
+            if (!userExists) {
+              token.userInvalid = true;
+            }
+            token.lastValidated = now;
+          } catch (error) {
+            console.error('[AUTH] Failed to validate user:', error);
+            // Don't invalidate on DB error - retry next request
+          }
+        }
+      }
+
       return token;
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+      }
+      if (token.userInvalid) {
+        session.error = 'UserNotFound';
       }
       return session;
     },

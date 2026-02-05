@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { requireValidSession } from '@/lib/auth';
 import { AppSidebar } from '@/components/app-sidebar';
 import { BillReminderBanner } from '@/components/bill-reminder-banner';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -14,11 +13,8 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Check authentication
-  const session = await getSession();
-  if (!session?.user) {
-    redirect('/login');
-  }
+  // Validate session (checks JWT + user existence)
+  await requireValidSession();
 
   return (
     <OnboardingProvider>

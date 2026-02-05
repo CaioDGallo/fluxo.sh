@@ -104,13 +104,28 @@ export async function proxy(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
   // Public routes
-  const publicRoutes = ['/', '/login', '/forgot-password', '/reset-password'];
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/terms',
+    '/privacy',
+  ];
 
   const isPublicRoute =
     publicRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/api/cron') ||
     pathname.startsWith('/api/auth');
+
+  // Invalid user flag → force logout
+  if (token?.userInvalid) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/api/auth/signout';
+    return NextResponse.redirect(url);
+  }
 
   // Redirect to login if not authenticated and not on public route
   if (!token && !isPublicRoute) {

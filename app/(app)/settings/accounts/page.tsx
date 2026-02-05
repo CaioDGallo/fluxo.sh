@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { getAccountsWithBalances } from '@/lib/actions/accounts';
 import type { Account } from '@/lib/schema';
@@ -8,12 +9,16 @@ import { AccountCreateFlow } from '@/components/account-create-flow';
 import { AccountCard } from '@/components/account-card';
 import { Button } from '@/components/ui/button';
 import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
+import { initializePluggyItemAccounts, syncPluggyItemById } from '@/lib/actions/pluggy';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const t = useTranslations('accounts');
   const tOnboarding = useTranslations('onboarding.hints');
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
 
   async function loadAccounts() {
     setIsLoading(true);
@@ -30,6 +35,19 @@ export default function AccountsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAccounts();
   }, []);
+
+  // Handle OAuth redirect from Pluggy: ?item_id=<pluggyItemId>
+  useEffect(() => {
+    const itemId = searchParams.get('item_id');
+    if (!itemId) return;
+    router.replace(pathname);
+    void (async () => {
+      await initializePluggyItemAccounts(itemId);
+      void syncPluggyItemById(itemId);
+      await loadAccounts();
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Group accounts by type
   const creditCardAccounts = accounts.filter(acc => acc.type === 'credit_card');

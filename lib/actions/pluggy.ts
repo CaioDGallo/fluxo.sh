@@ -48,15 +48,20 @@ type InitializeAccountsResult =
   }
   | { success: false; error: string };
 
-function resolvePluggyWebhookUrl() {
+function resolveAppUrl(): string | undefined {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
   if (!appUrl) return undefined;
   const trimmed = appUrl.replace(/\/$/, '');
-  const webhookUrl = `${trimmed}/api/webhooks/pluggy`;
-  if (webhookUrl.startsWith('https://') || process.env.ENABLE_HTTP_WEBHOOK === 'true') {
-    return webhookUrl;
+  if (trimmed.startsWith('https://') || process.env.ENABLE_HTTP_WEBHOOK === 'true') {
+    return trimmed;
   }
   return undefined;
+}
+
+function resolvePluggyWebhookUrl() {
+  const appUrl = resolveAppUrl();
+  if (!appUrl) return undefined;
+  return `${appUrl}/api/webhooks/pluggy`;
 }
 
 function parseIsoDate(value?: string | Date | null): Date | null {
@@ -70,10 +75,13 @@ export async function getPluggyConnectToken(itemId?: string): Promise<ActionResu
   try {
     const userId = await getCurrentUserId();
     const webhookUrl = resolvePluggyWebhookUrl();
+    const appUrl = resolveAppUrl();
+    const oauthRedirectUri = appUrl ? `${appUrl}/settings/accounts` : undefined;
     const client = getPluggyClient();
     const { accessToken } = await client.createConnectToken(itemId, {
       clientUserId: userId,
       ...(webhookUrl ? { webhookUrl } : {}),
+      ...(oauthRedirectUri ? { oauthRedirectUri } : {}),
     });
     return { success: true, token: accessToken };
   } catch (error) {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +168,7 @@ export function PricingSection() {
                     destination="/signup"
                   >
                     <Button variant="hollow" className="mt-auto" asChild>
-                      <a href="/signup">{t('pricingFreeCta')}</a>
+                      <Link href="/signup">{t('pricingFreeCta')}</Link>
                     </Button>
                   </LandingCtaTracker>
                 </CardContent>
@@ -241,10 +242,10 @@ export function PricingSection() {
                     ctaType="secondary"
                     ctaText={t('pricingProCta')}
                     ctaLocation="pricing"
-                    destination="#espera"
+                    destination="/signup"
                   >
                     <Button variant="hollow" className="mt-auto" asChild>
-                      <a href="#espera">{t('pricingProCta')}</a>
+                      <Link href="/signup">{t('pricingProCta')}</Link>
                     </Button>
                   </LandingCtaTracker>
                 </CardContent>

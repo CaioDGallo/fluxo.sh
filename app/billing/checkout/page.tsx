@@ -15,7 +15,7 @@ const ACTIVE_STATUSES = ['active', 'trialing', 'past_due'] as const;
 type SearchParams = Record<string, string | string[] | undefined>;
 
 function resolvePlan(value?: string): PaidPlanKey | null {
-  // Only allow saver and founder - pro is waitlist only
+  // Only allow saver and founder - pro is not available for direct checkout
   if (value === 'saver') return 'saver';
   if (value === 'founder') return 'founder';
   return null;

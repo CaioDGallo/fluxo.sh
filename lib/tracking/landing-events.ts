@@ -9,7 +9,7 @@
 
 export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 export type CtaType = 'primary' | 'secondary';
-export type CtaLocation = 'header' | 'hero' | 'proof' | 'pricing';
+export type CtaLocation = 'header' | 'hero' | 'proof' | 'pricing' | 'cta';
 export type SectionName =
   | 'hero'
   | 'metodo'
@@ -18,7 +18,7 @@ export type SectionName =
   | 'planos'
   | 'como'
   | 'faq'
-  | 'espera';
+  | 'cta';
 export type Platform = 'chromium' | 'ios-safari' | 'other';
 
 // ============================================================================

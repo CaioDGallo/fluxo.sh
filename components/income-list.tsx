@@ -169,7 +169,7 @@ export function IncomeList() {
                     })}
                   </h2>
                 ) : (
-                  renderIncomeCard(row.data)
+                  <div className="space-y-1">{renderIncomeCard(row.data)}</div>
                 )}
               </div>
             );

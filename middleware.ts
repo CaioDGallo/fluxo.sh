@@ -130,11 +130,23 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/cron') ||
     pathname.startsWith('/api/auth');
 
-  // Invalid user flag → force logout
+  // Invalid user flag → clear session and redirect to login
   if (token?.userInvalid) {
     const url = request.nextUrl.clone();
-    url.pathname = '/api/auth/signout';
-    return NextResponse.redirect(url);
+    url.pathname = '/login';
+    url.search = '?error=session_expired';
+
+    const response = NextResponse.redirect(url);
+
+    // Delete all session cookies
+    response.cookies.delete('next-auth.session-token');
+    response.cookies.delete('__Secure-next-auth.session-token');
+    response.cookies.delete('next-auth.callback-url');
+    response.cookies.delete('__Secure-next-auth.callback-url');
+    response.cookies.delete('next-auth.csrf-token');
+    response.cookies.delete('__Host-next-auth.csrf-token');
+
+    return response;
   }
 
   // Redirect to login if not authenticated and not on public route
@@ -144,8 +156,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect to dashboard if authenticated and on login page
-  if (token && pathname === '/login') {
+  // Redirect to dashboard if authenticated and on login or signup page
+  if (token && (pathname === '/login' || pathname === '/signup')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

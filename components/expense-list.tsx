@@ -213,7 +213,7 @@ export function ExpenseList() {
                     })}
                   </h2>
                 ) : (
-                  renderExpenseCard(row.data)
+                  <div className="space-y-1">{renderExpenseCard(row.data)}</div>
                 )}
               </div>
             );

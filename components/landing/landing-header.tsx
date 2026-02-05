@@ -58,10 +58,10 @@ export async function LandingHeader() {
               ctaType="primary"
               ctaText={t('ctaPrimary')}
               ctaLocation="header"
-              destination="#espera"
+              destination="/signup"
             >
               <Button variant="hollow" asChild>
-                <a href="#espera">{t('ctaPrimary')}</a>
+                <Link href="/signup">{t('ctaPrimary')}</Link>
               </Button>
             </LandingCtaTracker>
           )}
@@ -83,10 +83,10 @@ export async function LandingHeader() {
               ctaType="primary"
               ctaText={t('ctaPrimary')}
               ctaLocation="header"
-              destination="#espera"
+              destination="/signup"
             >
               <Button variant="hollow" asChild>
-                <a href="#espera">{t('ctaPrimary')}</a>
+                <Link href="/signup">{t('ctaPrimary')}</Link>
               </Button>
             </LandingCtaTracker>
           )}

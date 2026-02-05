@@ -28,11 +28,18 @@ function LoginForm() {
   const redirectParam = searchParams.get('redirect');
   const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard';
 
-  // Check for error parameter from OAuth callback
+  // Check for error parameter from OAuth callback or middleware
   useEffect(() => {
     const errorParam = searchParams.get('error');
     if (errorParam === 'auth_failed') {
       setError(t('authenticationFailed'));
+    } else if (errorParam === 'session_expired') {
+      setError(t('sessionExpired'));
+    }
+
+    // Clear error from URL to prevent sticky errors on refresh
+    if (errorParam) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
   }, [searchParams, t]);
 

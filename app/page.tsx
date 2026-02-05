@@ -10,7 +10,6 @@ import { LandingHeader } from '@/components/landing/landing-header';
 import { LandingPageTracker } from '@/components/tracking/landing-page-tracker';
 import { LandingSectionObserver } from '@/components/tracking/landing-section-observer';
 import { LandingCtaTracker } from '@/components/tracking/landing-cta-tracker';
-import { LandingWaitlistForm } from '@/components/tracking/landing-waitlist-form';
 
 export const metadata: Metadata = {
   title: 'Fluxo.sh | Decisões financeiras diárias',
@@ -51,10 +50,10 @@ export default async function Home() {
                       ctaType="primary"
                       ctaText={t('ctaPrimary')}
                       ctaLocation="hero"
-                      destination="#espera"
+                      destination="/signup"
                     >
                       <Button variant="popout" asChild>
-                        <a href="#espera">{t('ctaPrimary')}</a>
+                        <Link href="/signup">{t('ctaPrimary')}</Link>
                       </Button>
                     </LandingCtaTracker>
                     <LandingCtaTracker
@@ -405,14 +404,14 @@ export default async function Home() {
                   ctaType="primary"
                   ctaText={t('ctaPrimary')}
                   ctaLocation="proof"
-                  destination="#espera"
+                  destination="/signup"
                 >
                   <Button
                     variant="popout"
                     className="border-2 border-background bg-background text-foreground hover:bg-background hover:text-foreground"
                     asChild
                   >
-                    <a href="#espera">{t('ctaPrimary')}</a>
+                    <Link href="/signup">{t('ctaPrimary')}</Link>
                   </Button>
                 </LandingCtaTracker>
               </div>
@@ -439,27 +438,37 @@ export default async function Home() {
             </section>
           </LandingSectionObserver>
 
-          <LandingSectionObserver sectionId="espera">
-            <section id="espera" className="border-b border-border/80 bg-muted dark:bg-muted/40">
+          <LandingSectionObserver sectionId="cta">
+            <section id="cta" className="border-b border-border/80 bg-muted dark:bg-muted/40">
               <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-6">
                 <Card className="border-2 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                   <CardHeader className="border-b border-border">
                     <CardTitle className="text-2xl md:text-3xl">{t('ctaTitle')}</CardTitle>
                     <CardDescription className="text-sm md:text-base">{t('ctaSubtitle')}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <LandingWaitlistForm
-                      emailLabel={t('emailLabel')}
-                      emailPlaceholder={t('emailPlaceholder')}
-                      submitNote={t('submitNote')}
-                      submitButton={t('waitlistSubmit')}
-                      submittingButton={t('waitlistSubmitting')}
-                      successMessage={t('waitlistSuccess')}
-                      errorDuplicate={t('waitlistErrorDuplicate')}
-                      errorRateLimit={t('waitlistErrorRateLimit')}
-                      errorInvalid={t('waitlistErrorInvalid')}
-                      errorGeneric={t('waitlistErrorGeneric')}
-                    />
+                  <CardContent className="space-y-6 pt-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                      <LandingCtaTracker
+                        ctaType="primary"
+                        ctaText={t('ctaSignup')}
+                        ctaLocation="cta"
+                        destination="/signup"
+                      >
+                        <Button variant="popout" size="lg" asChild>
+                          <Link href="/signup">{t('ctaSignup')}</Link>
+                        </Button>
+                      </LandingCtaTracker>
+                      <LandingCtaTracker
+                        ctaType="secondary"
+                        ctaText={t('ctaLogin')}
+                        ctaLocation="cta"
+                        destination="/login"
+                      >
+                        <Button variant="outline" size="lg" asChild>
+                          <Link href="/login">{t('ctaLogin')}</Link>
+                        </Button>
+                      </LandingCtaTracker>
+                    </div>
                     <div className="border border-border p-4 text-xs">
                       <p className="font-semibold">{t('footerTitle')}</p>
                       <p className="text-foreground/80">{t('footerText')}</p>

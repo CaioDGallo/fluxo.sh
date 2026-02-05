@@ -28,7 +28,6 @@ let loginLimiter: Ratelimit | null = null;
 let passwordResetLimiter: Ratelimit | null = null;
 let passwordUpdateLimiter: Ratelimit | null = null;
 let signupLimiter: Ratelimit | null = null;
-let waitlistLimiter: Ratelimit | null = null;
 let bulkLimiter: Ratelimit | null = null;
 let crudLimiter: Ratelimit | null = null;
 let destructiveLimiter: Ratelimit | null = null;
@@ -65,12 +64,6 @@ function initializeRateLimiters() {
     redis,
     limiter: Ratelimit.slidingWindow(5, '60 s'),
     prefix: 'ratelimit:signup',
-  });
-
-  waitlistLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(3, '60 s'),
-    prefix: 'ratelimit:waitlist',
   });
 
   bulkLimiter = new Ratelimit({
@@ -181,11 +174,6 @@ export async function checkPasswordUpdateRateLimit(): Promise<RateLimitResult> {
 export async function checkSignupRateLimit(): Promise<RateLimitResult> {
   const ip = await getClientIP();
   return checkLimit(() => signupLimiter, ip);
-}
-
-export async function checkWaitlistRateLimit(): Promise<RateLimitResult> {
-  const ip = await getClientIP();
-  return checkLimit(() => waitlistLimiter, ip);
 }
 
 // User-based rate limiters

@@ -1,6 +1,5 @@
 import type { NextAuthOptions, Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
-import type { User as NextAuthUser } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
@@ -9,14 +8,6 @@ import { users, authAccounts } from '@/lib/auth-schema';
 import bcrypt from 'bcryptjs';
 import { eq, and } from 'drizzle-orm';
 import { setupNewUser } from '@/lib/user-setup/setup-new-user';
-import { getStoredInviteCode, clearStoredInviteCode, validateInviteCode } from '@/lib/actions/signup';
-import { invites } from '@/lib/auth-schema';
-import { createPlanSubscription } from '@/lib/plan-subscriptions';
-
-// Extended user type with invite tracking
-interface ExtendedUser extends NextAuthUser {
-  inviteId?: string;
-}
 
 // TTL for user existence validation (1 hour)
 const USER_VALIDATION_TTL_MS = 60 * 60 * 1000;
@@ -103,42 +94,14 @@ export const authConfig: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ account }) {
       // Allow credentials login (existing users)
       if (account?.provider === 'credentials') {
         return true;
       }
 
-      // OAuth login/signup
+      // OAuth login/signup - always allow (no invite code needed)
       if (account?.provider === 'google' || account?.provider === 'github') {
-        // Check if user already exists
-        const existingUser = await db.query.users.findFirst({
-          where: eq(users.email, user.email as string),
-        });
-
-        // Existing user - allow login
-        if (existingUser) {
-          return true;
-        }
-
-        // New user - check for invite code
-        const inviteCode = await getStoredInviteCode();
-        if (!inviteCode) {
-          console.log('[AUTH] OAuth signup rejected - no invite code');
-          return '/signup?error=oauth_new_user';
-        }
-
-        // Validate invite
-        const validation = await validateInviteCode(inviteCode, user.email as string);
-        if (!validation.valid) {
-          console.log('[AUTH] OAuth signup rejected - invalid invite:', validation.error);
-          await clearStoredInviteCode();
-          return '/signup?error=oauth_invalid_invite';
-        }
-
-        // Store invite ID in user object for jwt callback
-        (user as ExtendedUser).inviteId = validation.inviteId;
-
         return true;
       }
 
@@ -177,34 +140,6 @@ export const authConfig: NextAuthOptions = {
 
             // Setup default categories and accounts
             await setupNewUser(userId);
-
-            // Mark invite as used
-            const inviteId = (user as ExtendedUser).inviteId;
-            if (inviteId) {
-              const currentInvite = await db.query.invites.findFirst({
-                where: eq(invites.id, inviteId),
-              });
-
-              if (currentInvite) {
-                await createPlanSubscription({
-                  userId,
-                  planKey: currentInvite.planKey,
-                  planInterval: currentInvite.planInterval,
-                });
-
-                await db
-                  .update(invites)
-                  .set({
-                    useCount: (currentInvite.useCount || 0) + 1,
-                    usedAt: new Date(),
-                    usedBy: userId,
-                  })
-                  .where(eq(invites.id, inviteId));
-              }
-
-              // Clear cookie
-              await clearStoredInviteCode();
-            }
           }
 
           // Persist OAuth account link (both for new and existing users)

@@ -1,0 +1,30 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Daily at 6am UTC (3am BRT)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create backup
+        run: |
+          pg_dump "$DATABASE_URL" \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            | gzip -9 > backup_$(date +%Y-%m-%d).sql.gz
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_DIRECT_URL }}
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_id }}
+          path: backup_*.sql.gz
+          retention-days: 3
+          if-no-files-found: error

@@ -293,7 +293,7 @@ export function TransactionDetailSheet({
                 <Section title={t('sectionIndicators')}>
                   {/* Linked bill */}
                   {isExpense && expense?.linkedBillName && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 px-3 py-2.5">
+                    <div className="rounded-none border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <HugeiconsIcon icon={Link01Icon} className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
                         <div className="flex-1 min-w-0">

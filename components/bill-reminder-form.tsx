@@ -256,7 +256,7 @@ export function BillReminderForm({
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-300">
             {error}
           </div>
         )}

@@ -164,7 +164,7 @@ export function BillReminderCard({ reminder, categories }: BillReminderCardProps
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 {deleteError && (
-                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                  <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-800 dark:text-red-300">
                     {deleteError}
                   </div>
                 )}

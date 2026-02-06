@@ -56,21 +56,21 @@ export function BillReminderBannerClient({ reminders, timeZone }: BillReminderBa
   }
 
   return (
-    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+    <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
       <p className="text-sm font-medium">{t('bannerTitle')}</p>
-      <p className="text-xs text-amber-800">{t('bannerDescription', { count: items.length })}</p>
+      <p className="text-xs text-amber-800 dark:text-amber-300">{t('bannerDescription', { count: items.length })}</p>
       <div className="mt-3 flex flex-col gap-2">
         {items.map((item) => (
           <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="min-w-0">
               <span className="font-medium">{item.name}</span>
               {item.amount != null && (
-                <span className="text-amber-800">
+                <span className="text-amber-800 dark:text-amber-300">
                   {' '}
                   • {formatCurrencyWithLocale(item.amount, locale)}
                 </span>
               )}
-              <span className="text-amber-800">
+              <span className="text-amber-800 dark:text-amber-300">
                 {' '}
                 • {dateFormatter.format(new Date(item.nextDue))}
               </span>
@@ -78,7 +78,7 @@ export function BillReminderBannerClient({ reminders, timeZone }: BillReminderBa
             <Button
               variant="outline"
               size="sm"
-              className="h-7 border-amber-300 px-2 text-amber-900"
+              className="h-7 border-amber-300 px-2 text-amber-900 dark:border-amber-700 dark:text-amber-200"
               onClick={() => handleAcknowledge(item.id)}
               disabled={submittingId === item.id}
             >

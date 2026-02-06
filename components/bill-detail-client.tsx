@@ -206,14 +206,14 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                             {formatDate(String(dueDate.toISOString().split('T')[0]))}
                           </div>
                           {occ.matchedTransactionId && (
-                            <div className="text-xs text-blue-600">{t('linkedTransaction')}</div>
+                            <div className="text-xs text-blue-600 dark:text-blue-400">{t('linkedTransaction')}</div>
                           )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                         <div className="text-left sm:text-right tabular-nums">
                           {occ.status === 'paid' && occ.actualAmount != null ? (
-                            <span className="text-sm font-semibold text-green-600">{formatCentsAsBRL(occ.actualAmount)}</span>
+                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCentsAsBRL(occ.actualAmount)}</span>
                           ) : occ.expectedAmount != null ? (
                             <span className="text-sm text-muted-foreground">{formatCentsAsBRL(occ.expectedAmount)}</span>
                           ) : null}

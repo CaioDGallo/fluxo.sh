@@ -75,19 +75,19 @@ export function LinkTransactionDialog({ occurrence, open, onClose, onLinked }: L
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <div className="text-sm text-gray-400 py-6 text-center">...</div>
+            <div className="text-sm text-muted-foreground py-6 text-center">...</div>
           ) : suggestions.length === 0 ? (
-            <p className="text-sm text-gray-500 py-6 text-center">{t('noSuggestions')}</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">{t('noSuggestions')}</p>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('suggested')}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('suggested')}</p>
               {suggestions.map((item) => (
-                <div key={item.entry.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50">
+                <div key={item.entry.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-800 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {item.description ?? 'Sem descrição'}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(item.entry.purchaseDate).toLocaleDateString('pt-BR', {
                         day: 'numeric',
                         month: 'long',
@@ -95,7 +95,7 @@ export function LinkTransactionDialog({ occurrence, open, onClose, onLinked }: L
                     </p>
                   </div>
                   <div className="flex items-center gap-3 ml-4">
-                    <span className="text-sm font-semibold text-gray-700">{formatCentsAsBRL(item.entry.amount)}</span>
+                    <span className="text-sm font-semibold text-foreground">{formatCentsAsBRL(item.entry.amount)}</span>
                     <Button
                       size="sm"
                       variant="default"

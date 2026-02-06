@@ -377,9 +377,12 @@ export function BillSheet({
                     <Input
                       id="bill-start"
                       name="startMonth"
-                      type="month"
-                      value={startMonth}
-                      onChange={(e) => setStartMonth(e.target.value)}
+                      type="date"
+                      value={startMonth ? `${startMonth}-01` : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) setStartMonth(val.slice(0, 7));
+                      }}
                       required
                       autoComplete="off"
                     />
@@ -389,9 +392,13 @@ export function BillSheet({
                     <Input
                       id="bill-end"
                       name="endMonth"
-                      type="month"
-                      value={endMonth}
-                      onChange={(e) => setEndMonth(e.target.value)}
+                      type="date"
+                      value={endMonth ? `${endMonth}-01` : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) setEndMonth(val.slice(0, 7));
+                        else setEndMonth('');
+                      }}
                       autoComplete="off"
                     />
                   </Field>

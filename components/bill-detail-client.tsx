@@ -19,6 +19,7 @@ import { formatCentsAsBRL, formatDate } from '@/lib/utils';
 import { skipOccurrence } from '@/lib/actions/bill-occurrences';
 import { PayBillDialog } from '@/components/pay-bill-dialog';
 import { LinkTransactionDialog } from '@/components/link-transaction-dialog';
+import { EditOccurrenceSheet } from '@/components/edit-occurrence-sheet';
 import { BillSheet } from '@/components/bill-sheet';
 import type { Account, Category } from '@/lib/schema';
 
@@ -68,6 +69,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
   const router = useRouter();
   const [payDialogOccurrence, setPayDialogOccurrence] = useState<OccurrenceRow | null>(null);
   const [linkDialogOccurrence, setLinkDialogOccurrence] = useState<OccurrenceRow | null>(null);
+  const [editOccurrence, setEditOccurrence] = useState<OccurrenceRow | null>(null);
   const [skipping, setSkipping] = useState<number | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
 
@@ -231,6 +233,15 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                               variant="ghost"
                               size="icon"
                               className="size-9 sm:size-7"
+                              onClick={() => setEditOccurrence(occ)}
+                              aria-label={t('editOccurrence')}
+                            >
+                              <HugeiconsIcon icon={Edit01Icon} className="size-3.5" aria-hidden />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-9 sm:size-7"
                               onClick={() => setLinkDialogOccurrence(occ)}
                               aria-label={t('linkTransaction')}
                             >
@@ -281,6 +292,19 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
           onClose={() => setLinkDialogOccurrence(null)}
           onLinked={() => {
             setLinkDialogOccurrence(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* Edit Occurrence Sheet */}
+      {editOccurrence && (
+        <EditOccurrenceSheet
+          occurrence={editOccurrence}
+          open={true}
+          onClose={() => setEditOccurrence(null)}
+          onSaved={() => {
+            setEditOccurrence(null);
             router.refresh();
           }}
         />

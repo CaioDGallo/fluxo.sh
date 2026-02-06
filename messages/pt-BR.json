@@ -44,6 +44,7 @@
     "invalidYearMonth": "Valor inválido de ano ou mês",
     "accountNotFound": "Conta não encontrada",
     "categoryNotFound": "Categoria não encontrada",
+    "notFound": "Registro não encontrado",
     "faturaNotFound": "Fatura não encontrada",
     "faturaAlreadyPaid": "Fatura já paga",
     "cannotPayFromCreditCard": "Não é possível pagar fatura de cartão de crédito",
@@ -996,7 +997,8 @@
     "committedLabel": "Comprometido: {amount}",
     "availableLabel": "Disponível: {amount}",
     "spentLabel": "Gasto: {amount}",
-    "dueDayLabel": "Dia {day}"
+    "dueDayLabel": "Dia {day}",
+    "editOccurrence": "Editar ocorrência"
   },
   "billsForm": {
     "name": "Nome",
@@ -1053,6 +1055,15 @@
     "noSuggestions": "Nenhuma transação sugerida. A busca considera valores ±10% e datas ±5 dias.",
     "select": "Selecionar",
     "cancel": "Cancelar"
+  },
+  "editOccurrenceSheet": {
+    "title": "Editar Ocorrência",
+    "scopeLabel": "Aplicar a",
+    "scopeThis": "Apenas esta",
+    "scopeFuture": "Esta e futuras",
+    "scopeAllUnpaid": "Todas não pagas",
+    "amount": "Valor esperado",
+    "notes": "Notas"
   },
   "emails": {
     "digest": {

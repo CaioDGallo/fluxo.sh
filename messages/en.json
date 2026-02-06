@@ -44,6 +44,7 @@
     "invalidYearMonth": "Invalid year or month value",
     "accountNotFound": "Account not found",
     "categoryNotFound": "Category not found",
+    "notFound": "Record not found",
     "faturaNotFound": "Bill not found",
     "faturaAlreadyPaid": "Bill already paid",
     "cannotPayFromCreditCard": "Cannot pay bill from a credit card account",
@@ -955,7 +956,8 @@
     "committedLabel": "Committed: {amount}",
     "availableLabel": "Available: {amount}",
     "spentLabel": "Spent: {amount}",
-    "dueDayLabel": "Day {day}"
+    "dueDayLabel": "Day {day}",
+    "editOccurrence": "Edit occurrence"
   },
   "billsForm": {
     "name": "Name",
@@ -1012,6 +1014,15 @@
     "noSuggestions": "No suggested transactions. Search considers amounts ±10% and dates ±5 days.",
     "select": "Select",
     "cancel": "Cancel"
+  },
+  "editOccurrenceSheet": {
+    "title": "Edit Occurrence",
+    "scopeLabel": "Apply to",
+    "scopeThis": "This one only",
+    "scopeFuture": "This and future",
+    "scopeAllUnpaid": "All unpaid",
+    "amount": "Expected amount",
+    "notes": "Notes"
   },
   "emails": {
     "digest": {

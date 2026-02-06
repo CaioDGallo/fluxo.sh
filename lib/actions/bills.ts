@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { bills, billOccurrences, categories, accounts, type NewBill } from '@/lib/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -147,8 +147,15 @@ export async function updateBill(
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(bills.id, id), eq(bills.userId, userId)));
 
-    // If recurrence settings changed, regenerate future occurrences
+    // If recurrence settings changed, delete future unpaid occurrences and regenerate
     if (data.recurrenceType !== undefined || data.dueDay !== undefined || data.startMonth !== undefined) {
+      const today = new Date().toISOString().split('T')[0];
+      await db.delete(billOccurrences).where(and(
+        eq(billOccurrences.billId, id),
+        eq(billOccurrences.userId, userId),
+        inArray(billOccurrences.status, ['upcoming', 'pending']),
+        sql`${billOccurrences.dueDate} >= ${today}::date`
+      ));
       await generateOccurrencesForBill(id, userId);
     }
 

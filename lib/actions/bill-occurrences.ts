@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { bills, billOccurrences, accounts, entries, transactions, categories } from '@/lib/schema';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, gte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -541,6 +541,125 @@ export async function acknowledgeOccurrence(id: number): Promise<ActionResult> {
   }
 }
 
+// ─── Occurrence editing (scoped) ─────────────────────────────────────────────
+
+export async function updateOccurrence(
+  id: number,
+  data: { expectedAmount?: number; notes?: string },
+): Promise<ActionResult> {
+  try {
+    await guardCrudOperation();
+    const userId = await getCurrentUserId();
+
+    const [existing] = await db
+      .select()
+      .from(billOccurrences)
+      .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)))
+      .limit(1);
+    if (!existing) return { success: false, error: await t('errors.notFound') };
+
+    await db
+      .update(billOccurrences)
+      .set({
+        ...(data.expectedAmount !== undefined ? { expectedAmount: data.expectedAmount } : {}),
+        ...(data.notes !== undefined ? { notes: data.notes || null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billOccurrences.id, id), eq(billOccurrences.userId, userId)));
+
+    revalidatePath('/bills');
+    revalidatePath(`/bills/${existing.billId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[bill-occurrences:updateOccurrence] Failed:', error);
+    return { success: false, error: await handleDbError(error, 'errors.failedToUpdate') };
+  }
+}
+
+export async function updateFutureOccurrences(
+  occurrenceId: number,
+  data: { expectedAmount?: number },
+): Promise<ActionResult> {
+  try {
+    await guardCrudOperation();
+    const userId = await getCurrentUserId();
+
+    const [reference] = await db
+      .select()
+      .from(billOccurrences)
+      .where(and(eq(billOccurrences.id, occurrenceId), eq(billOccurrences.userId, userId)))
+      .limit(1);
+    if (!reference) return { success: false, error: await t('errors.notFound') };
+
+    // Update this and all future unpaid occurrences
+    await db
+      .update(billOccurrences)
+      .set({
+        ...(data.expectedAmount !== undefined ? { expectedAmount: data.expectedAmount } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(billOccurrences.billId, reference.billId),
+        eq(billOccurrences.userId, userId),
+        inArray(billOccurrences.status, ['upcoming', 'pending']),
+        gte(billOccurrences.dueDate, String(reference.dueDate)),
+      ));
+
+    // Sync bill definition so future auto-generated occurrences match
+    if (data.expectedAmount !== undefined) {
+      await db
+        .update(bills)
+        .set({ expectedAmount: data.expectedAmount, updatedAt: new Date() })
+        .where(and(eq(bills.id, reference.billId), eq(bills.userId, userId)));
+    }
+
+    revalidatePath('/bills');
+    revalidatePath(`/bills/${reference.billId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[bill-occurrences:updateFuture] Failed:', error);
+    return { success: false, error: await handleDbError(error, 'errors.failedToUpdate') };
+  }
+}
+
+export async function updateAllUnpaidOccurrences(
+  billId: number,
+  data: { expectedAmount?: number },
+): Promise<ActionResult> {
+  try {
+    await guardCrudOperation();
+    const userId = await getCurrentUserId();
+
+    // Update all unpaid occurrences
+    await db
+      .update(billOccurrences)
+      .set({
+        ...(data.expectedAmount !== undefined ? { expectedAmount: data.expectedAmount } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(billOccurrences.billId, billId),
+        eq(billOccurrences.userId, userId),
+        inArray(billOccurrences.status, ['upcoming', 'pending']),
+      ));
+
+    // Sync bill definition
+    if (data.expectedAmount !== undefined) {
+      await db
+        .update(bills)
+        .set({ expectedAmount: data.expectedAmount, updatedAt: new Date() })
+        .where(and(eq(bills.id, billId), eq(bills.userId, userId)));
+    }
+
+    revalidatePath('/bills');
+    revalidatePath(`/bills/${billId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[bill-occurrences:updateAllUnpaid] Failed:', error);
+    return { success: false, error: await handleDbError(error, 'errors.failedToUpdate') };
+  }
+}
+
 /**
  * Get candidate transactions for linking to an occurrence.
  * Matches by amount (±10%) and date (±5 days).
@@ -585,8 +704,12 @@ export const getSuggestedTransactions = cache(async (occurrenceId: number) => {
       sql`${entries.amount} BETWEEN ${minAmount} AND ${maxAmount}`,
       sql`${entries.purchaseDate} BETWEEN ${minDate.toISOString().split('T')[0]}::date AND ${maxDate.toISOString().split('T')[0]}::date`,
       eq(transactions.ignored, false),
-      // Prefer same category if bill has one
-      ...(bill?.categoryId ? [eq(transactions.categoryId, bill.categoryId)] : [])
     ))
+    .orderBy(
+      bill?.categoryId
+        ? sql`CASE WHEN ${transactions.categoryId} = ${bill.categoryId} THEN 0 ELSE 1 END`
+        : sql`1`,
+      entries.purchaseDate,
+    )
     .limit(10);
 });

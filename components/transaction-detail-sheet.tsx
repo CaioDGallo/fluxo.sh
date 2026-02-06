@@ -11,7 +11,7 @@ import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { RefundDialog } from '@/components/refund-dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Tick02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { Tick02Icon, Clock01Icon, Link01Icon } from '@hugeicons/core-free-icons';
 import { getReplenishableCategories, setIncomeReplenishment } from '@/lib/actions/income';
 import type { ExpenseEntry } from '@/lib/contexts/expense-context';
 import type { IncomeEntry } from '@/lib/contexts/income-context';
@@ -124,6 +124,19 @@ export function TransactionDetailSheet({
             </div>
           </SheetHeader>
 
+          {/* Linked Bill banner */}
+          {isExpense && expense?.linkedBillName && (
+            <div className="mx-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={Link01Icon} className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">{t('linkedBill')}</p>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">{expense.linkedBillName}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Detail rows - scrollable */}
           <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <div className="space-y-3 p-4">
@@ -192,14 +205,6 @@ export function TransactionDetailSheet({
                           {t('faturaPaymentDescription')}
                         </Badge>
                       }
-                    />
-                  )}
-
-                  {/* Linked Bill */}
-                  {expense.linkedBillName && (
-                    <DetailRow
-                      label={t('linkedBill')}
-                      value={expense.linkedBillName}
                     />
                   )}
 

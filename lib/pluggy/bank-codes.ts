@@ -1,0 +1,36 @@
+/**
+ * COMPE (Centralizadora da Compensação de Cheques) bank codes → display names.
+ * Used to enrich beneficiary labels during Pluggy sync.
+ */
+export const BANK_CODES = new Map<string, string>([
+  ['001', 'Banco do Brasil'],
+  ['033', 'Santander'],
+  ['041', 'Banrisul'],
+  ['070', 'BRB'],
+  ['077', 'Inter'],
+  ['104', 'Caixa'],
+  ['136', 'Unicred'],
+  ['197', 'Stone'],
+  ['208', 'BTG Pactual'],
+  ['212', 'Banco Original'],
+  ['237', 'Bradesco'],
+  ['260', 'Nubank'],
+  ['290', 'PagSeguro'],
+  ['318', 'BMG'],
+  ['320', 'BV (ex-Votorantim)'],
+  ['323', 'Mercado Pago'],
+  ['336', 'C6 Bank'],
+  ['341', 'Itaú'],
+  ['380', 'PicPay'],
+  ['389', 'Banco Mercantil'],
+  ['394', 'Banco Pan'],
+  ['399', 'HSBC'],
+  ['403', 'Cora'],
+  ['422', 'Safra'],
+  ['655', 'Neon (Votorantim)'],
+  ['707', 'Daycoval'],
+  ['741', 'Sicredi'],
+  ['745', 'Citibank'],
+  ['748', 'Sicoob'],
+  ['756', 'Bancoob'],
+]);

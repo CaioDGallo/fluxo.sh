@@ -13,7 +13,11 @@ export type PluggyTransactionClassification = {
 };
 
 const INSTALLMENT_PATTERN = /(parcela|parc|parcelado)\s*(\d+)\s*[\/-]\s*(\d+)/i;
-const PAYMENT_PATTERN = /(pagamento\s+fatura|pagamento\s+cartao|pgto\s+fatura|fatura\s+cartao|bill\s+payment)/i;
+const PAYMENT_PATTERN = /(pag(?:amento|to)?\s+(?:de\s+)?(?:fatura|cartao|cart[aã]o)|pgto?\s+(?:de\s+)?(?:fatura|cartao)|fatura\s+cartao|bill\s+payment)/i;
+const PAYMENT_OPERATION_TYPES = new Set([
+  'PAGAMENTO', 'PAGAMENTO_FATURA', 'PAGAMENTO_BOLETO',
+  'PAGAMENTO_CONTA', 'DEBITO_AUTOMATICO',
+]);
 const TRANSFER_PATTERN = /(transferencia|transf\b|pix|ted|doc)/i;
 const DEPOSIT_PATTERN = /(deposito|deposit)/i;
 const WITHDRAW_PATTERN = /(saque|withdrawal)/i;
@@ -106,8 +110,14 @@ export function classifyPluggyTransaction(transaction: Transaction): PluggyTrans
     };
   }
 
-  // Fatura payment detection
-  if (PAYMENT_PATTERN.test(normalizedDescription)) {
+  // Fatura payment detection — structural signals first, regex fallback
+  const hasBoletoMetadata = !!(
+    transaction.paymentData?.boletoMetadata?.digitableLine ||
+    transaction.paymentData?.boletoMetadata?.barcode
+  );
+  const hasPaymentOperationType = !!(operationType && PAYMENT_OPERATION_TYPES.has(operationType));
+
+  if (hasBoletoMetadata || hasPaymentOperationType || PAYMENT_PATTERN.test(normalizedDescription)) {
     return {
       direction,
       kind: 'payment',

@@ -4,7 +4,8 @@ import { handleDbError } from '@/lib/db-errors';
 import { t } from '@/lib/i18n/server-errors';
 import { classifyPluggyTransaction, extractPluggyInstallmentInfo } from '@/lib/pluggy/mapping';
 import { getPluggyClient } from '@/lib/pluggy/sdk';
-import type { Account, Item, Transaction } from 'pluggy-sdk';
+import { BANK_CODES } from '@/lib/pluggy/bank-codes';
+import type { Account, Item, Transaction, TransactionPaymentParticipant } from 'pluggy-sdk';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
 import { batchEnsureFaturasExist, batchUpdateFaturaTotals, syncPluggyBills } from '@/lib/actions/faturas';
@@ -336,6 +337,16 @@ function resolveFaturaMonthFromPluggyBill(
   }
   // Fallback: use transaction month
   return transactionDate.slice(0, 7);
+}
+
+function buildBeneficiaryLabel(participant?: TransactionPaymentParticipant | null): string | undefined {
+  if (!participant?.name) return undefined;
+  let label = participant.name;
+  if (participant.routingNumber) {
+    const bankName = BANK_CODES.get(participant.routingNumber);
+    if (bankName) label += ` · ${bankName}`;
+  }
+  return label;
 }
 
 export async function syncPluggyItem(
@@ -681,8 +692,8 @@ export async function syncPluggyItem(
         const txMerchantBusinessName = transaction.merchant?.businessName || undefined;
         const txMerchantCnpj = transaction.merchant?.cnpj || undefined;
         const txBeneficiaryName = classification.direction === 'debit'
-          ? transaction.paymentData?.receiver?.name || undefined
-          : transaction.paymentData?.payer?.name || undefined;
+          ? buildBeneficiaryLabel(transaction.paymentData?.receiver)
+          : buildBeneficiaryLabel(transaction.paymentData?.payer);
 
         if (classification.kind === 'payment') {
           expenseCandidates.push({

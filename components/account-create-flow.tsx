@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { SparklesIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { BankIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { AccountForm } from '@/components/account-form';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -168,7 +168,7 @@ export function AccountCreateFlow({
                 )}
               >
                 <div className="size-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                  <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-5" />
+                  <HugeiconsIcon icon={BankIcon} strokeWidth={2} className="size-5" />
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">

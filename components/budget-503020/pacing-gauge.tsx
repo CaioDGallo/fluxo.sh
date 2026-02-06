@@ -18,110 +18,164 @@ const PACING_KEY_MAP = {
   under_pace: 'underPace',
 } as const;
 
-// Zone definitions for the speedometer gauge
-// Speedometer arc: 225° (7 o'clock) → 360°/0° (12 o'clock) → 495°/135° (5 o'clock)
-// Total span: 270° going counter-clockwise (increasing angles)
-// With polarToCartesian's (angle - 90) transform: 0°=UP, 90°=RIGHT, 180°=DOWN, 270°=LEFT
+interface Point {
+  x: number;
+  y: number;
+}
+
+// Zone definitions — only percentage bounds and colors needed now
 const ZONES = [
   {
     name: 'saving',
     startPercent: 0,
     endPercent: 90,
-    startAngle: 225,      // Bottom-left (7 o'clock)
-    endAngle: 346.5,      // Approaching top from left (wraps to -13.5°)
-    lightColor: '#60a5fa', // blue-400
-    darkColor: '#60a5fa',  // blue-400
+    lightColor: '#60a5fa',
+    darkColor: '#60a5fa',
     label: 'Economizando',
   },
   {
     name: 'onTrack',
     startPercent: 90,
     endPercent: 110,
-    startAngle: 346.5,    // Approaching top
-    endAngle: 373.5,      // Just past top (wraps to 13.5°)
-    lightColor: '#4ade80', // green-400
-    darkColor: '#4ade80',  // green-400
+    lightColor: '#4ade80',
+    darkColor: '#4ade80',
     label: 'No ritmo',
   },
   {
     name: 'careful',
     startPercent: 110,
     endPercent: 130,
-    startAngle: 373.5,    // Past top (wraps to 13.5°)
-    endAngle: 400.5,      // Upper right (wraps to 40.5°)
-    lightColor: '#fb923c', // orange-400
-    darkColor: '#fb923c',  // orange-400
+    lightColor: '#fb923c',
+    darkColor: '#fb923c',
     label: 'Atenção',
   },
   {
     name: 'over',
     startPercent: 130,
     endPercent: 200,
-    startAngle: 400.5,    // Upper right (wraps to 40.5°)
-    endAngle: 495,        // Bottom-right (5 o'clock, wraps to 135°)
-    lightColor: '#f87171', // red-400
-    darkColor: '#f87171',  // red-400
+    lightColor: '#f87171',
+    darkColor: '#f87171',
     label: 'Acima',
   },
 ] as const;
 
+// 7 vertex angles for the half-octagon gauge (same 270° span as before)
+// 225° (bottom-left) → 270° → 315° → 0° → 45° → 90° → 135° (bottom-right)
+const VERTEX_ANGLES = [225, 270, 315, 360, 405, 450, 495];
+const NUM_SEGMENTS = VERTEX_ANGLES.length - 1; // 6
+const PCT_PER_SEGMENT = 200 / NUM_SEGMENTS; // ~33.33%
+
 /**
- * Convert percentage (0-200%) to angle for speedometer
- * 0% = 225° (7 o'clock), 100% = 360° (12 o'clock), 200% = 495°/135° (5 o'clock)
- * Spans 270° counter-clockwise (increasing angles) from bottom-left through top to bottom-right
+ * Convert polar angle to cartesian point.
+ * 0°=top, angles increase clockwise (matching SVG convention with -90° offset).
+ */
+function polarToCartesian(cx: number, cy: number, radius: number, angleDeg: number): Point {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: cx + radius * Math.cos(rad),
+    y: cy + radius * Math.sin(rad),
+  };
+}
+
+/** Get all 7 octagon vertices for a given radius */
+function getVertices(cx: number, cy: number, radius: number): Point[] {
+  return VERTEX_ANGLES.map((angle) => polarToCartesian(cx, cy, radius, angle));
+}
+
+/** Map 0-200% to a point on the octagonal path by interpolating within segments */
+function percentageToPoint(pct: number, cx: number, cy: number, radius: number): Point {
+  const clamped = Math.max(0, Math.min(200, pct));
+  const segIdx = Math.min(Math.floor(clamped / PCT_PER_SEGMENT), NUM_SEGMENTS - 1);
+  const t = (clamped - segIdx * PCT_PER_SEGMENT) / PCT_PER_SEGMENT;
+  const vertices = getVertices(cx, cy, radius);
+  const a = vertices[segIdx];
+  const b = vertices[segIdx + 1];
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  };
+}
+
+/**
+ * Build SVG path for an octagonal zone (donut segment with straight edges).
+ * Traces outer vertices from startPct→endPct, then inner vertices back.
+ */
+function describeOctagonZone(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  startPct: number,
+  endPct: number
+): string {
+  const outerVerts = getVertices(cx, cy, outerR);
+  const innerVerts = getVertices(cx, cy, innerR);
+
+  // Collect outer path points: start → intermediate vertices → end
+  const outerPoints: Point[] = [percentageToPoint(startPct, cx, cy, outerR)];
+  for (let i = 0; i < VERTEX_ANGLES.length; i++) {
+    const vertPct = i * PCT_PER_SEGMENT;
+    if (vertPct > startPct && vertPct < endPct) {
+      outerPoints.push(outerVerts[i]);
+    }
+  }
+  outerPoints.push(percentageToPoint(endPct, cx, cy, outerR));
+
+  // Collect inner path points in reverse: end → intermediate vertices → start
+  const innerPoints: Point[] = [percentageToPoint(endPct, cx, cy, innerR)];
+  for (let i = VERTEX_ANGLES.length - 1; i >= 0; i--) {
+    const vertPct = i * PCT_PER_SEGMENT;
+    if (vertPct > startPct && vertPct < endPct) {
+      innerPoints.push(innerVerts[i]);
+    }
+  }
+  innerPoints.push(percentageToPoint(startPct, cx, cy, innerR));
+
+  // Build path
+  const parts: string[] = [`M ${outerPoints[0].x} ${outerPoints[0].y}`];
+  for (let i = 1; i < outerPoints.length; i++) {
+    parts.push(`L ${outerPoints[i].x} ${outerPoints[i].y}`);
+  }
+  parts.push(`L ${innerPoints[0].x} ${innerPoints[0].y}`);
+  for (let i = 1; i < innerPoints.length; i++) {
+    parts.push(`L ${innerPoints[i].x} ${innerPoints[i].y}`);
+  }
+  parts.push('Z');
+  return parts.join(' ');
+}
+
+/**
+ * Build SVG path for the full octagonal track outline (outer + inner border).
+ */
+function describeOctagonOutline(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number
+): string {
+  const outerVerts = getVertices(cx, cy, outerR);
+  const innerVerts = getVertices(cx, cy, innerR);
+
+  const parts: string[] = [`M ${outerVerts[0].x} ${outerVerts[0].y}`];
+  for (let i = 1; i < outerVerts.length; i++) {
+    parts.push(`L ${outerVerts[i].x} ${outerVerts[i].y}`);
+  }
+  // Connect to inner track at the end
+  parts.push(`L ${innerVerts[innerVerts.length - 1].x} ${innerVerts[innerVerts.length - 1].y}`);
+  for (let i = innerVerts.length - 2; i >= 0; i--) {
+    parts.push(`L ${innerVerts[i].x} ${innerVerts[i].y}`);
+  }
+  parts.push('Z');
+  return parts.join(' ');
+}
+
+/**
+ * Convert percentage (0-200%) to angle for needle rotation.
+ * Kept from original — needle rotates smoothly regardless of octagonal track.
  */
 function percentageToAngle(percentage: number): number {
   const clamped = Math.max(0, Math.min(200, percentage));
-  // Each 1% = 270° / 200 = 1.35°, going counter-clockwise (increasing angles)
-  return 225 + (clamped * 1.35);
-}
-
-/**
- * Generate SVG path for ring/donut segment
- * Creates a closed path that traces outer arc, then inner arc in reverse
- */
-function describeRingSegment(
-  x: number,
-  y: number,
-  innerRadius: number,
-  outerRadius: number,
-  startAngle: number,
-  endAngle: number
-): string {
-  const outerStart = polarToCartesian(x, y, outerRadius, startAngle);
-  const outerEnd = polarToCartesian(x, y, outerRadius, endAngle);
-  const innerStart = polarToCartesian(x, y, innerRadius, startAngle);
-  const innerEnd = polarToCartesian(x, y, innerRadius, endAngle);
-
-  // Calculate angular distance for counter-clockwise (increasing angles)
-  const angularDistance = endAngle - startAngle;
-  const largeArcFlag = angularDistance > 180 ? '1' : '0';
-
-  return [
-    'M', outerStart.x, outerStart.y,
-    // sweep-flag=1 for counter-clockwise (increasing angles in our system)
-    'A', outerRadius, outerRadius, 0, largeArcFlag, 1, outerEnd.x, outerEnd.y,
-    'L', innerEnd.x, innerEnd.y,
-    // sweep-flag=0 for clockwise return
-    'A', innerRadius, innerRadius, 0, largeArcFlag, 0, innerStart.x, innerStart.y,
-    'Z'
-  ].join(' ');
-}
-
-/**
- * Convert polar coordinates to cartesian
- */
-function polarToCartesian(
-  centerX: number,
-  centerY: number,
-  radius: number,
-  angleInDegrees: number
-): { x: number; y: number } {
-  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
+  return 225 + clamped * 1.35;
 }
 
 export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
@@ -134,13 +188,12 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
     return percentageToAngle(pacing.percentageOfExpected);
   }, [pacing.percentageOfExpected]);
 
-  // Find the active zone based on percentage
   const activeZone = useMemo(() => {
     return ZONES.find(
       (zone) =>
         pacing.percentageOfExpected >= zone.startPercent &&
         pacing.percentageOfExpected < zone.endPercent
-    ) || ZONES[ZONES.length - 1]; // Default to last zone if over 200%
+    ) || ZONES[ZONES.length - 1];
   }, [pacing.percentageOfExpected]);
 
   // SVG dimensions
@@ -150,13 +203,13 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
   const innerRadius = 65;
   const needleLength = 75;
 
-  // Tight viewBox to remove empty padding - gauge is centered at (120,120) with radius 90
-  // Speedometer spans from 7 o'clock to 5 o'clock through top
-  // Bounds: left ~30, right ~210, top ~30, bottom ~185
-  const viewBoxX = 25;
-  const viewBoxY = 25;
-  const viewBoxWidth = 190;
-  const viewBoxHeight = 165;
+  // ViewBox computed from octagon bounds
+  // Outer vertices span ~56.4 to ~183.6 on x, ~30 to ~183.6 on y
+  // Top vertex at (120, 30), bottom vertices at y≈183.6
+  const viewBoxX = 22;
+  const viewBoxY = 22;
+  const viewBoxWidth = 196;
+  const viewBoxHeight = 170;
 
   return (
     <Card>
@@ -173,12 +226,21 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
               aria-label={`${tPacing(pacingKey)}: ${pacing.percentageOfExpected}% ${tPacing('ofExpected')}`}
               preserveAspectRatio="xMidYMid meet"
             >
-              {/* Background zones */}
+              {/* Track outline */}
+              <path
+                d={describeOctagonOutline(center, center, innerRadius, outerRadius)}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                className="text-border"
+              />
+
+              {/* Zone fills */}
               <g className="transition-colors duration-200">
                 {ZONES.map((zone) => (
                   <path
                     key={zone.name}
-                    d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                    d={describeOctagonZone(center, center, innerRadius, outerRadius, zone.startPercent, zone.endPercent)}
                     fill="var(--zone-color)"
                     className="dark:hidden"
                     style={{ '--zone-color': zone.lightColor } as React.CSSProperties}
@@ -188,7 +250,7 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                 {ZONES.map((zone) => (
                   <path
                     key={`${zone.name}-dark`}
-                    d={describeRingSegment(center, center, innerRadius, outerRadius, zone.startAngle, zone.endAngle)}
+                    d={describeOctagonZone(center, center, innerRadius, outerRadius, zone.startPercent, zone.endPercent)}
                     fill="var(--zone-color)"
                     className="hidden dark:block"
                     style={{ '--zone-color': zone.darkColor } as React.CSSProperties}
@@ -199,8 +261,8 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
 
               {/* Zone dividers */}
               {ZONES.slice(0, -1).map((zone) => {
-                const dividerOuter = polarToCartesian(center, center, outerRadius, zone.endAngle);
-                const dividerInner = polarToCartesian(center, center, innerRadius, zone.endAngle);
+                const dividerOuter = percentageToPoint(zone.endPercent, center, center, outerRadius + 1);
+                const dividerInner = percentageToPoint(zone.endPercent, center, center, innerRadius - 1);
                 return (
                   <line
                     key={`divider-${zone.name}`}
@@ -209,8 +271,8 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                     x2={dividerOuter.x}
                     y2={dividerOuter.y}
                     stroke="currentColor"
-                    strokeWidth="1.5"
-                    className="text-muted-foreground/20"
+                    strokeWidth="2"
+                    className="text-muted-foreground/30"
                   />
                 );
               })}
@@ -227,14 +289,15 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                   y2={center - needleLength}
                   stroke="currentColor"
                   strokeWidth="3"
-                  strokeLinecap="round"
+                  strokeLinecap="square"
                   className="text-foreground"
                   transform={`rotate(${needleAngle} ${center} ${center})`}
                 />
-                <circle
-                  cx={center}
-                  cy={center}
-                  r="6"
+                <rect
+                  x={center - 5}
+                  y={center - 5}
+                  width={10}
+                  height={10}
                   fill="currentColor"
                   className="text-foreground"
                 />

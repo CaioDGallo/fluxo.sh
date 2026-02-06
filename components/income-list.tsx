@@ -151,7 +151,6 @@ export function IncomeList() {
                 key={virtualRow.index}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
-                className='space-y-1'
                 style={{
                   position: 'absolute',
                   top: 0,

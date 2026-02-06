@@ -254,7 +254,7 @@ export function IncomeCard(props: IncomeCardProps) {
               {props.selectionMode && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center">
                   <div className={cn(
-                    "size-12 rounded-none border-2 flex items-center justify-center transition-all",
+                    "w-12 h-full rounded-none border-2 flex items-center justify-center transition-all",
                     props.isSelected
                       ? "bg-primary/85 border-green-600"
                       : "bg-gray-100/70 border-gray-500"

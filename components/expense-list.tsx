@@ -18,7 +18,8 @@ export { ExpenseListProvider };
 export function ExpenseList() {
   const t = useTranslations('expenses');
   const context = useExpenseContext();
-  const { expenses, filteredExpenses, accounts, recentAccounts, categories, recentCategories, unpaidFaturas, filters, searchQuery } = context;
+  const { filteredExpenses, accounts, recentAccounts, categories, recentCategories, unpaidFaturas, filters, searchQuery } = context;
+  let expenses = context.expenses
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
@@ -195,7 +196,6 @@ export function ExpenseList() {
                 key={virtualRow.index}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
-                className='space-y-1'
                 style={{
                   position: 'absolute',
                   top: 0,

@@ -939,6 +939,12 @@ export async function syncPluggyItem(
       perAccountIncomeValues.push(...incomeValues);
       perAccountAffectedFaturas[accountId] = affectedFaturas;
 
+      // Pre-create faturas so we can set faturaId on entries
+      let faturaIdMap = new Map<string, number>();
+      if (accountInfo.type === 'credit_card' && affectedFaturas.size > 0) {
+        faturaIdMap = await batchEnsureFaturasExist(accountId, Array.from(affectedFaturas), userId);
+      }
+
       await db.transaction(async (tx) => {
         if (expenseTransactions.length > 0) {
           const inserted = await tx
@@ -955,7 +961,8 @@ export async function syncPluggyItem(
             faturaMonth: string;
             dueDate: string;
             installmentNumber: number;
-            paidAt: null;
+            faturaId: number | null;
+            paidAt: Date | null;
           }> = [];
 
           inserted.forEach((row, index) => {
@@ -970,7 +977,8 @@ export async function syncPluggyItem(
                 faturaMonth: entry.faturaMonth,
                 dueDate: entry.dueDate,
                 installmentNumber: entry.installmentNumber,
-                paidAt: null,
+                faturaId: faturaIdMap.get(entry.faturaMonth) ?? null,
+                paidAt: accountInfo.type !== 'credit_card' ? new Date(entry.purchaseDate + 'T00:00:00Z') : null,
               });
             }
           });
@@ -1095,13 +1103,20 @@ export async function syncPluggyItem(
 
         if (matchIndex >= 0) {
           const [matchingFatura] = availableFaturas.splice(matchIndex, 1);
+          const paidDate = new Date(payment.date + 'T00:00:00Z');
           await db
             .update(faturas)
             .set({
-              paidAt: new Date(payment.date + 'T00:00:00Z'),
+              paidAt: paidDate,
               paidFromAccountId: payment.accountId,
             })
             .where(eq(faturas.id, matchingFatura.id));
+
+          // Mark all entries in this fatura as paid
+          await db
+            .update(entries)
+            .set({ paidAt: paidDate })
+            .where(and(eq(entries.userId, userId), eq(entries.faturaId, matchingFatura.id)));
         }
       }
     }

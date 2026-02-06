@@ -139,18 +139,22 @@ async function handleItemEvent(payload: PluggyWebhookPayload, userId: string) {
     });
 
   if (payload.event && ITEM_SYNC_EVENTS.has(payload.event)) {
-    void syncPluggyItem(itemId, userId, 'webhook').catch((error) => {
+    try {
+      await syncPluggyItem(itemId, userId, 'webhook');
+    } catch (error) {
       console.error('[pluggy:webhook] Failed to sync item:', error);
-    });
+    }
   }
 }
 
 async function handleTransactionsEvent(payload: PluggyWebhookPayload, userId: string) {
   const itemId = payload.itemId;
   if (!itemId) return;
-  void syncPluggyItem(itemId, userId, 'webhook').catch((error) => {
+  try {
+    await syncPluggyItem(itemId, userId, 'webhook');
+  } catch (error) {
     console.error('[pluggy:webhook] Failed to sync transactions:', error);
-  });
+  }
 }
 
 export async function processPluggyWebhook(payload: PluggyWebhookPayload) {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { processPluggyWebhook, type PluggyWebhookPayload } from '@/lib/pluggy/webhook';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 120;
 
 function extractWebhookSecret(request: Request) {
   const header =

@@ -3,8 +3,8 @@
 import { db } from '@/lib/db';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { syncPluggyItem } from '@/lib/actions/pluggy-sync';
-import { pluggyItems } from '@/lib/schema';
-import { asc, isNull, lte, or } from 'drizzle-orm';
+import { pluggyItems, pluggyWebhookEvents } from '@/lib/schema';
+import { and, asc, gt, isNull, lt, lte, or } from 'drizzle-orm';
 
 export type PluggyCronResult = {
   processed: number;
@@ -25,7 +25,10 @@ export async function runPluggyCronSync(batchSize = DEFAULT_BATCH_SIZE): Promise
       nextSyncAt: pluggyItems.nextSyncAt,
     })
     .from(pluggyItems)
-    .where(or(isNull(pluggyItems.nextSyncAt), lte(pluggyItems.nextSyncAt, now)))
+    .where(and(
+      or(isNull(pluggyItems.nextSyncAt), lte(pluggyItems.nextSyncAt, now)),
+      or(isNull(pluggyItems.consentExpiresAt), gt(pluggyItems.consentExpiresAt, now))
+    ))
     .orderBy(asc(pluggyItems.nextSyncAt), asc(pluggyItems.createdAt))
     .limit(batchSize);
 
@@ -57,4 +60,25 @@ export async function runPluggyCronSync(batchSize = DEFAULT_BATCH_SIZE): Promise
     succeeded,
     failed,
   };
+}
+
+const WEBHOOK_EVENT_TTL_DAYS = 30;
+
+export async function cleanupWebhookEvents(): Promise<{ deleted: number }> {
+  await requireCronAuth();
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - WEBHOOK_EVENT_TTL_DAYS);
+
+  const deleted = await db
+    .delete(pluggyWebhookEvents)
+    .where(lt(pluggyWebhookEvents.createdAt, cutoff))
+    .returning({ id: pluggyWebhookEvents.id });
+
+  const count = deleted.length;
+  if (count > 0) {
+    console.log(`[pluggy:cron] Cleaned up ${count} webhook events older than ${WEBHOOK_EVENT_TTL_DAYS} days`);
+  }
+
+  return { deleted: count };
 }

@@ -45,7 +45,9 @@ export function SafeToSpendHero({ data, currentPreset }: SafeToSpendHeroProps) {
                 <span className="text-lg text-muted-foreground">{t('perDay')}</span>
               </div>
             </div>
-            <PresetSelector currentPreset={currentPreset} />
+            <div className='absolute right-12'>
+              <PresetSelector currentPreset={currentPreset} />
+            </div>
           </div>
 
           {/* Details */}

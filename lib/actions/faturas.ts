@@ -569,9 +569,49 @@ export async function syncPluggyBills(
         target: [faturas.accountId, faturas.pluggyBillId],
         set: {
           dueDate: dueDate.toISOString().slice(0, 10),
+          closingDate: closingDateStr,
           totalAmount,
         },
       });
+    }
+
+    // Infer billing cycle from synced bills and update account
+    if (bills.length > 0) {
+      const dayFreq = new Map<number, number>();
+      for (const bill of bills) {
+        const d = bill.dueDate instanceof Date ? bill.dueDate : new Date(bill.dueDate);
+        const day = d.getUTCDate();
+        dayFreq.set(day, (dayFreq.get(day) ?? 0) + 1);
+      }
+      let paymentDueDay = 1;
+      let maxFreq = 0;
+      for (const [day, freq] of dayFreq) {
+        if (freq > maxFreq) { maxFreq = freq; paymentDueDay = day; }
+      }
+      const closingDay = paymentDueDay > 7 ? paymentDueDay - 7 : paymentDueDay + 23;
+
+      await db.update(accounts)
+        .set({ paymentDueDay, closingDay })
+        .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+
+      // Fix stale faturas created by batchEnsureFaturasExist with default day-1 dates
+      const staleFaturas = await db
+        .select({ id: faturas.id, yearMonth: faturas.yearMonth })
+        .from(faturas)
+        .where(and(
+          eq(faturas.userId, userId),
+          eq(faturas.accountId, accountId),
+          isNull(faturas.pluggyBillId)
+        ));
+
+      for (const f of staleFaturas) {
+        await db.update(faturas)
+          .set({
+            closingDate: computeClosingDate(f.yearMonth, closingDay),
+            dueDate: getFaturaPaymentDueDate(f.yearMonth, paymentDueDay, closingDay),
+          })
+          .where(eq(faturas.id, f.id));
+      }
     }
   } catch (error) {
     console.error('[faturas] Failed to sync Pluggy bills:', error);

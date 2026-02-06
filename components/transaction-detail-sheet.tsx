@@ -12,7 +12,7 @@ import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
 import { RefundDialog } from '@/components/refund-dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Tick02Icon, Clock01Icon, Link01Icon } from '@hugeicons/core-free-icons';
+import { Tick02Icon, Clock01Icon, Link01Icon, ArrowReloadHorizontalIcon } from '@hugeicons/core-free-icons';
 import { getReplenishableCategories, setIncomeReplenishment } from '@/lib/actions/income';
 import type { ExpenseEntry } from '@/lib/contexts/expense-context';
 import type { IncomeEntry } from '@/lib/contexts/income-context';
@@ -44,7 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
-      <div className="space-y-1">{children}</div>
+      <div className="space-y-1 shadow-[4px_4px_0px_0px_rgba(100,100,100,1)] border border-gray-600 p-1">{children}</div>
     </div>
   );
 }
@@ -157,8 +157,8 @@ export function TransactionDetailSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="max-h-[70vh] flex flex-col">
-          <SheetHeader className="pb-2">
+        <SheetContent side="bottom" className="max-h-[85vh] flex flex-col">
+          <SheetHeader className="pb-2 border-b border-b-gray-600">
             {/* Icon + Description + Category */}
             <div className="flex items-center gap-4">
               <div
@@ -175,7 +175,7 @@ export function TransactionDetailSheet({
 
             {/* Hero amount + status badges */}
             <div className="flex items-center justify-between pt-2">
-              <span className={`text-2xl font-semibold tabular-nums ${isExpense ? '' : 'text-green-600'}`}>
+              <span className={`text-xl font-semibold tabular-nums ${isExpense ? '' : 'text-green-600'}`}>
                 {isExpense ? '' : '+'}
                 {formatCurrency(data.amount)}
               </span>
@@ -190,8 +190,12 @@ export function TransactionDetailSheet({
                   {statusLabel}
                 </Badge>
                 {isSynced && (
-                  <Badge variant="outline" className="text-blue-600 border-blue-300">
-                    {tSynced('sourceOpenFinance')}
+                  <Badge variant="outline" className="text-white bg-blue-600 border-blue-300">
+                    <HugeiconsIcon
+                      icon={ArrowReloadHorizontalIcon}
+                      size={14}
+                      strokeWidth={2}
+                    />
                   </Badge>
                 )}
               </div>
@@ -342,7 +346,7 @@ export function TransactionDetailSheet({
           </div>
 
           {/* Footer buttons — tiered: primary → secondary → separator → destructive */}
-          <SheetFooter className="flex-col gap-2 sm:flex-col pt-4">
+          <SheetFooter className="flex-col gap-2 sm:flex-col pt-4 border-t border-t-gray-600">
             {/* Primary: Edit */}
             {canMutate && accounts && categories && (
               <Button

@@ -25,6 +25,7 @@ import {
   Analytics01Icon,
   ArrowDataTransferHorizontalIcon,
   ArrowRight01Icon,
+  BankIcon,
   CreditCardIcon,
   Crown03Icon,
   FileDownloadIcon,
@@ -60,7 +61,7 @@ const settingsItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
-  { key: 'openFinance', href: '/settings/open-finance', icon: Settings02Icon },
+  { key: 'openFinance', href: '/settings/open-finance', icon: BankIcon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },
   { key: 'settings', href: '/settings', icon: Settings02Icon },
 ];

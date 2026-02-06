@@ -78,10 +78,10 @@ export function AppSidebar() {
         {/* Expanded state: clickable brand link */}
         <Link
           href="/"
-          className="flex py-3 gap-1 flex-col items-center font-semibold group-data-[collapsible=icon]:hidden hover:opacity-80 transition-opacity"
+          className="flex py-3 gap-1 flex-row items-center font-semibold group-data-[collapsible=icon]:hidden hover:opacity-80 space-x-2 transition-opacity"
         >
-          <Image src="/brand-kit/exports/icon-48-light.png" alt="" width={32} height={32} className="dark:hidden" />
-          <Image src="/brand-kit/exports/icon-48-dark.png" alt="" width={32} height={32} className="hidden dark:block" />
+          <Image src="/brand-kit/exports/icon-48-light.png" alt="" width={40} height={40} className="dark:hidden" />
+          <Image src="/brand-kit/exports/icon-48-dark.png" alt="" width={40} height={40} className="hidden dark:block" />
           {t('fluxosh')}
         </Link>
 

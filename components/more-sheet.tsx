@@ -10,16 +10,16 @@ import { cn } from '@/lib/utils';
 import {
   Analytics01Icon,
   CreditCardIcon,
+  Crown03Icon,
   FileDownloadIcon,
   Home01Icon,
   Invoice03Icon,
   Message01Icon,
+  MoneyReceive02Icon,
   Notification02Icon,
-  Crown03Icon,
   Settings02Icon,
   SparklesIcon,
-  Wallet01Icon,
-  ReceiptDollarIcon
+  Wallet01Icon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useTranslations } from 'next-intl';
@@ -34,8 +34,8 @@ const moreItems = [
   { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
-  { key: 'bills', href: '/bills', icon: ReceiptDollarIcon },
   { key: 'faturas', href: '/faturas', icon: CreditCardIcon },
+  { key: 'income', href: '/income', icon: MoneyReceive02Icon },
   { key: 'statistics', href: '/statistics', icon: Analytics01Icon },
   { key: 'reminders', href: '/reminders', icon: Notification02Icon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },

@@ -123,12 +123,14 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap justify-between">
                         <h3 className="font-semibold text-foreground line-clamp-2 sm:line-clamp-1">{bill.name}</h3>
-                        <Badge variant={statusVariant}>
-                          {t(`status.${bill.status}`)}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{tForm(bill.recurrenceType)}</span>
+                        <div className='flex flex-row items-center space-x-2'>
+                          <span className="text-xs text-muted-foreground">{tForm(bill.recurrenceType)}</span>
+                          <Badge variant={statusVariant}>
+                            {t(`status.${bill.status}`)}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                         {categoryName && (

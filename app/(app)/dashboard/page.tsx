@@ -8,7 +8,6 @@ import { OnboardingTooltip } from '@/components/onboarding/onboarding-tooltip';
 import { PushNotificationPrompt } from '@/components/push-notification-prompt';
 import { SafeToSpendHero } from '@/components/budget-503020/safe-to-spend-hero';
 import { BucketOverview } from '@/components/budget-503020/bucket-overview';
-import { PacingGauge } from '@/components/budget-503020/pacing-gauge';
 
 export default async function DashboardPage({
   searchParams,
@@ -65,13 +64,6 @@ export default async function DashboardPage({
 
           {/* Bucket Overview */}
           <BucketOverview buckets={safeToSpendData.buckets} />
-
-          {/* Pacing Gauge */}
-          <PacingGauge
-            pacing={safeToSpendData.pacing}
-            daysRemaining={safeToSpendData.daysRemaining}
-          />
-
         </div>
       )}
     </div>

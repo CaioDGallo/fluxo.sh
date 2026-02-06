@@ -190,12 +190,10 @@ export async function updateBill(
 
     // If recurrence settings changed, delete future unpaid occurrences and regenerate
     if (data.recurrenceType !== undefined || data.dueDay !== undefined || data.startMonth !== undefined) {
-      const today = new Date().toISOString().split('T')[0];
       await db.delete(billOccurrences).where(and(
         eq(billOccurrences.billId, id),
         eq(billOccurrences.userId, userId),
-        inArray(billOccurrences.status, ['upcoming', 'pending']),
-        sql`${billOccurrences.dueDate} >= ${today}::date`
+        inArray(billOccurrences.status, ['upcoming', 'pending', 'overdue']),
       ));
       await generateOccurrencesForBill(id, userId);
     }

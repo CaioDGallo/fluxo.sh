@@ -33,10 +33,14 @@ export const getBills = cache(async () => {
       categoryIcon: categories.icon,
       accountName: accounts.name,
       currentMonthStatus: sql<string | null>`(
-        SELECT ${billOccurrences.status}
-        FROM ${billOccurrences}
-        WHERE ${billOccurrences.billId} = ${bills.id}
-          AND ${billOccurrences.yearMonth} = ${currentMonth}
+        SELECT CASE
+          WHEN bo.status IN ('upcoming', 'pending') AND bo.due_date < CURRENT_DATE
+          THEN 'overdue'
+          ELSE bo.status
+        END
+        FROM ${billOccurrences} bo
+        WHERE bo.bill_id = ${bills.id}
+          AND bo.year_month = ${currentMonth}
         LIMIT 1
       )`,
     })
@@ -65,9 +69,33 @@ export const getBill = cache(async (id: number) => {
 
   if (!bill) return null;
 
-  // Fetch recent occurrences (last 6 months + upcoming)
+  // Fetch recent occurrences with computed effectiveStatus
   const occurrences = await db
-    .select()
+    .select({
+      id: billOccurrences.id,
+      billId: billOccurrences.billId,
+      userId: billOccurrences.userId,
+      dueDate: billOccurrences.dueDate,
+      expectedAmount: billOccurrences.expectedAmount,
+      actualAmount: billOccurrences.actualAmount,
+      status: billOccurrences.status,
+      effectiveStatus: sql<'upcoming' | 'pending' | 'paid' | 'overdue' | 'skipped'>`
+        CASE
+          WHEN ${billOccurrences.status} IN ('upcoming', 'pending')
+            AND ${billOccurrences.dueDate} < CURRENT_DATE
+          THEN 'overdue'
+          ELSE ${billOccurrences.status}
+        END
+      `,
+      paidAt: billOccurrences.paidAt,
+      paidFromAccountId: billOccurrences.paidFromAccountId,
+      matchedTransactionId: billOccurrences.matchedTransactionId,
+      matchedEntryId: billOccurrences.matchedEntryId,
+      notes: billOccurrences.notes,
+      yearMonth: billOccurrences.yearMonth,
+      createdAt: billOccurrences.createdAt,
+      updatedAt: billOccurrences.updatedAt,
+    })
     .from(billOccurrences)
     .where(and(
       eq(billOccurrences.billId, id),

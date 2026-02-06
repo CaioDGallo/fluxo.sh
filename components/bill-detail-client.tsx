@@ -30,6 +30,7 @@ type OccurrenceRow = {
   expectedAmount: number | null;
   actualAmount: number | null;
   status: 'upcoming' | 'pending' | 'paid' | 'overdue' | 'skipped';
+  effectiveStatus: 'upcoming' | 'pending' | 'paid' | 'overdue' | 'skipped';
   paidAt: Date | string | null;
   paidFromAccountId: number | null;
   matchedTransactionId: number | null;
@@ -85,7 +86,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
   // Sort: overdue first, then pending, then upcoming, then paid/skipped
   const sortOrder = { overdue: 0, pending: 1, upcoming: 2, paid: 3, skipped: 4 };
   const sorted = [...occurrences].sort((a, b) => {
-    const statusDiff = (sortOrder[a.status] ?? 5) - (sortOrder[b.status] ?? 5);
+    const statusDiff = (sortOrder[a.effectiveStatus] ?? 5) - (sortOrder[b.effectiveStatus] ?? 5);
     if (statusDiff !== 0) return statusDiff;
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
   });
@@ -173,23 +174,23 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
         ) : (
           <div className="space-y-2">
             {sorted.map((occ) => {
-              const canPay = occ.status === 'upcoming' || occ.status === 'pending' || occ.status === 'overdue';
+              const canPay = occ.effectiveStatus === 'upcoming' || occ.effectiveStatus === 'pending' || occ.effectiveStatus === 'overdue';
               const dueDate = new Date(occ.dueDate);
 
-              // Map status to Badge variant
+              // Map effectiveStatus to Badge variant
               let statusVariant: 'secondary' | 'outline' | 'default' | 'destructive' | 'ghost' = 'secondary';
               let statusClassName = '';
 
-              if (occ.status === 'upcoming') {
+              if (occ.effectiveStatus === 'upcoming') {
                 statusVariant = 'secondary';
-              } else if (occ.status === 'pending') {
+              } else if (occ.effectiveStatus === 'pending') {
                 statusVariant = 'outline';
-              } else if (occ.status === 'paid') {
+              } else if (occ.effectiveStatus === 'paid') {
                 statusVariant = 'default';
                 statusClassName = 'bg-green-600 text-white';
-              } else if (occ.status === 'overdue') {
+              } else if (occ.effectiveStatus === 'overdue') {
                 statusVariant = 'destructive';
-              } else if (occ.status === 'skipped') {
+              } else if (occ.effectiveStatus === 'skipped') {
                 statusVariant = 'ghost';
               }
 
@@ -199,7 +200,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3 min-w-0">
                         <Badge variant={statusVariant} className={statusClassName ? `${statusClassName} shrink-0` : 'shrink-0'}>
-                          {t(`occurrence.${occ.status}`)}
+                          {t(`occurrence.${occ.effectiveStatus}`)}
                         </Badge>
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-foreground tabular-nums">
@@ -212,7 +213,7 @@ export function BillDetailClient({ billData, categories, accounts }: BillDetailC
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                         <div className="text-left sm:text-right tabular-nums">
-                          {occ.status === 'paid' && occ.actualAmount != null ? (
+                          {occ.effectiveStatus === 'paid' && occ.actualAmount != null ? (
                             <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatCentsAsBRL(occ.actualAmount)}</span>
                           ) : occ.expectedAmount != null ? (
                             <span className="text-sm text-muted-foreground">{formatCentsAsBRL(occ.expectedAmount)}</span>

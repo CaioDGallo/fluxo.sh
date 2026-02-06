@@ -34,20 +34,32 @@ export async function updateOccurrenceStatuses(): Promise<{
     const tz = timezone || 'UTC';
     const todayStr = getTodayInTimeZone(tz);
 
-    // upcoming → pending: due date is today or earlier, status is upcoming
+    // upcoming → overdue: due date has passed (strictly before today)
+    const upcomingOverdueResult = await db
+      .update(billOccurrences)
+      .set({ status: 'overdue', updatedAt: now })
+      .where(and(
+        eq(billOccurrences.userId, userId),
+        eq(billOccurrences.status, 'upcoming'),
+        sql`${billOccurrences.dueDate} < ${todayStr}::date`
+      ))
+      .returning({ id: billOccurrences.id });
+    overdued += upcomingOverdueResult.length;
+
+    // upcoming → pending: due date is today
     const pendingResult = await db
       .update(billOccurrences)
       .set({ status: 'pending', updatedAt: now })
       .where(and(
         eq(billOccurrences.userId, userId),
         eq(billOccurrences.status, 'upcoming'),
-        sql`${billOccurrences.dueDate} <= ${todayStr}::date`
+        sql`${billOccurrences.dueDate} = ${todayStr}::date`
       ))
       .returning({ id: billOccurrences.id });
     transitioned += pendingResult.length;
 
     // pending → overdue: due date has passed (strictly before today)
-    const overdueResult = await db
+    const pendingOverdueResult = await db
       .update(billOccurrences)
       .set({ status: 'overdue', updatedAt: now })
       .where(and(
@@ -56,7 +68,7 @@ export async function updateOccurrenceStatuses(): Promise<{
         sql`${billOccurrences.dueDate} < ${todayStr}::date`
       ))
       .returning({ id: billOccurrences.id });
-    overdued += overdueResult.length;
+    overdued += pendingOverdueResult.length;
   }
 
   console.log('[bill-cron:statusUpdate] Completed:', { transitioned, overdued });

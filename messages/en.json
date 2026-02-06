@@ -503,7 +503,13 @@
     "registerRefund": "Register Refund",
     "refunded": "Refunded",
     "fullyRefunded": "Fully Refunded",
-    "partialRefund": "Partial Refund"
+    "partialRefund": "Partial Refund",
+    "linkedBill": "Linked bill",
+    "faturaPayment": "Card bill payment",
+    "faturaPaymentDescription": "Excluded from calculations",
+    "merchant": "Merchant",
+    "beneficiary": "Beneficiary",
+    "payer": "Payer"
   },
   "faturas": {
     "title": "Bills",

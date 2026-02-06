@@ -183,6 +183,49 @@ export function TransactionDetailSheet({
               {/* Expense-specific fields */}
               {isExpense && expense && (
                 <>
+                  {/* Fatura Payment indicator */}
+                  {expense.isFaturaPayment && (
+                    <DetailRow
+                      label={t('faturaPayment')}
+                      value={
+                        <Badge variant="secondary" className="text-blue-600 dark:text-blue-400">
+                          {t('faturaPaymentDescription')}
+                        </Badge>
+                      }
+                    />
+                  )}
+
+                  {/* Linked Bill */}
+                  {expense.linkedBillName && (
+                    <DetailRow
+                      label={t('linkedBill')}
+                      value={expense.linkedBillName}
+                    />
+                  )}
+
+                  {/* Merchant info */}
+                  {expense.merchantName && (
+                    <DetailRow
+                      label={t('merchant')}
+                      value={
+                        <div className="flex flex-col items-end">
+                          <span>{expense.merchantName}</span>
+                          {expense.merchantCnpj && (
+                            <span className="text-xs text-muted-foreground">{expense.merchantCnpj}</span>
+                          )}
+                        </div>
+                      }
+                    />
+                  )}
+
+                  {/* Beneficiary (for transfers) */}
+                  {expense.beneficiaryName && !expense.merchantName && (
+                    <DetailRow
+                      label={t('beneficiary')}
+                      value={expense.beneficiaryName}
+                    />
+                  )}
+
                   {/* Purchase Date (show only if different from due date) */}
                   {expense.purchaseDate !== expense.dueDate && (
                     <DetailRow
@@ -240,6 +283,14 @@ export function TransactionDetailSheet({
                     />
                   )}
                 </>
+              )}
+
+              {/* Income-specific: Beneficiary (payer) */}
+              {!isExpense && income && (income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName && (
+                <DetailRow
+                  label={t('payer')}
+                  value={(income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName!}
+                />
               )}
             </div>
           </div>
@@ -387,9 +438,9 @@ export function TransactionDetailSheet({
 // Helper component for detail rows
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-border/50 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
+    <div className="flex justify-between items-center py-2 border-b border-border/50 last:border-0 gap-4">
+      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+      <span className="text-sm font-medium text-right truncate">{value}</span>
     </div>
   );
 }

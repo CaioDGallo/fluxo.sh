@@ -242,6 +242,10 @@ export const transactions = pgTable('transactions', {
   isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
   isFaturaPayment: boolean('is_fatura_payment').notNull().default(false),
   refundedAmount: integer('refunded_amount').default(0), // cached sum of refunds (cents)
+  merchantName: text('merchant_name'),
+  merchantBusinessName: text('merchant_business_name'),
+  merchantCnpj: text('merchant_cnpj'),
+  beneficiaryName: text('beneficiary_name'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -316,6 +320,7 @@ export const income = pgTable('income', {
     .references(() => transactions.id, { onDelete: 'set null' }),
   faturaMonth: text('fatura_month'), // "YYYY-MM" format - which fatura to credit (nullable for non-CC income)
   isRefund: boolean('is_refund').notNull().default(false),
+  beneficiaryName: text('beneficiary_name'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => ({
   userReceivedDateIdx: index('income_user_received_date_idx').on(table.userId, table.receivedDate),

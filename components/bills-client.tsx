@@ -34,6 +34,7 @@ import {
   Add01Icon,
   ArrowDown01Icon,
   MoreVerticalIcon,
+  Tick02Icon,
 } from '@hugeicons/core-free-icons';
 import { formatCentsAsBRL } from '@/lib/utils';
 import { archiveBill, deleteBill } from '@/lib/actions/bills';
@@ -54,6 +55,7 @@ type BillRow = {
   categoryColor: string | null;
   categoryIcon: string | null;
   accountName: string | null;
+  currentMonthStatus: string | null;
 };
 
 interface BillsClientProps {
@@ -109,7 +111,7 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
         <p className="text-center text-sm text-muted-foreground py-12">{t('noBillsYet')}</p>
       ) : (
         <div className="space-y-3">
-          {activeBills.map(({ bill, categoryName, categoryColor, accountName }) => {
+          {activeBills.map(({ bill, categoryName, categoryColor, accountName, currentMonthStatus }) => {
             const statusVariant = bill.status === 'active' ? 'secondary' : bill.status === 'paused' ? 'outline' : 'ghost';
 
             return (
@@ -130,6 +132,27 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
                           <Badge variant={statusVariant}>
                             {t(`status.${bill.status}`)}
                           </Badge>
+                          {currentMonthStatus === 'paid' && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              <HugeiconsIcon icon={Tick02Icon} size={12} className="mr-1" aria-hidden />
+                              {t('occurrence.paid')}
+                            </Badge>
+                          )}
+                          {currentMonthStatus === 'overdue' && (
+                            <Badge variant="destructive">
+                              {t('occurrence.overdue')}
+                            </Badge>
+                          )}
+                          {(currentMonthStatus === 'pending' || currentMonthStatus === 'upcoming') && (
+                            <Badge variant="outline">
+                              {t(`occurrence.${currentMonthStatus}`)}
+                            </Badge>
+                          )}
+                          {currentMonthStatus === 'skipped' && (
+                            <Badge variant="ghost">
+                              {t('occurrence.skipped')}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

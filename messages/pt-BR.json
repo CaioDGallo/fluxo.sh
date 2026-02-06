@@ -517,7 +517,13 @@
     "registerRefund": "Registrar Estorno",
     "refunded": "Estornado",
     "fullyRefunded": "Totalmente Estornado",
-    "partialRefund": "Estorno Parcial"
+    "partialRefund": "Estorno Parcial",
+    "linkedBill": "Conta vinculada",
+    "faturaPayment": "Pagamento de fatura",
+    "faturaPaymentDescription": "Ignorado nos cálculos",
+    "merchant": "Estabelecimento",
+    "beneficiary": "Destinatário",
+    "payer": "Pagador"
   },
   "faturas": {
     "title": "Faturas",

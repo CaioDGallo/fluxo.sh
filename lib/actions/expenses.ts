@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
-import { transactions, entries, accounts, categories, type NewEntry } from '@/lib/schema';
+import { transactions, entries, accounts, categories, billOccurrences, bills, type NewEntry } from '@/lib/schema';
 import { eq, and, isNull, isNotNull, desc, sql, inArray, gte, lte } from 'drizzle-orm';
 import { getFaturaMonth, getFaturaPaymentDueDate } from '@/lib/fatura-utils';
 import { ensureFaturaExists, getFaturaWindowStart, updateFaturaTotal } from '@/lib/actions/faturas';
@@ -558,8 +558,13 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
       totalInstallments: transactions.totalInstallments,
       totalAmount: transactions.totalAmount,
       ignored: transactions.ignored,
+      isFaturaPayment: transactions.isFaturaPayment,
       refundedAmount: transactions.refundedAmount,
       isFullyRefunded: sql<boolean>`COALESCE(${transactions.refundedAmount}, 0) >= ${transactions.totalAmount}`,
+      merchantName: transactions.merchantName,
+      merchantBusinessName: transactions.merchantBusinessName,
+      merchantCnpj: transactions.merchantCnpj,
+      beneficiaryName: transactions.beneficiaryName,
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
@@ -569,6 +574,19 @@ export const getExpenses = cache(async (filters: ExpenseFilters = {}) => {
       accountType: accounts.type,
       accountSource: accounts.source,
       bankLogo: accounts.bankLogo,
+      linkedBillName: sql<string | null>`(
+        SELECT ${bills.name}
+        FROM ${billOccurrences}
+        INNER JOIN ${bills} ON ${bills.id} = ${billOccurrences.billId}
+        WHERE ${billOccurrences.matchedTransactionId} = ${transactions.id}
+        LIMIT 1
+      )`,
+      linkedBillId: sql<number | null>`(
+        SELECT ${billOccurrences.billId}
+        FROM ${billOccurrences}
+        WHERE ${billOccurrences.matchedTransactionId} = ${transactions.id}
+        LIMIT 1
+      )`,
     })
     .from(entries)
     .innerJoin(transactions, eq(entries.transactionId, transactions.id))

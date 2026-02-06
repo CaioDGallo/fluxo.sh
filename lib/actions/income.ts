@@ -289,6 +289,7 @@ export const getIncome = cache(async (filters: IncomeFilters = {}) => {
       replenishCategoryId: income.replenishCategoryId,
       replenishCategoryName: sql<string | null>`replenish_cat.name`,
       replenishCategoryColor: sql<string | null>`replenish_cat.color`,
+      beneficiaryName: income.beneficiaryName,
     })
     .from(income)
     .innerJoin(categories, eq(income.categoryId, categories.id))

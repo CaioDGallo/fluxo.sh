@@ -10,6 +10,8 @@ import { t } from '@/lib/i18n/server-errors';
 import { handleDbError } from '@/lib/db-errors';
 import { guardCrudOperation } from '@/lib/rate-limit-guard';
 import { generateOccurrencesForBill } from '@/lib/actions/bill-occurrences';
+import { getCurrentYearMonthInTimeZone } from '@/lib/utils/bill-reminders';
+import { getUserSettings } from '@/lib/actions/user-settings';
 
 type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -19,6 +21,10 @@ type ActionResult<T = void> =
 
 export const getBills = cache(async () => {
   const userId = await getCurrentUserId();
+  const settings = await getUserSettings();
+  const timeZone = settings?.timezone || 'UTC';
+  const currentMonth = getCurrentYearMonthInTimeZone(timeZone);
+
   return await db
     .select({
       bill: bills,
@@ -26,6 +32,13 @@ export const getBills = cache(async () => {
       categoryColor: categories.color,
       categoryIcon: categories.icon,
       accountName: accounts.name,
+      currentMonthStatus: sql<string | null>`(
+        SELECT ${billOccurrences.status}
+        FROM ${billOccurrences}
+        WHERE ${billOccurrences.billId} = ${bills.id}
+          AND ${billOccurrences.yearMonth} = ${currentMonth}
+        LIMIT 1
+      )`,
     })
     .from(bills)
     .leftJoin(categories, eq(bills.categoryId, categories.id))

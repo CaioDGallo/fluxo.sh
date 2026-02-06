@@ -447,6 +447,28 @@ export async function linkOccurrenceToTransaction(
       .limit(1);
     if (!entry) return { success: false, error: await t('errors.invalidEntryId') };
 
+    // Sync category: update the transaction's category to match the bill's category
+    const [bill] = await db
+      .select({ categoryId: bills.categoryId })
+      .from(bills)
+      .where(eq(bills.id, occurrence.billId))
+      .limit(1);
+
+    if (bill?.categoryId && entry.transactionId) {
+      const [txn] = await db
+        .select({ categoryId: transactions.categoryId })
+        .from(transactions)
+        .where(eq(transactions.id, entry.transactionId))
+        .limit(1);
+
+      if (txn && txn.categoryId !== bill.categoryId) {
+        await db
+          .update(transactions)
+          .set({ categoryId: bill.categoryId })
+          .where(eq(transactions.id, entry.transactionId));
+      }
+    }
+
     await db
       .update(billOccurrences)
       .set({
@@ -462,6 +484,7 @@ export async function linkOccurrenceToTransaction(
 
     revalidatePath('/bills');
     revalidatePath('/dashboard');
+    revalidatePath('/expenses');
     return { success: true };
   } catch (error) {
     console.error('[bill-occurrences:linkTransaction] Failed:', error);

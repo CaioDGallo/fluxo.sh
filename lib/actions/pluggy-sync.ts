@@ -144,6 +144,10 @@ function groupInstallmentTransactions(
     purchaseDate: string;
     installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
     isFaturaPayment?: boolean;
+    merchantName?: string;
+    merchantBusinessName?: string;
+    merchantCnpj?: string;
+    beneficiaryName?: string;
   }>
 ): { grouped: Map<string, InstallmentGroup>; singles: typeof transactions } {
   const grouped = new Map<string, InstallmentGroup>();
@@ -617,6 +621,10 @@ export async function syncPluggyItem(
         purchaseDate: string;
         installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
         isFaturaPayment?: boolean;
+        merchantName?: string;
+        merchantBusinessName?: string;
+        merchantCnpj?: string;
+        beneficiaryName?: string;
       }> = [];
 
       const incomeValues: Array<{
@@ -630,6 +638,7 @@ export async function syncPluggyItem(
         externalId: string;
         faturaMonth?: string;
         isRefund: boolean;
+        beneficiaryName?: string;
       }> = [];
 
       const affectedFaturas = new Set<string>();
@@ -667,6 +676,14 @@ export async function syncPluggyItem(
           || 'Transacao Pluggy';
 
         // Fatura payments → ignored expense on the paying account
+        // Extract merchant/beneficiary from Pluggy transaction
+        const txMerchantName = transaction.merchant?.name || undefined;
+        const txMerchantBusinessName = transaction.merchant?.businessName || undefined;
+        const txMerchantCnpj = transaction.merchant?.cnpj || undefined;
+        const txBeneficiaryName = classification.direction === 'debit'
+          ? transaction.paymentData?.receiver?.name || undefined
+          : transaction.paymentData?.payer?.name || undefined;
+
         if (classification.kind === 'payment') {
           expenseCandidates.push({
             rawId,
@@ -676,6 +693,10 @@ export async function syncPluggyItem(
             purchaseDate: date,
             installmentInfo: undefined,
             isFaturaPayment: true,
+            merchantName: txMerchantName,
+            merchantBusinessName: txMerchantBusinessName,
+            merchantCnpj: txMerchantCnpj,
+            beneficiaryName: txBeneficiaryName,
           });
           faturaPaymentExpenses.push({ accountId, amountCents, date });
           continue;
@@ -722,6 +743,7 @@ export async function syncPluggyItem(
             externalId,
             ...(faturaMonth ? { faturaMonth } : {}),
             isRefund: classification.kind === 'refund',
+            beneficiaryName: txBeneficiaryName,
           });
           continue;
         }
@@ -741,6 +763,10 @@ export async function syncPluggyItem(
           purchaseDate: basePurchaseDate,
           installmentInfo,
           isFaturaPayment: false,
+          merchantName: txMerchantName,
+          merchantBusinessName: txMerchantBusinessName,
+          merchantCnpj: txMerchantCnpj,
+          beneficiaryName: txBeneficiaryName,
         });
       }
 
@@ -757,6 +783,10 @@ export async function syncPluggyItem(
         externalId: string;
         ignored: boolean;
         isFaturaPayment: boolean;
+        merchantName?: string;
+        merchantBusinessName?: string;
+        merchantCnpj?: string;
+        beneficiaryName?: string;
       }> = [];
 
       // Each element maps 1:1 with expenseTransactions — contains N entry metadata rows
@@ -808,6 +838,10 @@ export async function syncPluggyItem(
           externalId: tx.externalId,
           ignored: tx.isFaturaPayment ?? false,
           isFaturaPayment: tx.isFaturaPayment ?? false,
+          merchantName: tx.merchantName,
+          merchantBusinessName: tx.merchantBusinessName,
+          merchantCnpj: tx.merchantCnpj,
+          beneficiaryName: tx.beneficiaryName,
         });
 
         entryBatches.push([{
@@ -843,6 +877,9 @@ export async function syncPluggyItem(
           }
         }
 
+        // Use merchant data from the first entry of the installment group
+        const firstGroupEntry = group.entries[0];
+        const firstGroupOriginalTx = transactionsByExternalId.get(firstGroupEntry.externalId);
         expenseTransactions.push({
           userId,
           description: group.baseDescription || 'Compra parcelada',
@@ -852,6 +889,9 @@ export async function syncPluggyItem(
           externalId: txExternalId,
           ignored: false,
           isFaturaPayment: false,
+          merchantName: firstGroupOriginalTx?.merchant?.name || undefined,
+          merchantBusinessName: firstGroupOriginalTx?.merchant?.businessName || undefined,
+          merchantCnpj: firstGroupOriginalTx?.merchant?.cnpj || undefined,
         });
 
         // CRITICAL FIX: Only create entries for installments we actually received from Pluggy

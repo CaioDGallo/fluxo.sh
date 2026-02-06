@@ -41,8 +41,15 @@ export type ExpenseEntry = {
   bankLogo: string | null;
   ignored: boolean;
   totalAmount: number; // Total amount of the transaction (cents)
+  isFaturaPayment?: boolean;
   refundedAmount?: number | null; // Total refunded amount (cents)
   isFullyRefunded?: boolean; // True if completely refunded
+  merchantName?: string | null;
+  merchantBusinessName?: string | null;
+  merchantCnpj?: string | null;
+  beneficiaryName?: string | null;
+  linkedBillName?: string | null;
+  linkedBillId?: number | null;
 };
 
 // Optimistic item wrapper

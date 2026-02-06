@@ -39,6 +39,7 @@ export type IncomeEntry = {
   replenishCategoryId: number | null;
   replenishCategoryName: string | null;
   replenishCategoryColor: string | null;
+  beneficiaryName?: string | null;
 };
 
 

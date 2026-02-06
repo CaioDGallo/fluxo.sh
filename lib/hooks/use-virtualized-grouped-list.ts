@@ -8,6 +8,7 @@ import type { VirtualRow } from '@/lib/utils/flatten-grouped-data';
  */
 const HEADER_HEIGHT = 44; // Date header height in px
 const ITEM_HEIGHT = 80; // Expense/Income card height in px
+const ITEM_GAP = 4; // Gap between items (matches space-y-1 = 4px)
 const VIRTUALIZATION_THRESHOLD = 50; // Only virtualize if more than 50 items
 
 /**
@@ -27,6 +28,7 @@ export function useVirtualizedGroupedList<T>(flatRows: VirtualRow<T>[]) {
       const row = flatRows[index];
       return row?.type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
     },
+    gap: ITEM_GAP, // Native gap support - adds spacing between items after measurement
     overscan: 8, // Render 8 extra items above/below viewport for smooth scrolling
     enabled: shouldVirtualize,
     // Use measureElement for dynamic height correction (more accurate than estimateSize)

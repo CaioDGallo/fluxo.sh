@@ -30,13 +30,13 @@ function initializeRateLimiters(): boolean {
   redis = client;
   globalLimiter = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(100, '60 s'),
+    limiter: Ratelimit.slidingWindow(300, '60 s'),
     prefix: 'ratelimit:global',
   });
 
   apiLimiter = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(30, '60 s'),
+    limiter: Ratelimit.slidingWindow(100, '60 s'),
     prefix: 'ratelimit:api',
   });
   return true;

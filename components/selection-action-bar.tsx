@@ -27,7 +27,7 @@ export function SelectionActionBar({
   return (
     <div
       className={cn(
-        'fixed bottom-16 inset-x-0 z-40 md:hidden',
+        'fixed bottom-16 md:bottom-0 inset-x-0 z-40',
         'backdrop-blur-xl bg-background/95 border-t border-border',
         'pb-[env(safe-area-inset-bottom)]',
         'shadow-lg'

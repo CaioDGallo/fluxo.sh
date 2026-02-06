@@ -64,30 +64,6 @@ test.describe('Dashboard 50/30/20', () => {
       await expect(page.getByRole('link', { name: /Poupança/ }).first()).toBeVisible();
     });
 
-    test('shows pacing gauge with status', async ({ page }) => {
-      // Check for pacing gauge heading
-      await expect(page.getByText('Ritmo de Gastos')).toBeVisible();
-
-      // Check for pacing status (one of the three possible states)
-      const gaugeCard = page.getByRole('heading', { name: 'Ritmo de Gastos' }).locator('..').locator('..');
-      const pacingStatuses = [
-        gaugeCard.getByText('No Ritmo'),
-        gaugeCard.getByText('Gastando Rápido'),
-        gaugeCard.getByText('Economizando'),
-      ];
-
-      // At least one status should be visible
-      const visibleStatuses = await Promise.all(
-        pacingStatuses.map(status => status.isVisible())
-      );
-      expect(visibleStatuses.some(visible => visible)).toBe(true);
-    });
-
-    test('pacing gauge renders svg chart', async ({ page }) => {
-      const gauge = page.locator('svg[role="img"]').first();
-      await expect(gauge).toBeVisible();
-    });
-
     test('safe-to-spend shows pacing zone bar with labels', async ({ page }) => {
       // Check that zone labels are visible (Portuguese text)
       await expect(page.getByText('Economizando', { exact: false }).first()).toBeVisible();

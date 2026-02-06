@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { bills, billOccurrences, categories, accounts, type NewBill } from '@/lib/schema';
-import { eq, and, desc, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray, isNotNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -202,26 +202,22 @@ export async function deleteBill(id: number): Promise<ActionResult> {
   try {
     const userId = await getCurrentUserId();
 
-    // Only allow deletion if no paid occurrences exist
-    const [paidOccurrence] = await db
-      .select({ id: billOccurrences.id })
-      .from(billOccurrences)
+    // Unlink any occurrences matched to transactions so entries are not orphaned by cascade
+    await db
+      .update(billOccurrences)
+      .set({ matchedTransactionId: null, matchedEntryId: null })
       .where(and(
         eq(billOccurrences.billId, id),
         eq(billOccurrences.userId, userId),
-        eq(billOccurrences.status, 'paid')
-      ))
-      .limit(1);
-
-    if (paidOccurrence) {
-      return { success: false, error: await t('errors.failedToDelete') };
-    }
+        isNotNull(billOccurrences.matchedEntryId)
+      ));
 
     await db
       .delete(bills)
       .where(and(eq(bills.id, id), eq(bills.userId, userId)));
 
     revalidatePath('/bills');
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error) {
     console.error('[bills:delete] Failed:', error);

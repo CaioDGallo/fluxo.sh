@@ -103,7 +103,8 @@
     "exportVolumeLimitReached": "O período selecionado excede o limite de {{limit}} registros. Reduza o período.",
     "openFinanceNotAvailable": "Open Finance está disponível apenas nos planos Pro ou Founder.",
     "rateLimitExceeded": "Muitas solicitações. Aguarde alguns segundos e tente novamente.",
-    "logoutFailed": "Falha ao sair. Tente novamente."
+    "logoutFailed": "Falha ao sair. Tente novamente.",
+    "entryAlreadyLinked": "Esta transação já está vinculada a outra conta a pagar."
   },
   "navigation": {
     "fluxosh": "fluxo.sh",

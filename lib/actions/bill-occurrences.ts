@@ -3,7 +3,7 @@
 import { cache } from 'react';
 import { db } from '@/lib/db';
 import { bills, billOccurrences, accounts, entries, transactions, categories } from '@/lib/schema';
-import { eq, and, sql, inArray, gte } from 'drizzle-orm';
+import { eq, and, sql, inArray, gte, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUserId } from '@/lib/auth';
 import { t } from '@/lib/i18n/server-errors';
@@ -447,6 +447,17 @@ export async function linkOccurrenceToTransaction(
       .limit(1);
     if (!entry) return { success: false, error: await t('errors.invalidEntryId') };
 
+    // Check if this entry is already linked to another bill occurrence
+    const [alreadyLinked] = await db
+      .select({ id: billOccurrences.id })
+      .from(billOccurrences)
+      .where(and(
+        eq(billOccurrences.matchedEntryId, entryId),
+        ne(billOccurrences.id, id)
+      ))
+      .limit(1);
+    if (alreadyLinked) return { success: false, error: await t('errors.entryAlreadyLinked') };
+
     // Sync category: update the transaction's category to match the bill's category
     const [bill] = await db
       .select({ categoryId: bills.categoryId })
@@ -727,6 +738,11 @@ export const getSuggestedTransactions = cache(async (occurrenceId: number) => {
       sql`${entries.amount} BETWEEN ${minAmount} AND ${maxAmount}`,
       sql`${entries.purchaseDate} BETWEEN ${minDate.toISOString().split('T')[0]}::date AND ${maxDate.toISOString().split('T')[0]}::date`,
       eq(transactions.ignored, false),
+      // Exclude entries already linked to any bill occurrence
+      sql`NOT EXISTS (
+        SELECT 1 FROM ${billOccurrences}
+        WHERE ${billOccurrences.matchedEntryId} = ${entries.id}
+      )`,
     ))
     .orderBy(
       bill?.categoryId

@@ -71,6 +71,7 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<number | null>(null);
   const [deleteBillId, setDeleteBillId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const activeBills = bills.filter(b => b.bill.status !== 'archived');
   const archivedBills = bills.filter(b => b.bill.status === 'archived');
@@ -82,10 +83,19 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
 
   const handleDelete = async (id: number) => {
     setDeleting(id);
-    const result = await deleteBill(id);
-    setDeleting(null);
-    if (result.success) {
-      router.refresh();
+    setDeleteError(null);
+    try {
+      const result = await deleteBill(id);
+      if (result.success) {
+        setDeleteBillId(null);
+        router.refresh();
+      } else {
+        setDeleteError(result.error);
+      }
+    } catch {
+      setDeleteError(tCommon('unexpectedError'));
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -255,25 +265,35 @@ export function BillsClient({ bills, categories, accounts }: BillsClientProps) {
       )}
 
       {/* Delete confirmation dialog (outside map loop) */}
-      <AlertDialog open={deleteBillId !== null} onOpenChange={(open) => !open && setDeleteBillId(null)}>
+      <AlertDialog open={deleteBillId !== null} onOpenChange={(open) => {
+        if (!open && !deleting) {
+          setDeleteBillId(null);
+          setDeleteError(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteBillTitle')}</AlertDialogTitle>
             <AlertDialogDescription>{t('deleteBillDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">
+              {deleteError}
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={!!deleting}>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
                 if (deleteBillId !== null) {
                   handleDelete(deleteBillId);
-                  setDeleteBillId(null);
                 }
               }}
-              disabled={deleting === deleteBillId}
+              disabled={!!deleting}
             >
-              {deleting === deleteBillId ? tCommon('deleting') : t('delete')}
+              {deleting ? tCommon('deleting') : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

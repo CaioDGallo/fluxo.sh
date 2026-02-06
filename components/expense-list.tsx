@@ -17,11 +17,13 @@ export { ExpenseListProvider };
 
 export function ExpenseList() {
   const t = useTranslations('expenses');
+  const tCommon = useTranslations('common');
   const context = useExpenseContext();
   const { filteredExpenses, accounts, recentAccounts, categories, recentCategories, unpaidFaturas, filters, searchQuery } = context;
-  let expenses = context.expenses
+  const expenses = context.expenses
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Group by date (same logic as original page)
   const groupedByDate = filteredExpenses.reduce(
@@ -101,19 +103,27 @@ export function ExpenseList() {
     }
 
     if (skippedCount.notFound > 0 || skippedCount.invalid > 0) {
-      toast.warning(`Updating ${uniqueTransactionIds.length} items (${skippedCount.notFound + skippedCount.invalid} skipped)`);
+      toast.warning(t('itemsSkipped', { count: uniqueTransactionIds.length, skipped: skippedCount.notFound + skippedCount.invalid }));
       console.warn('Some items skipped:', skippedCount);
     }
 
+    setIsBulkUpdating(true);
     try {
       await context.bulkUpdateCategory(uniqueTransactionIds, categoryId);
+      toast.success(t('updatedItems'));
       triggerHaptic(HapticPatterns.success);
       selection.exitSelectionMode();
     } catch (error) {
       console.error('Bulk update failed:', error);
       triggerHaptic(HapticPatterns.heavy);
-      // Error already toasted by context
+      if (error instanceof Error && error.message === 'Category not found') {
+        toast.error(t('categoryNotFoundRefresh'));
+      } else {
+        toast.error(t('failedUpdateCategories'));
+      }
       // Keep selection active so user can retry
+    } finally {
+      setIsBulkUpdating(false);
     }
   };
 
@@ -169,9 +179,11 @@ export function ExpenseList() {
 
   return (
     <div className="space-y-4">
-      {!shouldVirtualize ? (
-        // Small lists: render normally (exact current behavior)
-        dates.map((date) => (
+      {/* List wrapper with interaction blocking */}
+      <div className={isBulkUpdating ? 'pointer-events-none opacity-60' : ''}>
+        {!shouldVirtualize ? (
+          // Small lists: render normally (exact current behavior)
+          dates.map((date) => (
           <div key={date}>
             <h2 className="mb-2 text-sm font-medium text-gray-500">
               {formatDate(date, {
@@ -221,6 +233,7 @@ export function ExpenseList() {
           })}
         </div>
       )}
+      </div>
 
       {/* Selection action bar */}
       {selection.isSelectionMode && (
@@ -228,6 +241,10 @@ export function ExpenseList() {
           selectedCount={selection.selectedCount}
           onChangeCategory={() => setBulkPickerOpen(true)}
           onCancel={selection.exitSelectionMode}
+          isUpdating={isBulkUpdating}
+          changeCategoryLabel={t('changeCategory')}
+          cancelLabel={tCommon('cancel')}
+          selectedLabel={t('selected')}
         />
       )}
 

@@ -10,14 +10,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { flattenGroupedData } from '@/lib/utils/flatten-grouped-data';
 import { useVirtualizedGroupedList } from '@/lib/hooks/use-virtualized-grouped-list';
+import { useTranslations } from 'next-intl';
 
 export { IncomeListProvider };
 
 export function IncomeList() {
+  const t = useTranslations('income');
+  const tCommon = useTranslations('common');
   const context = useIncomeContext();
   const { filteredIncome, accounts, recentAccounts, categories, recentCategories, filters, searchQuery } = context;
   const selection = useSelection();
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Group by date (same logic as original page)
   const groupedByDate = filteredIncome.reduce(
@@ -60,17 +64,25 @@ export function IncomeList() {
     const realIncomeIds = selection.getSelectedIds().filter((id) => id > 0);
 
     if (realIncomeIds.length === 0) {
-      toast.error('Cannot update pending items');
+      toast.error(t('cannotUpdatePendingItems'));
       return;
     }
 
+    setIsBulkUpdating(true);
     try {
       await context.bulkUpdateCategory(realIncomeIds, categoryId);
+      toast.success(t('updatedItems'));
       selection.exitSelectionMode();
     } catch (error) {
       console.error('Bulk update failed:', error);
-      // Error already toasted by context
+      if (error instanceof Error && error.message === 'Category not found') {
+        toast.error(t('categoryNotFoundRefresh'));
+      } else {
+        toast.error(t('failedUpdateCategories'));
+      }
       // Keep selection active so user can retry
+    } finally {
+      setIsBulkUpdating(false);
     }
   };
 
@@ -124,9 +136,11 @@ export function IncomeList() {
 
   return (
     <div className="space-y-4">
-      {!shouldVirtualize ? (
-        // Small lists: render normally (exact current behavior)
-        dates.map((date) => (
+      {/* List wrapper with interaction blocking */}
+      <div className={isBulkUpdating ? 'pointer-events-none opacity-60' : ''}>
+        {!shouldVirtualize ? (
+          // Small lists: render normally (exact current behavior)
+          dates.map((date) => (
           <div key={date}>
             <h2 className="mb-2 text-sm font-medium text-gray-500">
               {formatDate(date, {
@@ -176,6 +190,7 @@ export function IncomeList() {
           })}
         </div>
       )}
+      </div>
 
       {/* Selection action bar */}
       {selection.isSelectionMode && (
@@ -183,6 +198,10 @@ export function IncomeList() {
           selectedCount={selection.selectedCount}
           onChangeCategory={() => setBulkPickerOpen(true)}
           onCancel={selection.exitSelectionMode}
+          isUpdating={isBulkUpdating}
+          changeCategoryLabel={t('changeCategory')}
+          cancelLabel={tCommon('cancel')}
+          selectedLabel={t('selected')}
         />
       )}
 

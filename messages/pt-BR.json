@@ -248,7 +248,11 @@
     "noExpensesThisPeriod": "Nenhuma despesa neste período.",
     "useButtonToAdd": "Use o botão + para adicionar uma despesa",
     "refunded": "Estornado",
-    "partialRefund": "Estorno parcial"
+    "partialRefund": "Estorno parcial",
+    "categoryNotFoundRefresh": "Categoria não encontrada. Atualize e tente novamente.",
+    "updatedItems": "Categorias atualizadas",
+    "failedUpdateCategories": "Falha ao atualizar categorias",
+    "itemsSkipped": "Atualizando {count} itens ({skipped} ignorados)"
   },
   "income": {
     "title": "Receitas",
@@ -275,7 +279,11 @@
     "noReplenishment": "Nenhum",
     "selectReplenishCategory": "Selecionar categoria",
     "replenishmentUpdated": "Reposição de orçamento atualizada",
-    "incomeDeleted": "Receita excluída"
+    "incomeDeleted": "Receita excluída",
+    "cannotUpdatePendingItems": "Não é possível atualizar itens pendentes",
+    "categoryNotFoundRefresh": "Categoria não encontrada. Atualize e tente novamente.",
+    "updatedItems": "Categorias atualizadas",
+    "failedUpdateCategories": "Falha ao atualizar categorias"
   },
   "settings": {
     "title": "Configurações",

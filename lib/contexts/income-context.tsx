@@ -312,23 +312,15 @@ export function IncomeListProvider({
       const category = categories.find((c) => c.id === categoryId);
       if (!category) {
         console.error('Category not found:', categoryId);
-        toast.error('Selected category not found. Please refresh and try again.');
-        return;
+        throw new Error('Category not found');
       }
 
       startTransition(() => {
         dispatch({ type: 'bulkUpdateCategory', incomeIds, category });
       });
 
-      try {
-        await serverBulkUpdateIncomeCategories(incomeIds, categoryId);
-        router.refresh(); // Refresh to get updated data
-        toast.success(`Updated ${incomeIds.length} item${incomeIds.length > 1 ? 's' : ''}`);
-      } catch (error) {
-        console.error('Failed to bulk update categories:', error);
-        toast.error('Failed to update categories');
-        router.refresh(); // Revert optimistic state
-      }
+      await serverBulkUpdateIncomeCategories(incomeIds, categoryId);
+      router.refresh(); // Refresh to get updated data
     },
     [categories, dispatch, router]
   );

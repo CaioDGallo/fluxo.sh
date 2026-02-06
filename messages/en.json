@@ -186,7 +186,11 @@
     "noExpensesThisPeriod": "No expenses found for this period.",
     "useButtonToAdd": "Use the + button to add an expense",
     "refunded": "Refunded",
-    "partialRefund": "Partial refund"
+    "partialRefund": "Partial refund",
+    "categoryNotFoundRefresh": "Category not found. Please refresh and try again.",
+    "updatedItems": "Categories updated",
+    "failedUpdateCategories": "Failed to update categories",
+    "itemsSkipped": "Updating {count} items ({skipped} skipped)"
   },
   "income": {
     "title": "Income",
@@ -207,7 +211,11 @@
     "hideFromTotals": "Ignore in calculations",
     "showInTotals": "Include in calculations",
     "changeCategory": "Change category",
-    "selected": "selected"
+    "selected": "selected",
+    "cannotUpdatePendingItems": "Cannot update pending items",
+    "categoryNotFoundRefresh": "Category not found. Please refresh and try again.",
+    "updatedItems": "Categories updated",
+    "failedUpdateCategories": "Failed to update categories"
   },
   "settings": {
     "title": "Settings",

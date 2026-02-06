@@ -330,23 +330,15 @@ export function ExpenseListProvider({
       const category = categories.find((c) => c.id === categoryId);
       if (!category) {
         console.error('Category not found:', categoryId);
-        toast.error('Selected category not found. Please refresh and try again.');
-        return;
+        throw new Error('Category not found');
       }
 
       startTransition(() => {
         dispatch({ type: 'bulkUpdateCategory', transactionIds, category });
       });
 
-      try {
-        await serverBulkUpdateTransactionCategories(transactionIds, categoryId);
-        router.refresh(); // Refresh to get updated data
-        toast.success(`Updated ${transactionIds.length} item${transactionIds.length > 1 ? 's' : ''}`);
-      } catch (error) {
-        console.error('Failed to bulk update categories:', error);
-        toast.error('Failed to update categories');
-        router.refresh(); // Revert optimistic state
-      }
+      await serverBulkUpdateTransactionCategories(transactionIds, categoryId);
+      router.refresh(); // Refresh to get updated data
     },
     [categories, dispatch, router]
   );

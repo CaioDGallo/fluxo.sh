@@ -34,6 +34,7 @@ export function Toaster() {
       position="top-center"
       richColors
       theme={theme}
+      toastOptions={{ classNames: { toast: '!rounded-none' } }}
     />
   );
 }

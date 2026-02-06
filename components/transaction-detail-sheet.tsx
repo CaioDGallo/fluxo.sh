@@ -44,7 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
-      <div className="space-y-1 shadow-[4px_4px_0px_0px_rgba(100,100,100,1)] border border-gray-600 p-1">{children}</div>
+      <div className="space-y-1 shadow-[4px_4px_0px_0px_rgba(100,100,100,1)] border border-gray-600 p-2.5">{children}</div>
     </div>
   );
 }

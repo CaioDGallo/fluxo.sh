@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { CategoryIcon } from '@/components/icon-picker';
 import { ReplenishmentPicker } from '@/components/replenishment-picker';
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog';
@@ -34,6 +35,45 @@ type TransactionDetailSheetProps = {
   onToggleIgnore?: () => void;
   onRequestDelete?: () => void;
 };
+
+// --- Private helper components ---
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+function InfoItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="py-1.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="text-sm font-medium break-words">{children}</div>
+    </div>
+  );
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center py-1.5 gap-4">
+      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+      <span className="text-sm font-medium text-right">{children}</span>
+    </div>
+  );
+}
+
+function formatCnpj(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length !== 14) return raw;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
+// --- Main component ---
 
 export function TransactionDetailSheet({
   expense,
@@ -87,6 +127,16 @@ export function TransactionDetailSheet({
 
   const deleteLabel = isExpense ? tExpenses('deleteTransaction') : tIncome('deleteIncome');
 
+  // Counterparty section visibility
+  const hasCounterparty = isExpense
+    ? !!(expense?.merchantName || expense?.beneficiaryName)
+    : !!(income as IncomeEntry & { beneficiaryName?: string | null })?.beneficiaryName;
+
+  // Indicators section visibility
+  const hasIndicators = isExpense
+    ? !!(expense?.linkedBillName || expense?.isFaturaPayment || (expense?.refundedAmount ?? 0) > 0 || isIgnored)
+    : isIgnored;
+
   const handleOpenReplenishPicker = async () => {
     if (!income?.receivedDate) return;
     const cats = await getReplenishableCategories();
@@ -108,272 +158,192 @@ export function TransactionDetailSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="max-h-[70vh] flex flex-col">
-          <SheetHeader className="pb-4">
-            {/* Large category icon + description */}
+          <SheetHeader className="pb-2">
+            {/* Icon + Description + Category */}
             <div className="flex items-center gap-4">
               <div
-                className="size-16 rounded-full flex items-center justify-center text-white shrink-0 text-2xl"
+                className="size-14 rounded-full flex items-center justify-center text-white shrink-0 text-xl"
                 style={{ backgroundColor: data.categoryColor }}
               >
                 <CategoryIcon icon={data.categoryIcon} />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-xl line-clamp-4">{data.description}</SheetTitle>
+                <SheetTitle className="text-lg line-clamp-3">{data.description}</SheetTitle>
                 <p className="text-sm text-muted-foreground">{data.categoryName}</p>
+              </div>
+            </div>
+
+            {/* Hero amount + status badges */}
+            <div className="flex items-center justify-between pt-2">
+              <span className={`text-2xl font-semibold tabular-nums ${isExpense ? '' : 'text-green-600'}`}>
+                {isExpense ? '' : '+'}
+                {formatCurrency(data.amount)}
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge variant={isPaidOrReceived ? 'default' : 'secondary'} className={isPaidOrReceived ? 'bg-green-600' : ''}>
+                  <HugeiconsIcon
+                    icon={isPaidOrReceived ? Tick02Icon : Clock01Icon}
+                    size={14}
+                    strokeWidth={2}
+                    className="mr-1"
+                  />
+                  {statusLabel}
+                </Badge>
+                {isSynced && (
+                  <Badge variant="outline" className="text-blue-600 border-blue-300">
+                    {tSynced('sourceOpenFinance')}
+                  </Badge>
+                )}
               </div>
             </div>
           </SheetHeader>
 
-          {/* Linked Bill banner */}
-          {isExpense && expense?.linkedBillName && (
-            <div className="mx-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Link01Icon} className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-blue-600 dark:text-blue-400">{t('linkedBill')}</p>
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">{expense.linkedBillName}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Detail rows - scrollable */}
+          {/* Scrollable content with sections */}
           <div className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-            <div className="space-y-3 p-4">
-              {/* Amount */}
-              <DetailRow
-                label={t('amount')}
-                value={
-                  <span className={isExpense ? 'font-semibold' : 'font-semibold text-green-600'}>
-                    {isExpense ? '' : '+'}
-                    {formatCurrency(data.amount)}
-                  </span>
-                }
-              />
+            <div className="space-y-5 p-4">
+              {/* Section 1: Details (always shown) */}
+              <Section title={t('sectionDetails')}>
+                <InfoRow label={dateLabel}>
+                  {formatDate(dateValue || '', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </InfoRow>
 
-              {/* Status */}
-              <DetailRow
-                label={t('status')}
-                value={
-                  <div className="flex items-center gap-2">
-                    <HugeiconsIcon
-                      icon={isPaidOrReceived ? Tick02Icon : Clock01Icon}
-                      className={isPaidOrReceived ? 'text-green-600' : 'text-gray-400'}
-                      size={18}
-                      strokeWidth={2}
-                    />
-                    <span className={isPaidOrReceived ? 'text-green-600' : 'text-gray-500'}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                }
-              />
-
-              {/* Category */}
-              <DetailRow label={t('category')} value={data.categoryName} />
-
-              {/* Account */}
-              <DetailRow label={t('account')} value={data.accountName} />
-
-              {/* Synced indicator */}
-              {isSynced && (
-                <DetailRow
-                  label={tSynced('readOnlyBadge')}
-                  value={<span className="text-xs text-blue-600">{tSynced('sourceOpenFinance')}</span>}
-                />
-              )}
-
-              {/* Date */}
-              <DetailRow
-                label={dateLabel}
-                value={formatDate(dateValue || '', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              />
-
-              {/* Expense-specific fields */}
-              {isExpense && expense && (
-                <>
-                  {/* Fatura Payment indicator */}
-                  {expense.isFaturaPayment && (
-                    <DetailRow
-                      label={t('faturaPayment')}
-                      value={
-                        <Badge variant="secondary" className="text-blue-600 dark:text-blue-400">
-                          {t('faturaPaymentDescription')}
-                        </Badge>
-                      }
-                    />
-                  )}
-
-                  {/* Merchant info */}
-                  {expense.merchantName && (
-                    <DetailRow
-                      label={t('merchant')}
-                      value={
-                        <div className="flex flex-col items-end">
-                          <span>{expense.merchantName}</span>
-                          {expense.merchantCnpj && (
-                            <span className="text-xs text-muted-foreground">{expense.merchantCnpj}</span>
-                          )}
-                        </div>
-                      }
-                    />
-                  )}
-
-                  {/* Beneficiary (for transfers) */}
-                  {expense.beneficiaryName && !expense.merchantName && (
-                    <DetailRow
-                      label={t('beneficiary')}
-                      value={expense.beneficiaryName}
-                    />
-                  )}
-
-                  {/* Purchase Date (show only if different from due date) */}
-                  {expense.purchaseDate !== expense.dueDate && (
-                    <DetailRow
-                      label={t('purchaseDate')}
-                      value={formatDate(expense.purchaseDate, {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    />
-                  )}
-
-                  {/* Fatura Month */}
-                  <DetailRow
-                    label={t('fatura')}
-                    value={formatDate(expense.faturaMonth + '-01', {
+                {/* Purchase date — only if different from due date */}
+                {isExpense && expense && expense.purchaseDate !== expense.dueDate && (
+                  <InfoRow label={t('purchaseDate')}>
+                    {formatDate(expense.purchaseDate, {
+                      day: '2-digit',
                       month: 'long',
                       year: 'numeric',
                     })}
-                  />
+                  </InfoRow>
+                )}
 
-                  {/* Installment info */}
-                  {expense.totalInstallments > 1 && (
-                    <DetailRow
-                      label={t('installment')}
-                      value={
-                        <Badge variant="secondary">
-                          {expense.installmentNumber} {t('of')} {expense.totalInstallments}
-                        </Badge>
-                      }
-                    />
+                {/* Fatura month */}
+                {isExpense && expense && (
+                  <InfoRow label={t('fatura')}>
+                    {formatDate(expense.faturaMonth + '-01', {
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </InfoRow>
+                )}
+
+                {/* Account — stacked for long names */}
+                <InfoItem label={t('account')}>
+                  {data.accountName}
+                </InfoItem>
+
+                {/* Installment badge */}
+                {isExpense && expense && expense.totalInstallments > 1 && (
+                  <InfoRow label={t('installment')}>
+                    <Badge variant="secondary">
+                      {expense.installmentNumber} {t('of')} {expense.totalInstallments}
+                    </Badge>
+                  </InfoRow>
+                )}
+              </Section>
+
+              {/* Section 2: Counterparty (conditional) */}
+              {hasCounterparty && (
+                <Section title={t('sectionCounterparty')}>
+                  {isExpense && expense?.merchantName && (
+                    <InfoItem label={t('merchant')}>
+                      {expense.merchantName}
+                    </InfoItem>
+                  )}
+
+                  {isExpense && expense?.merchantBusinessName && (
+                    <InfoItem label={t('businessName')}>
+                      {expense.merchantBusinessName}
+                    </InfoItem>
+                  )}
+
+                  {isExpense && expense?.merchantCnpj && (
+                    <InfoItem label={t('cnpj')}>
+                      {formatCnpj(expense.merchantCnpj)}
+                    </InfoItem>
+                  )}
+
+                  {/* Beneficiary for expense transfers (only when no merchant) */}
+                  {isExpense && expense?.beneficiaryName && !expense?.merchantName && (
+                    <InfoItem label={t('beneficiary')}>
+                      {expense.beneficiaryName}
+                    </InfoItem>
+                  )}
+
+                  {/* Income payer */}
+                  {!isExpense && income && (income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName && (
+                    <InfoItem label={t('payer')}>
+                      {(income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName!}
+                    </InfoItem>
+                  )}
+                </Section>
+              )}
+
+              {/* Section 3: Indicators (conditional) */}
+              {hasIndicators && (
+                <Section title={t('sectionIndicators')}>
+                  {/* Linked bill */}
+                  {isExpense && expense?.linkedBillName && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <HugeiconsIcon icon={Link01Icon} className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-blue-600 dark:text-blue-400">{t('linkedBill')}</p>
+                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100 break-words">{expense.linkedBillName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fatura payment */}
+                  {isExpense && expense?.isFaturaPayment && (
+                    <div className="py-1.5">
+                      <Badge variant="secondary" className="text-blue-600 dark:text-blue-400">
+                        {t('faturaPayment')} — {t('faturaPaymentDescription')}
+                      </Badge>
+                    </div>
                   )}
 
                   {/* Refund info */}
-                  {(expense.refundedAmount ?? 0) > 0 && (
-                    <DetailRow
-                      label={t('refunded')}
-                      value={
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-green-600 font-semibold">
-                            {formatCurrency(expense.refundedAmount ?? 0)}
-                          </span>
-                          {expense.isFullyRefunded && (
-                            <Badge variant="secondary" className="text-green-600">
-                              {t('fullyRefunded')}
-                            </Badge>
-                          )}
-                          {!expense.isFullyRefunded && (
-                            <Badge variant="outline">
-                              {t('partialRefund')}
-                            </Badge>
-                          )}
-                        </div>
-                      }
-                    />
+                  {isExpense && (expense?.refundedAmount ?? 0) > 0 && (
+                    <div className="flex items-center justify-between py-1.5">
+                      <span className="text-xs text-muted-foreground">{t('refunded')}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-green-600">
+                          {formatCurrency(expense!.refundedAmount ?? 0)}
+                        </span>
+                        {expense!.isFullyRefunded ? (
+                          <Badge variant="secondary" className="text-green-600">
+                            {t('fullyRefunded')}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">{t('partialRefund')}</Badge>
+                        )}
+                      </div>
+                    </div>
                   )}
-                </>
-              )}
 
-              {/* Income-specific: Beneficiary (payer) */}
-              {!isExpense && income && (income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName && (
-                <DetailRow
-                  label={t('payer')}
-                  value={(income as IncomeEntry & { beneficiaryName?: string | null }).beneficiaryName!}
-                />
+                  {/* Ignored */}
+                  {isIgnored && (
+                    <div className="py-1.5">
+                      <Badge variant="secondary" className="text-amber-600 dark:text-amber-400">
+                        {isExpense ? tExpenses('hideFromTotals') : tIncome('hideFromTotals')}
+                      </Badge>
+                    </div>
+                  )}
+                </Section>
               )}
             </div>
           </div>
 
-          {/* Footer buttons */}
+          {/* Footer buttons — tiered: primary → secondary → separator → destructive */}
           <SheetFooter className="flex-col gap-2 sm:flex-col pt-4">
-            {canMutate && onTogglePaid && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onTogglePaid}
-              >
-                {togglePaidLabel}
-              </Button>
-            )}
-
-            {onToggleIgnore && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onToggleIgnore}
-              >
-                {toggleIgnoreLabel}
-              </Button>
-            )}
-
-            {/* View All Installments - only for multi-installment expenses */}
-            {isExpense && expense && expense.totalInstallments > 1 && canMutate && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  // TODO: Navigate to filtered expense list
-                  console.log('View all installments for transaction:', expense.transactionId);
-                }}
-              >
-                {t('viewAllInstallments', { count: expense.totalInstallments })}
-              </Button>
-            )}
-
-            {/* Convert to Fatura button - only for eligible expenses */}
-            {canConvertToFatura && onConvertToFatura && canMutate && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  onOpenChange(false);
-                  onConvertToFatura();
-                }}
-              >
-                {t('convertToFatura')}
-              </Button>
-            )}
-
-            {/* Register refund button - only for credit card expenses */}
-            {isExpense && expense && expense.accountType === 'credit_card' && !expense.ignored && !expense.isFullyRefunded && canMutate && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setRefundDialogOpen(true)}
-              >
-                {t('registerRefund')}
-              </Button>
-            )}
-
-            {/* Replenish budget button - only for received income */}
-            {!isExpense && income?.receivedAt && canMutate && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleOpenReplenishPicker}
-                disabled={isPending}
-              >
-                {tIncome('replenishBudget')}
-              </Button>
-            )}
-
-            {/* Edit button — hidden for synced items */}
+            {/* Primary: Edit */}
             {canMutate && accounts && categories && (
               <Button
                 variant="default"
@@ -387,14 +357,73 @@ export function TransactionDetailSheet({
               </Button>
             )}
 
-            {canMutate && onRequestDelete && (
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={onRequestDelete}
-              >
-                {deleteLabel}
+            {/* Secondary actions */}
+            {canMutate && onTogglePaid && (
+              <Button variant="outline" className="w-full" onClick={onTogglePaid}>
+                {togglePaidLabel}
               </Button>
+            )}
+
+            {onToggleIgnore && (
+              <Button variant="outline" className="w-full" onClick={onToggleIgnore}>
+                {toggleIgnoreLabel}
+              </Button>
+            )}
+
+            {isExpense && expense && expense.totalInstallments > 1 && canMutate && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  console.log('View all installments for transaction:', expense.transactionId);
+                }}
+              >
+                {t('viewAllInstallments', { count: expense.totalInstallments })}
+              </Button>
+            )}
+
+            {canConvertToFatura && onConvertToFatura && canMutate && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  onOpenChange(false);
+                  onConvertToFatura();
+                }}
+              >
+                {t('convertToFatura')}
+              </Button>
+            )}
+
+            {isExpense && expense && expense.accountType === 'credit_card' && !expense.ignored && !expense.isFullyRefunded && canMutate && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setRefundDialogOpen(true)}
+              >
+                {t('registerRefund')}
+              </Button>
+            )}
+
+            {!isExpense && income?.receivedAt && canMutate && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleOpenReplenishPicker}
+                disabled={isPending}
+              >
+                {tIncome('replenishBudget')}
+              </Button>
+            )}
+
+            {/* Separator before destructive */}
+            {canMutate && onRequestDelete && (
+              <>
+                <Separator />
+                <Button variant="destructive" className="w-full" onClick={onRequestDelete}>
+                  {deleteLabel}
+                </Button>
+              </>
             )}
           </SheetFooter>
         </SheetContent>
@@ -437,15 +466,5 @@ export function TransactionDetailSheet({
         />
       )}
     </>
-  );
-}
-
-// Helper component for detail rows
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-center py-2 border-b border-border/50 last:border-0 gap-4">
-      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
-      <span className="text-sm font-medium text-right truncate">{value}</span>
-    </div>
   );
 }

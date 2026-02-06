@@ -509,7 +509,12 @@
     "faturaPaymentDescription": "Excluded from calculations",
     "merchant": "Merchant",
     "beneficiary": "Beneficiary",
-    "payer": "Payer"
+    "payer": "Payer",
+    "sectionDetails": "Details",
+    "sectionCounterparty": "Counterparty",
+    "sectionIndicators": "Indicators",
+    "businessName": "Business Name",
+    "cnpj": "Tax ID"
   },
   "faturas": {
     "title": "Bills",

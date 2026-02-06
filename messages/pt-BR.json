@@ -523,7 +523,12 @@
     "faturaPaymentDescription": "Ignorado nos cálculos",
     "merchant": "Estabelecimento",
     "beneficiary": "Destinatário",
-    "payer": "Pagador"
+    "payer": "Pagador",
+    "sectionDetails": "Detalhes",
+    "sectionCounterparty": "Contrapartida",
+    "sectionIndicators": "Indicadores",
+    "businessName": "Razão Social",
+    "cnpj": "CNPJ"
   },
   "faturas": {
     "title": "Faturas",

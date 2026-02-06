@@ -46,6 +46,13 @@ function computeZoneData(pct: number) {
   };
 }
 
+/** Convert 0–200% to an angle on the semicircle (180°=left, 0°=right). */
+function pctToAngleRad(pct: number): number {
+  const clamped = Math.max(0, Math.min(200, pct));
+  const angleDeg = 180 - (clamped / 200) * 180;
+  return (angleDeg * Math.PI) / 180;
+}
+
 export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
   const t = useTranslations('budget503020');
   const tPacing = useTranslations('budget503020.pacing');
@@ -88,23 +95,52 @@ export function PacingGauge({ pacing, daysRemaining }: PacingGaugeProps) {
                 <Label
                   content={({ viewBox }) => {
                     if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                      const cx = viewBox.cx || 0;
+                      const cy = viewBox.cy || 0;
+                      const rad = pctToAngleRad(pacing.percentageOfExpected);
+                      const needleInner = 70;
+                      const needleOuter = 140;
+                      const tipX = cx + needleOuter * Math.cos(rad);
+                      const tipY = cy - needleOuter * Math.sin(rad);
+                      const baseX = cx + needleInner * Math.cos(rad);
+                      const baseY = cy - needleInner * Math.sin(rad);
+
                       return (
-                        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
-                          <tspan
-                            x={viewBox.cx}
-                            y={(viewBox.cy || 0) - 8}
-                            className={`fill-current text-3xl font-bold tabular-nums ${config.color}`}
-                          >
-                            {pacing.percentageOfExpected}%
-                          </tspan>
-                          <tspan
-                            x={viewBox.cx}
-                            y={(viewBox.cy || 0) + 12}
-                            className="fill-muted-foreground text-sm"
-                          >
-                            {tPacing('ofExpected')}
-                          </tspan>
-                        </text>
+                        <g>
+                          {/* Needle */}
+                          <line
+                            x1={baseX}
+                            y1={baseY}
+                            x2={tipX}
+                            y2={tipY}
+                            className="stroke-foreground"
+                            strokeWidth={3}
+                            strokeLinecap="square"
+                          />
+                          <circle
+                            cx={tipX}
+                            cy={tipY}
+                            r={4}
+                            className="fill-foreground"
+                          />
+                          {/* Center text */}
+                          <text x={cx} y={cy} textAnchor="middle">
+                            <tspan
+                              x={cx}
+                              y={cy - 8}
+                              className={`fill-current text-3xl font-bold tabular-nums ${config.color}`}
+                            >
+                              {pacing.percentageOfExpected}%
+                            </tspan>
+                            <tspan
+                              x={cx}
+                              y={cy + 12}
+                              className="fill-muted-foreground text-sm"
+                            >
+                              {tPacing('ofExpected')}
+                            </tspan>
+                          </text>
+                        </g>
                       );
                     }
                   }}

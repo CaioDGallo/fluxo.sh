@@ -37,6 +37,7 @@ import {
   Settings01Icon,
   Settings02Icon,
   SparklesIcon,
+  Tag02Icon,
   Wallet01Icon
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -59,7 +60,7 @@ const navItems = [
 
 const settingsItems = [
   { key: 'accounts', href: '/settings/accounts', icon: Wallet01Icon },
-  { key: 'categories', href: '/settings/categories', icon: SparklesIcon },
+  { key: 'categories', href: '/settings/categories', icon: Tag02Icon },
   { key: 'budgets', href: '/settings/budgets', icon: Invoice03Icon },
   { key: 'openFinance', href: '/settings/open-finance', icon: BankIcon },
   { key: 'export', href: '/settings/export', icon: FileDownloadIcon },

@@ -703,13 +703,16 @@ export async function syncPluggyItem(
             amountCents,
             purchaseDate: date,
             installmentInfo: undefined,
-            isFaturaPayment: true,
+            isFaturaPayment: classification.isFaturaPayment,
             merchantName: txMerchantName,
             merchantBusinessName: txMerchantBusinessName,
             merchantCnpj: txMerchantCnpj,
             beneficiaryName: txBeneficiaryName,
           });
-          faturaPaymentExpenses.push({ accountId, amountCents, date });
+          // Only match against unpaid faturas when it's actually a fatura payment
+          if (classification.isFaturaPayment) {
+            faturaPaymentExpenses.push({ accountId, amountCents, date });
+          }
           continue;
         }
 

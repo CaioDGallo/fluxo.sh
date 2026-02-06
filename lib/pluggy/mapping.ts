@@ -14,9 +14,11 @@ export type PluggyTransactionClassification = {
 
 const INSTALLMENT_PATTERN = /(parcela|parc|parcelado)\s*(\d+)\s*[\/-]\s*(\d+)/i;
 const PAYMENT_PATTERN = /(pag(?:amento|to)?\s+(?:de\s+)?(?:fatura|cartao|cart[aã]o)|pgto?\s+(?:de\s+)?(?:fatura|cartao)|fatura\s+cartao|bill\s+payment)/i;
+// Operation types that indicate a fatura (credit card bill) payment specifically
+const FATURA_OPERATION_TYPES = new Set(['PAGAMENTO_FATURA']);
+// Operation types that indicate a generic bill/boleto payment (NOT necessarily a fatura)
 const PAYMENT_OPERATION_TYPES = new Set([
-  'PAGAMENTO', 'PAGAMENTO_FATURA', 'PAGAMENTO_BOLETO',
-  'PAGAMENTO_CONTA', 'DEBITO_AUTOMATICO',
+  'PAGAMENTO', 'PAGAMENTO_BOLETO', 'PAGAMENTO_CONTA', 'DEBITO_AUTOMATICO',
 ]);
 const TRANSFER_PATTERN = /(transferencia|transf\b|pix|ted|doc)/i;
 const DEPOSIT_PATTERN = /(deposito|deposit)/i;
@@ -110,18 +112,31 @@ export function classifyPluggyTransaction(transaction: Transaction): PluggyTrans
     };
   }
 
-  // Fatura payment detection — structural signals first, regex fallback
+  // Fatura payment: only when description explicitly mentions fatura/cartão or operation type is PAGAMENTO_FATURA
+  const isFaturaByOperationType = !!(operationType && FATURA_OPERATION_TYPES.has(operationType));
+  if (isFaturaByOperationType || PAYMENT_PATTERN.test(normalizedDescription)) {
+    return {
+      direction,
+      kind: 'payment',
+      isFaturaPayment: true,
+      isPairCandidate: false,
+      installmentInfo,
+      normalizedDescription,
+    };
+  }
+
+  // Generic bill/boleto payment: boleto metadata or payment-type operation (rent, utilities, etc.)
   const hasBoletoMetadata = !!(
     transaction.paymentData?.boletoMetadata?.digitableLine ||
     transaction.paymentData?.boletoMetadata?.barcode
   );
   const hasPaymentOperationType = !!(operationType && PAYMENT_OPERATION_TYPES.has(operationType));
 
-  if (hasBoletoMetadata || hasPaymentOperationType || PAYMENT_PATTERN.test(normalizedDescription)) {
+  if (hasBoletoMetadata || hasPaymentOperationType) {
     return {
       direction,
       kind: 'payment',
-      isFaturaPayment: true,
+      isFaturaPayment: false,
       isPairCandidate: false,
       installmentInfo,
       normalizedDescription,

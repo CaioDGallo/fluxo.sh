@@ -109,13 +109,14 @@ export async function updateFaturaTotal(accountIdOrFaturaId: number, yearMonth?:
   if (yearMonth !== undefined) {
     // Old pattern: (accountId, yearMonth)
     const [fatura] = await db
-      .select({ id: faturas.id, pluggyBillId: faturas.pluggyBillId })
+      .select({ id: faturas.id, pluggyBillId: faturas.pluggyBillId, accountSource: accounts.source })
       .from(faturas)
+      .innerJoin(accounts, eq(faturas.accountId, accounts.id))
       .where(and(eq(faturas.userId, userId), eq(faturas.accountId, accountIdOrFaturaId), eq(faturas.yearMonth, yearMonth)))
       .limit(1);
 
     if (!fatura) return;
-    if (fatura.pluggyBillId) return; // Pluggy fatura - trust bank's amount
+    if (fatura.pluggyBillId || fatura.accountSource === 'pluggy') return; // Pluggy account - trust bank's amount
 
     faturaId = fatura.id;
   } else {
@@ -123,13 +124,14 @@ export async function updateFaturaTotal(accountIdOrFaturaId: number, yearMonth?:
     faturaId = accountIdOrFaturaId;
 
     const [fatura] = await db
-      .select({ pluggyBillId: faturas.pluggyBillId })
+      .select({ pluggyBillId: faturas.pluggyBillId, accountSource: accounts.source })
       .from(faturas)
+      .innerJoin(accounts, eq(faturas.accountId, accounts.id))
       .where(and(eq(faturas.userId, userId), eq(faturas.id, faturaId)))
       .limit(1);
 
     if (!fatura) return;
-    if (fatura.pluggyBillId) return; // Pluggy fatura - trust bank's amount
+    if (fatura.pluggyBillId || fatura.accountSource === 'pluggy') return; // Pluggy account - trust bank's amount
   }
 
   // Sum all entries for this fatura using faturaId
@@ -441,6 +443,14 @@ export async function batchUpdateFaturaTotals(
   if (months.length === 0) return;
 
   const userId = userIdOverride ?? await getCurrentUserId();
+
+  // Skip Pluggy accounts entirely — their fatura amounts come from syncPluggyBills
+  const [account] = await db
+    .select({ source: accounts.source })
+    .from(accounts)
+    .where(eq(accounts.id, accountId))
+    .limit(1);
+  if (account?.source === 'pluggy') return;
 
   // Update all fatura totals in a single query using subqueries
   // Use IN clause instead of ANY for array parameter compatibility

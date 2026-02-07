@@ -29,6 +29,14 @@ export const testAccounts = {
     closingDay: 15,
     paymentDueDay: 5,
   },
+  pluggyCreditCardWithBilling: {
+    userId: TEST_USER_ID,
+    name: 'Pluggy CC',
+    type: 'credit_card' as const,
+    source: 'pluggy' as const,
+    closingDay: 15,
+    paymentDueDay: 5,
+  },
   checking: {
     userId: TEST_USER_ID,
     name: 'Test Checking',

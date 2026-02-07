@@ -25,6 +25,7 @@ describe('Fatura Actions', () => {
 
   let ensureFaturaExists: FaturaActions['ensureFaturaExists'];
   let updateFaturaTotal: FaturaActions['updateFaturaTotal'];
+  let batchUpdateFaturaTotals: FaturaActions['batchUpdateFaturaTotals'];
   let updateFaturaDates: FaturaActions['updateFaturaDates'];
   let getFaturasByMonth: FaturaActions['getFaturasByMonth'];
   let getFaturasByAccount: FaturaActions['getFaturasByAccount'];
@@ -163,6 +164,7 @@ describe('Fatura Actions', () => {
     const faturaActions = await import('@/lib/actions/faturas');
     ensureFaturaExists = faturaActions.ensureFaturaExists;
     updateFaturaTotal = faturaActions.updateFaturaTotal;
+    batchUpdateFaturaTotals = faturaActions.batchUpdateFaturaTotals;
     updateFaturaDates = faturaActions.updateFaturaDates;
     getFaturasByMonth = faturaActions.getFaturasByMonth;
     getFaturasByAccount = faturaActions.getFaturasByAccount;
@@ -1240,6 +1242,213 @@ describe('Fatura Actions', () => {
       const finalFeb = await getFaturaWithEntries(febFatura.id);
       expect(finalJan?.totalAmount).toBe(12000);
       expect(finalFeb?.totalAmount).toBe(20000);
+    });
+  });
+
+  describe('Pluggy account fatura total guard', () => {
+    it('skips recalculation for Pluggy account without pluggyBillId', async () => {
+      const account = await seedAccount(testAccounts.pluggyCreditCardWithBilling);
+      const category = await seedCategory();
+
+      const [fatura] = await db
+        .insert(schema.faturas)
+        .values({
+          userId: TEST_USER_ID,
+          accountId: account.id,
+          yearMonth: '2025-01',
+          closingDate: '2025-01-15',
+          totalAmount: 0,
+          dueDate: '2025-02-05',
+          // No pluggyBillId — this is a placeholder fatura
+        })
+        .returning();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Pluggy Transaction',
+          totalAmount: 5000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 5000,
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        faturaId: fatura.id,
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+      });
+
+      // Call updateFaturaTotal with (accountId, yearMonth) pattern
+      await updateFaturaTotal(account.id, '2025-01');
+
+      const [updatedFatura] = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.id, fatura.id));
+
+      expect(updatedFatura.totalAmount).toBe(0); // Should NOT be recalculated
+    });
+
+    it('skips recalculation for Pluggy account via faturaId pattern', async () => {
+      const account = await seedAccount(testAccounts.pluggyCreditCardWithBilling);
+      const category = await seedCategory();
+
+      const [fatura] = await db
+        .insert(schema.faturas)
+        .values({
+          userId: TEST_USER_ID,
+          accountId: account.id,
+          yearMonth: '2025-01',
+          closingDate: '2025-01-15',
+          totalAmount: 0,
+          dueDate: '2025-02-05',
+        })
+        .returning();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Pluggy Transaction',
+          totalAmount: 5000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 5000,
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        faturaId: fatura.id,
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+      });
+
+      // Call updateFaturaTotal with (faturaId) pattern
+      await updateFaturaTotal(fatura.id);
+
+      const [updatedFatura] = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.id, fatura.id));
+
+      expect(updatedFatura.totalAmount).toBe(0);
+    });
+
+    it('batchUpdateFaturaTotals skips Pluggy accounts', async () => {
+      const account = await seedAccount(testAccounts.pluggyCreditCardWithBilling);
+      const category = await seedCategory();
+
+      const [fatura] = await db
+        .insert(schema.faturas)
+        .values({
+          userId: TEST_USER_ID,
+          accountId: account.id,
+          yearMonth: '2025-01',
+          closingDate: '2025-01-15',
+          totalAmount: 0,
+          dueDate: '2025-02-05',
+        })
+        .returning();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Pluggy Transaction',
+          totalAmount: 7000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 7000,
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        faturaId: fatura.id,
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+      });
+
+      await batchUpdateFaturaTotals(account.id, ['2025-01']);
+
+      const [updatedFatura] = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.id, fatura.id));
+
+      expect(updatedFatura.totalAmount).toBe(0); // Should NOT be recalculated
+    });
+
+    it('recalculates after disconnect (source → manual)', async () => {
+      const account = await seedAccount(testAccounts.pluggyCreditCardWithBilling);
+      const category = await seedCategory();
+
+      const [fatura] = await db
+        .insert(schema.faturas)
+        .values({
+          userId: TEST_USER_ID,
+          accountId: account.id,
+          yearMonth: '2025-01',
+          closingDate: '2025-01-15',
+          totalAmount: 0,
+          dueDate: '2025-02-05',
+        })
+        .returning();
+
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          userId: TEST_USER_ID,
+          description: 'Was Pluggy Transaction',
+          totalAmount: 8000,
+          totalInstallments: 1,
+          categoryId: category.id,
+        })
+        .returning();
+
+      await db.insert(schema.entries).values({
+        userId: TEST_USER_ID,
+        transactionId: transaction.id,
+        accountId: account.id,
+        amount: 8000,
+        purchaseDate: '2025-01-10',
+        faturaMonth: '2025-01',
+        faturaId: fatura.id,
+        dueDate: '2025-02-05',
+        installmentNumber: 1,
+      });
+
+      // Simulate Pluggy disconnect — source changes to 'manual'
+      await db
+        .update(schema.accounts)
+        .set({ source: 'manual' })
+        .where(eq(schema.accounts.id, account.id));
+
+      await batchUpdateFaturaTotals(account.id, ['2025-01']);
+
+      const [updatedFatura] = await db
+        .select()
+        .from(schema.faturas)
+        .where(eq(schema.faturas.id, fatura.id));
+
+      expect(updatedFatura.totalAmount).toBe(8000); // Now recalculated
     });
   });
 });

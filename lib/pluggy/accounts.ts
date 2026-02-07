@@ -123,6 +123,8 @@ export async function ensurePluggyAccountMapping({
   const currency = pluggyAccount.currencyCode ?? 'BRL';
   const mask = pluggyAccount.number?.slice(-4) ?? null;
   const institutionId = itemPayload?.connector?.id ? String(itemPayload.connector.id) : null;
+  const institutionLogoUrl = itemPayload?.connector?.imageUrl ?? null;
+  const institutionColor = itemPayload?.connector?.primaryColor ?? null;
 
   const [existingMapping] = await db
     .select({ id: pluggyAccounts.id, accountId: pluggyAccounts.accountId })
@@ -178,6 +180,8 @@ export async function ensurePluggyAccountMapping({
         type,
         source: 'pluggy',
         currency,
+        institutionLogoUrl,
+        institutionColor,
       })
       .returning({
         id: accounts.id,
@@ -197,11 +201,18 @@ export async function ensurePluggyAccountMapping({
     accountInfo = resolveAccountInfo(createdAccount);
   }
 
-  if (!shouldCreateNew && existingAccount?.source === 'pluggy' && existingAccount.name !== name) {
-    await db
-      .update(accounts)
-      .set({ name })
-      .where(and(eq(accounts.userId, userId), eq(accounts.id, accountId)));
+  if (!shouldCreateNew && existingAccount?.source === 'pluggy') {
+    const updates: Partial<typeof accounts.$inferInsert> = {};
+    if (existingAccount.name !== name) updates.name = name;
+    if (institutionLogoUrl) updates.institutionLogoUrl = institutionLogoUrl;
+    if (institutionColor) updates.institutionColor = institutionColor;
+
+    if (Object.keys(updates).length > 0) {
+      await db
+        .update(accounts)
+        .set(updates)
+        .where(and(eq(accounts.userId, userId), eq(accounts.id, accountId)));
+    }
   }
 
   if (existingMapping) {

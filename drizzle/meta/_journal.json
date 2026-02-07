@@ -379,6 +379,13 @@
       "when": 1770388973193,
       "tag": "0053_illegal_ben_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1770459653813,
+      "tag": "0054_worthless_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }

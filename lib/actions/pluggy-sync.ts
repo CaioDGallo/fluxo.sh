@@ -145,6 +145,7 @@ function groupInstallmentTransactions(
     purchaseDate: string;
     installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
     isFaturaPayment?: boolean;
+    isPairCandidate?: boolean;
     merchantName?: string;
     merchantBusinessName?: string;
     merchantCnpj?: string;
@@ -274,6 +275,98 @@ function detectInternalTransferPairs(candidates: PairCandidate[]): {
   }
 
   return { expenseExternalIds, incomeExternalIds };
+}
+
+/**
+ * Detect internal transfer pairs across different sync batches (cross-item transfers).
+ * Queries DB for unmatched transfer candidates from last 7 days and pairs them.
+ */
+async function detectCrossItemTransferPairs(
+  userId: string,
+  newlyCreatedExternalIds: Set<string>,
+  alreadyPairedIds: Set<string>
+): Promise<{
+  expenseExternalIds: string[];
+  incomeExternalIds: string[];
+}> {
+  // Short-circuit if no new candidates
+  if (newlyCreatedExternalIds.size === 0) {
+    return { expenseExternalIds: [], incomeExternalIds: [] };
+  }
+
+  // Query unmatched expense candidates (isPairCandidate=true, not already paired)
+  const [expenseRows, incomeRows] = await Promise.all([
+    db
+      .select({
+        externalId: transactions.externalId,
+        accountId: entries.accountId,
+        amount: transactions.totalAmount,
+        date: entries.purchaseDate,
+      })
+      .from(transactions)
+      .innerJoin(entries, eq(entries.transactionId, transactions.id))
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.isPairCandidate, true),
+        eq(transactions.isInternalTransfer, false),
+        eq(transactions.ignored, false),
+        isNotNull(transactions.externalId),
+        isNotNull(entries.purchaseDate)
+      ))
+      .orderBy(desc(entries.purchaseDate))
+      .limit(1000),
+    db
+      .select({
+        externalId: income.externalId,
+        accountId: income.accountId,
+        amount: income.amount,
+        date: income.receivedDate,
+      })
+      .from(income)
+      .where(and(
+        eq(income.userId, userId),
+        eq(income.isPairCandidate, true),
+        eq(income.ignored, false),
+        isNotNull(income.externalId),
+        isNotNull(income.receivedDate)
+      ))
+      .orderBy(desc(income.receivedDate))
+      .limit(1000),
+  ]);
+
+  // Build pair candidates, excluding already-paired IDs
+  const candidates: PairCandidate[] = [];
+
+  for (const row of expenseRows) {
+    if (!row.externalId || alreadyPairedIds.has(row.externalId)) continue;
+    candidates.push({
+      externalId: row.externalId,
+      accountId: row.accountId,
+      amount: row.amount,
+      date: String(row.date),
+      direction: 'debit',
+    });
+  }
+
+  for (const row of incomeRows) {
+    if (!row.externalId || alreadyPairedIds.has(row.externalId)) continue;
+    candidates.push({
+      externalId: row.externalId,
+      accountId: row.accountId,
+      amount: row.amount,
+      date: String(row.date),
+      direction: 'credit',
+    });
+  }
+
+  // Only run pairing if we have candidates from multiple accounts
+  const uniqueAccounts = new Set(candidates.map(c => c.accountId));
+  if (uniqueAccounts.size < 2) {
+    return { expenseExternalIds: [], incomeExternalIds: [] };
+  }
+
+  // Run the same pairing algorithm
+  return detectInternalTransferPairs(candidates);
 }
 
 async function fetchExistingExternalIds(userId: string, externalIds: string[]): Promise<Set<string>> {
@@ -538,6 +631,8 @@ export async function syncPluggyItem(
       externalId: string;
       faturaMonth?: string;
       isRefund: boolean;
+      isPairCandidate: boolean;
+      beneficiaryName?: string;
     }> = [];
     const perAccountAffectedFaturas: Record<number, Set<string>> = {};
     // Track accountId → accountInfo for fatura payment matching
@@ -641,6 +736,7 @@ export async function syncPluggyItem(
         purchaseDate: string;
         installmentInfo?: { current: number; total: number; baseDescription: string } | undefined;
         isFaturaPayment?: boolean;
+        isPairCandidate?: boolean;
         merchantName?: string;
         merchantBusinessName?: string;
         merchantCnpj?: string;
@@ -658,6 +754,7 @@ export async function syncPluggyItem(
         externalId: string;
         faturaMonth?: string;
         isRefund: boolean;
+        isPairCandidate: boolean;
         beneficiaryName?: string;
       }> = [];
 
@@ -713,6 +810,7 @@ export async function syncPluggyItem(
             purchaseDate: date,
             installmentInfo: undefined,
             isFaturaPayment: classification.isFaturaPayment,
+            isPairCandidate: classification.isPairCandidate,
             merchantName: txMerchantName,
             merchantBusinessName: txMerchantBusinessName,
             merchantCnpj: txMerchantCnpj,
@@ -766,6 +864,7 @@ export async function syncPluggyItem(
             externalId,
             ...(faturaMonth ? { faturaMonth } : {}),
             isRefund: classification.kind === 'refund',
+            isPairCandidate: classification.isPairCandidate,
             beneficiaryName: txBeneficiaryName,
           });
           continue;
@@ -786,6 +885,7 @@ export async function syncPluggyItem(
           purchaseDate: basePurchaseDate,
           installmentInfo,
           isFaturaPayment: false,
+          isPairCandidate: classification.isPairCandidate,
           merchantName: txMerchantName,
           merchantBusinessName: txMerchantBusinessName,
           merchantCnpj: txMerchantCnpj,
@@ -806,6 +906,7 @@ export async function syncPluggyItem(
         externalId: string;
         ignored: boolean;
         isFaturaPayment: boolean;
+        isPairCandidate: boolean;
         merchantName?: string;
         merchantBusinessName?: string;
         merchantCnpj?: string;
@@ -861,6 +962,7 @@ export async function syncPluggyItem(
           externalId: tx.externalId,
           ignored: tx.isFaturaPayment ?? false,
           isFaturaPayment: tx.isFaturaPayment ?? false,
+          isPairCandidate: tx.isPairCandidate ?? false,
           merchantName: tx.merchantName,
           merchantBusinessName: tx.merchantBusinessName,
           merchantCnpj: tx.merchantCnpj,
@@ -912,6 +1014,7 @@ export async function syncPluggyItem(
           externalId: txExternalId,
           ignored: false,
           isFaturaPayment: false,
+          isPairCandidate: false, // Installment groups are not transfer candidates
           merchantName: firstGroupOriginalTx?.merchant?.name || undefined,
           merchantBusinessName: firstGroupOriginalTx?.merchant?.businessName || undefined,
           merchantCnpj: firstGroupOriginalTx?.merchant?.cnpj || undefined,
@@ -1079,6 +1182,36 @@ export async function syncPluggyItem(
         .where(and(
           eq(income.userId, userId),
           inArray(income.externalId, pairedIncomeIds)
+        ));
+    }
+
+    // --- Cross-item transfer detection (retroactive pairing across sync batches) ---
+    const alreadyPairedIds = new Set([...pairedExpenseIds, ...pairedIncomeIds]);
+    const newlyCreatedIds = new Set(
+      [...perAccountIncomeValues.map(i => i.externalId)]
+        .filter((id): id is string => !!id)
+    );
+
+    const { expenseExternalIds: crossItemExpenseIds, incomeExternalIds: crossItemIncomeIds } =
+      await detectCrossItemTransferPairs(userId, newlyCreatedIds, alreadyPairedIds);
+
+    if (crossItemExpenseIds.length > 0) {
+      await db
+        .update(transactions)
+        .set({ isInternalTransfer: true, ignored: true })
+        .where(and(
+          eq(transactions.userId, userId),
+          inArray(transactions.externalId, crossItemExpenseIds)
+        ));
+    }
+
+    if (crossItemIncomeIds.length > 0) {
+      await db
+        .update(income)
+        .set({ ignored: true })
+        .where(and(
+          eq(income.userId, userId),
+          inArray(income.externalId, crossItemIncomeIds)
         ));
     }
 

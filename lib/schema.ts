@@ -53,6 +53,8 @@ export const accounts = pgTable('accounts', {
   paymentDueDay: integer('payment_due_day'),
   creditLimit: integer('credit_limit'), // nullable, cents - only for credit cards
   bankLogo: text('bank_logo'), // nullable, bank logo key (e.g., "nubank", "inter")
+  institutionLogoUrl: text('institution_logo_url'), // nullable, from Pluggy connector.imageUrl
+  institutionColor: text('institution_color'), // nullable, from Pluggy connector.primaryColor
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -241,6 +243,7 @@ export const transactions = pgTable('transactions', {
   ignored: boolean('ignored').notNull().default(false),
   isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
   isFaturaPayment: boolean('is_fatura_payment').notNull().default(false),
+  isPairCandidate: boolean('is_pair_candidate').notNull().default(false), // transfer detection candidate
   refundedAmount: integer('refunded_amount').default(0), // cached sum of refunds (cents)
   merchantName: text('merchant_name'),
   merchantBusinessName: text('merchant_business_name'),
@@ -312,6 +315,7 @@ export const income = pgTable('income', {
   receivedAt: timestamp('received_at'), // null = pending, timestamp = received
   externalId: text('external_id'), // UUID from bank statement for idempotency
   ignored: boolean('ignored').notNull().default(false),
+  isPairCandidate: boolean('is_pair_candidate').notNull().default(false), // transfer detection candidate
   // Optional link to expense category for budget replenishment
   replenishCategoryId: integer('replenish_category_id')
     .references(() => categories.id, { onDelete: 'set null' }),

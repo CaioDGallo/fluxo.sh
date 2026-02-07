@@ -103,6 +103,22 @@ export function AccountCard({ account, onChange }: AccountCardProps) {
           <div className="size-10 shrink-0 rounded-full flex items-center justify-center bg-white p-1.5">
             <BankLogo logo={account.bankLogo} size={32} />
           </div>
+        ) : account.institutionLogoUrl ? (
+          <div className="size-10 shrink-0 rounded-full flex items-center justify-center bg-white p-1.5 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={account.institutionLogoUrl}
+              alt={account.name}
+              className="size-full object-contain"
+            />
+          </div>
+        ) : account.institutionColor ? (
+          <div
+            className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"
+            style={{ backgroundColor: account.institutionColor }}
+          >
+            <HugeiconsIcon icon={config.icon} strokeWidth={2} size={20} />
+          </div>
         ) : (
           <div
             className="size-10 shrink-0 rounded-full flex items-center justify-center text-white"

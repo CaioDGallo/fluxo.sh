@@ -746,7 +746,7 @@ async function seedDatabase() {
   try {
     // 1. Clear all tables
     console.log('  🗑️  Clearing existing data...');
-    await reset(db, schema);
+    await reset(db, seedSchema);
     for (const key of Object.keys(idCounters) as SeedTableKey[]) {
       idCounters[key] = 0;
     }
@@ -778,7 +778,7 @@ async function seedDatabase() {
         id: '00000000-0000-4000-8000-000000000101',
         code: 'FLUXO-PRO-MON',
         email: null,
-        planKey: 'pro',
+        planKey: 'founder',
         planInterval: 'monthly',
         createdBy: TEST_USER_ID,
         expiresAt: inviteExpiresAt,
@@ -792,7 +792,7 @@ async function seedDatabase() {
         id: '00000000-0000-4000-8000-000000000102',
         code: 'FLUXO-PRO-YEAR',
         email: null,
-        planKey: 'pro',
+        planKey: 'founder',
         planInterval: 'yearly',
         createdBy: TEST_USER_ID,
         expiresAt: inviteExpiresAt,
@@ -840,14 +840,14 @@ async function seedDatabase() {
     const billingSubscriptionRecords = [
       {
         userId: TEST_USER_ID,
-        planKey: 'pro',
+        planKey: 'founder',
         status: 'active' as const,
         currentPeriodStart: subscriptionStart,
         currentPeriodEnd: subscriptionEnd,
         cancelAtPeriodEnd: false,
-        stripeSubscriptionId: 'sub_seed_pro_yearly',
-        stripePriceId: 'price_pro_yearly',
-        stripeProductId: 'prod_pro',
+        stripeSubscriptionId: 'sub_seed_founder_yearly',
+        stripePriceId: 'price_founder_yearly',
+        stripeProductId: 'prod_founder',
         trialEndsAt: null,
         endedAt: null,
         createdAt: subscriptionStart,

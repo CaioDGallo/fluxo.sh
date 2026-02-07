@@ -43,13 +43,28 @@ export function computeEntryDates(
   const hasBillingConfig =
     account.type === 'credit_card' && account.closingDay && account.paymentDueDay;
 
+  // When overrideBaseFaturaMonth is provided (e.g. from Pluggy billId), use it as
+  // the authoritative fatura month even without billing config (closingDay/paymentDueDay).
+  if (account.type === 'credit_card' && overrideBaseFaturaMonth) {
+    const faturaMonth = addMonths(overrideBaseFaturaMonth, installmentNumber - 1);
+
+    const dueDate = hasBillingConfig
+      ? getFaturaPaymentDueDate(faturaMonth, account.paymentDueDay!, account.closingDay!)
+      : `${faturaMonth}-28`;
+
+    const purchaseDate = installmentNumber === 1
+      ? basePurchaseDate
+      : (hasBillingConfig
+        ? computeFaturaWindowStart(faturaMonth, account.closingDay!)
+        : `${faturaMonth}-01`);
+
+    return { purchaseDate, faturaMonth, dueDate };
+  }
+
   if (hasBillingConfig) {
     // Calculate base fatura month from the original purchase date
     let baseFaturaMonth: string;
-    if (overrideBaseFaturaMonth) {
-      // Use provided base fatura month (already calculated correctly for historic installments)
-      baseFaturaMonth = overrideBaseFaturaMonth;
-    } else if (ofxClosingDate) {
+    if (ofxClosingDate) {
       const closingDate = new Date(ofxClosingDate + 'T00:00:00Z');
       baseFaturaMonth = getFaturaMonthFromClosingDate(baseDate, closingDate);
     } else {

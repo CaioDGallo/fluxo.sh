@@ -14,7 +14,7 @@ import { getFaturaMonth } from '@/lib/fatura-utils';
 import { assertOpenFinanceAccess } from '@/lib/pluggy/guards';
 import { checkPluggyAutoSyncRateLimit } from '@/lib/rate-limit';
 import { accounts, categories, entries, faturas, income, pluggyAccounts, pluggyItems, pluggySyncCursors, transactions } from '@/lib/schema';
-import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getPostHogClient } from '@/lib/posthog-server';
 
@@ -1128,6 +1128,32 @@ export async function syncPluggyItem(
         const months = Array.from(affectedFaturas);
         await batchEnsureFaturasExist(accountId, months, userId);
         await batchUpdateFaturaTotals(accountId, months, userId);
+      }
+
+      // Retroactive fixup for Pluggy CC: re-link entries to correct faturas
+      // Handles entries that were assigned wrong faturaId/dueDate due to missing billing config
+      if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
+        await db.execute(sql`
+          UPDATE entries e
+          SET fatura_id = f.id
+          FROM faturas f
+          WHERE e.user_id = f.user_id
+            AND e.account_id = f.account_id
+            AND e.fatura_month = f.year_month
+            AND e.user_id = ${userId}
+            AND e.account_id = ${accountId}
+            AND (e.fatura_id IS NULL OR e.fatura_id != f.id)
+        `);
+
+        await db.execute(sql`
+          UPDATE entries e
+          SET due_date = f.due_date::text
+          FROM faturas f
+          WHERE e.fatura_id = f.id
+            AND e.user_id = ${userId}
+            AND e.account_id = ${accountId}
+            AND e.due_date != f.due_date::text
+        `);
       }
 
       transactionsCreated += expenseTransactions.length;

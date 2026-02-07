@@ -1147,12 +1147,12 @@ export async function syncPluggyItem(
 
         await db.execute(sql`
           UPDATE entries e
-          SET due_date = f.due_date::text
+          SET due_date = f.due_date
           FROM faturas f
           WHERE e.fatura_id = f.id
             AND e.user_id = ${userId}
             AND e.account_id = ${accountId}
-            AND e.due_date != f.due_date::text
+            AND e.due_date IS DISTINCT FROM f.due_date
         `);
       }
 

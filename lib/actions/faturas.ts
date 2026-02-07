@@ -553,26 +553,39 @@ export async function syncPluggyBills(
       const closingDate = new Date(dueDate);
       closingDate.setDate(closingDate.getDate() - 7);
       const closingDateStr = closingDate.toISOString().slice(0, 10);
+      const dueDateStr = dueDate.toISOString().slice(0, 10);
 
       const totalAmount = Math.round(Math.abs(bill.totalAmount ?? 0) * 100); // Convert to cents
 
-      await db.insert(faturas).values({
-        userId,
-        accountId,
-        yearMonth,
-        pluggyBillId: bill.id,
-        dueDate: dueDate.toISOString().slice(0, 10),
-        closingDate: closingDateStr,
-        startDate: null,
-        totalAmount,
-      }).onConflictDoUpdate({
-        target: [faturas.accountId, faturas.pluggyBillId],
-        set: {
-          dueDate: dueDate.toISOString().slice(0, 10),
+      // Check for existing fatura by yearMonth (placeholder or Pluggy)
+      // This avoids duplicating when a placeholder exists with null pluggyBillId
+      const [existing] = await db
+        .select({ id: faturas.id })
+        .from(faturas)
+        .where(and(
+          eq(faturas.userId, userId),
+          eq(faturas.accountId, accountId),
+          eq(faturas.yearMonth, yearMonth)
+        ))
+        .limit(1);
+
+      if (existing) {
+        // Adopt placeholder or update existing — always trust Pluggy's data
+        await db.update(faturas)
+          .set({ pluggyBillId: bill.id, dueDate: dueDateStr, closingDate: closingDateStr, totalAmount })
+          .where(eq(faturas.id, existing.id));
+      } else {
+        await db.insert(faturas).values({
+          userId,
+          accountId,
+          yearMonth,
+          pluggyBillId: bill.id,
+          dueDate: dueDateStr,
           closingDate: closingDateStr,
+          startDate: null,
           totalAmount,
-        },
-      });
+        });
+      }
     }
 
     // Infer billing cycle from synced bills and update account
@@ -617,6 +630,33 @@ export async function syncPluggyBills(
     console.error('[faturas] Failed to sync Pluggy bills:', error);
     // Don't throw - continue with sync even if bills fetch fails
   }
+}
+
+/**
+ * Ensures a full range of faturas exist for Pluggy credit card accounts.
+ * Range: currentMonth-2 through max(currentMonth+2, furthestInstallmentMonth).
+ * Uses batchEnsureFaturasExist which skips already-existing months.
+ */
+export async function ensurePluggyFaturaRange(
+  accountId: number,
+  userId: string,
+  furthestInstallmentMonth?: string | null
+): Promise<void> {
+  const currentMonth = getCurrentYearMonth();
+  const startMonth = addMonths(currentMonth, -2);
+  let endMonth = addMonths(currentMonth, 2); // minimum range
+  if (furthestInstallmentMonth && furthestInstallmentMonth > endMonth) {
+    endMonth = furthestInstallmentMonth;
+  }
+
+  const months: string[] = [];
+  let m = startMonth;
+  while (m <= endMonth) {
+    months.push(m);
+    m = addMonths(m, 1);
+  }
+
+  await batchEnsureFaturasExist(accountId, months, userId);
 }
 
 /**
@@ -1316,8 +1356,11 @@ export async function reassignEntriesToFaturas(
         faturaMap.set(newFaturaMonth, newFatura);
       }
 
-      // Compute new dueDate based on new fatura
-      const newDueDate = getFaturaPaymentDueDate(newFaturaMonth, paymentDueDay, closingDay);
+      // Use actual fatura dueDate when available, fall back to computed
+      const targetFatura = faturaMap.get(newFaturaMonth);
+      const newDueDate = targetFatura?.dueDate
+        ? String(targetFatura.dueDate)
+        : getFaturaPaymentDueDate(newFaturaMonth, paymentDueDay, closingDay);
 
       // Update entry: move to new fatura
       await dbCtx

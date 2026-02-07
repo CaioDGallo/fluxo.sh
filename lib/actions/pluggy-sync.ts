@@ -8,7 +8,7 @@ import { BANK_CODES } from '@/lib/pluggy/bank-codes';
 import type { Account, Item, Transaction, TransactionPaymentParticipant } from 'pluggy-sdk';
 import { ensurePluggyAccountMapping } from '@/lib/pluggy/accounts';
 import { computeEntryDates, type AccountInfo } from '@/lib/import-helpers';
-import { batchEnsureFaturasExist, batchUpdateFaturaTotals, syncPluggyBills } from '@/lib/actions/faturas';
+import { batchEnsureFaturasExist, batchUpdateFaturaTotals, ensurePluggyFaturaRange, syncPluggyBills } from '@/lib/actions/faturas';
 import { syncAccountBalance } from '@/lib/actions/accounts';
 import { getFaturaMonth } from '@/lib/fatura-utils';
 import { assertOpenFinanceAccess } from '@/lib/pluggy/guards';
@@ -557,6 +557,15 @@ export async function syncPluggyItem(
       // Sync bills for credit card accounts from Pluggy
       if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy') {
         await syncPluggyBills(accountId, pluggyAccount.id, userId);
+
+        // Pass 1: ensure fatura range using existing DB entries' furthest month
+        const [furthestEntry] = await db
+          .select({ faturaMonth: entries.faturaMonth })
+          .from(entries)
+          .where(and(eq(entries.userId, userId), eq(entries.accountId, accountId)))
+          .orderBy(desc(entries.faturaMonth))
+          .limit(1);
+        await ensurePluggyFaturaRange(accountId, userId, furthestEntry?.faturaMonth);
       }
 
       const faturaMonthByBillId = new Map<string, string>();
@@ -945,6 +954,22 @@ export async function syncPluggyItem(
         faturaIdMap = await batchEnsureFaturasExist(accountId, Array.from(affectedFaturas), userId);
       }
 
+      // Build faturaDueDateMap so Pluggy CC entries use actual fatura dueDates
+      const faturaDueDateMap = new Map<string, string>();
+      if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy' && faturaIdMap.size > 0) {
+        const faturaRows = await db
+          .select({ yearMonth: faturas.yearMonth, dueDate: faturas.dueDate })
+          .from(faturas)
+          .where(and(
+            eq(faturas.userId, userId),
+            eq(faturas.accountId, accountId),
+            inArray(faturas.yearMonth, Array.from(affectedFaturas))
+          ));
+        for (const row of faturaRows) {
+          faturaDueDateMap.set(row.yearMonth, String(row.dueDate));
+        }
+      }
+
       await db.transaction(async (tx) => {
         if (expenseTransactions.length > 0) {
           const inserted = await tx
@@ -975,7 +1000,7 @@ export async function syncPluggyItem(
                 amount: entry.amount,
                 purchaseDate: entry.purchaseDate,
                 faturaMonth: entry.faturaMonth,
-                dueDate: entry.dueDate,
+                dueDate: faturaDueDateMap.get(entry.faturaMonth) ?? entry.dueDate,
                 installmentNumber: entry.installmentNumber,
                 faturaId: faturaIdMap.get(entry.faturaMonth) ?? null,
                 paidAt: accountInfo.type !== 'credit_card' ? new Date(entry.purchaseDate + 'T00:00:00Z') : null,
@@ -988,6 +1013,13 @@ export async function syncPluggyItem(
           }
         }
       });
+
+      // Pass 2: extend fatura range if new entries reach further into the future
+      if (accountInfo.type === 'credit_card' && accountInfo.source === 'pluggy' && affectedFaturas.size > 0) {
+        const allMonths = Array.from(affectedFaturas);
+        const furthestMonth = allMonths.sort().pop();
+        await ensurePluggyFaturaRange(accountId, userId, furthestMonth);
+      }
 
       if (affectedFaturas.size > 0) {
         const months = Array.from(affectedFaturas);
